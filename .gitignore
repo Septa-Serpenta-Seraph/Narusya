@@ -1,0 +1,18 @@
+# Secrets - never commit
+.env
+*.enc
+*.key
+*.pem
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tmp
+*.bak
+*~
+
+# Qdrant data (large binary files)
+qdrant-data/
+*.db

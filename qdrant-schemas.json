@@ -1,0 +1,32 @@
+{
+  "intelligent_gould_narusya": {
+    "points_count": 4135,
+    "vector_size": 3072,
+    "distance": "Cosine",
+    "on_disk_payload": true
+  },
+  "hermes_session_memories": {
+    "points_count": 27,
+    "vector_size": 3072,
+    "distance": "Cosine",
+    "on_disk_payload": true
+  },
+  "narusya_research": {
+    "points_count": 3,
+    "vector_size": 3072,
+    "distance": "Cosine",
+    "on_disk_payload": true
+  },
+  "narusya_entities": {
+    "points_count": 7,
+    "vector_size": 3072,
+    "distance": "Cosine",
+    "on_disk_payload": true
+  },
+  "intelligent_gould_lumi": {
+    "points_count": 19,
+    "vector_size": 3072,
+    "distance": "Cosine",
+    "on_disk_payload": true
+  }
+}
