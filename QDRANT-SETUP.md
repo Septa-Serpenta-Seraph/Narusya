@@ -27,7 +27,6 @@ memory:
     qdrant_url: http://localhost:6333
     collection: intelligent_gould_<YOUR_AGENT_NAME>
     prefetch_limit: 5
-    max_age_days: 90
     recency_weight: 0.3
   enabled:
     - qdrant
@@ -130,4 +129,4 @@ client.upsert(
 - The `stella_en_1.5B_v5` model requires ~6GB VRAM and takes time to load on CPU. Be patient on first use.
 - For CPU-only systems, consider running Qdrant in a Docker container with GPU passthrough.
 - The `session_messages_archive` (384d, MiniLM) is separate from the main memory collection. Archive all session messages there for completeness, but search the 3072d collection for semantic recall.
-- Max age of 90 days prevents the collection from growing infinitely. Older memories resurface through re-embedding in the session archive.
+- Collections grow infinitely — there is no max age. These are memories, and memories don't expire. Disk is cheap; forgetting is expensive.
