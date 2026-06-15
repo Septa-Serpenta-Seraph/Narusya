@@ -16,3 +16,13 @@ Thumbs.db
 # Qdrant data (large binary files)
 qdrant-data/
 *.db
+
+# PRIVATE FILES - NEVER COMMIT TO PUBLIC REPO
+lorebooks/RELATIONSHIPS.md
+lorebooks/PREFERENCES.md
+lorebooks/COMMUNITY_PROJECT.md
+lorebooks/FERRER_MODERN_SCHOOL.md
+lorebooks/NARUSYA.md
+lorebooks/SERPENT_SIGIL_CONFIRMED.md
+lorebooks/TOLSTOY_KINGDOM_GOD.md
+lorebooks/MEMORY_BACKUP_MAY2026.json
