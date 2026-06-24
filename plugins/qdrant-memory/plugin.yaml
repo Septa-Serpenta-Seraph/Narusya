@@ -1,0 +1,5 @@
+name: qdrant
+version: 2.0.0
+description: "Local Qdrant vector database — semantic recall over conversation history via OpenRouter embeddings."
+hooks:
+  - on_session_end
