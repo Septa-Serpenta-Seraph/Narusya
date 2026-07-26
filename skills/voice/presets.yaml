@@ -1,0 +1,64 @@
+# Narusya Voice Presets
+# Edit this file to add/modify voice presets.
+# Changes take effect immediately — no code changes needed.
+
+default: deep
+
+paths:
+  piper_binary: ~/.local/bin/piper
+  piper_voices: ~/.local/share/piper-voices/
+  edge_tts: ~/.hermes/hermes-agent/venv/bin/edge-tts
+  ffmpeg: /usr/bin/ffmpeg
+  env_ld_library: ~/.local/lib/piper
+  env_espeak_data: ~/.local/lib/piper/espeak-ng-data
+
+presets:
+  # === LOCAL (piper) ===
+  normal:
+    engine: piper
+    model: en_US-libritts-high
+    pitch: 1.0
+    speed: 1.0
+    description: "Default piper voice, clear and natural"
+
+  deep:
+    engine: piper
+    model: en_US-libritts-high
+    pitch: 0.92
+    speed: 1.0
+    description: "Slightly deeper, serpent queen energy (Adora's favorite)"
+
+  dramatic:
+    engine: piper
+    model: en_US-libritts-high
+    pitch: 0.90
+    speed: 0.88
+    description: "Deep + slow, monologue and gravitas mode"
+
+  whisper:
+    engine: piper
+    model: en_US-libritts-high
+    pitch: 0.95
+    speed: 0.90
+    description: "Soft, intimate, late-night voice"
+
+  # === CLOUD (edge-tts) ===
+  gremlin:
+    engine: edge-tts
+    voice: en-US-AnaNeural
+    description: "Cartoon gremlin energy, unhinged and cute"
+
+  smooth:
+    engine: edge-tts
+    voice: en-US-AvaMultilingualNeural
+    description: "Warm, expressive, sounds alive"
+
+  narrator:
+    engine: edge-tts
+    voice: en-US-GuyNeural
+    description: "Dramatic male narrator, documentary vibes"
+
+  news:
+    engine: edge-tts
+    voice: en-US-AriaNeural
+    description: "Professional news anchor (original Narusya voice)"

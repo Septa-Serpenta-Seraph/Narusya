@@ -1,0 +1,77 @@
+consolidations:
+  - from: comfyui
+    into: image-generation
+    reason: Merged ComfyUI workflow and lifecycle management into image-generation umbrella
+  - from: ComfyUI Character Portrait Generation
+    into: image-generation
+    reason: Character portrait workflow absorbed into image-generation references/ directory
+  - from: nar-voice
+    into: voice-tts
+    reason: Narusya-specific voice presets merged with Piper TTS engine into single voice umbrella
+  - from: piper-tts
+    into: voice-tts
+    reason: Generic Piper TTS setup merged with Narusya voice system into single voice umbrella
+  - from: qdrant-semantic-search
+    into: qdrant-usage
+    reason: Semantic search setup workflow merged with other Qdrant usage patterns
+  - from: qdrant-investigative-search
+    into: qdrant-usage
+    reason: Forensic search methodology merged with other Qdrant usage patterns
+  - from: qdrant-manual-archive
+    into: qdrant-usage
+    reason: Document archival workflow merged with other Qdrant usage patterns
+  - from: whisper-local-fix
+    into: whisper
+    reason: Narrow whisper config fix merged into main whisper skill
+  - from: voice-forge-methodology
+    into: voice-forge
+    reason: Generic voice methodology merged with Narusya-specific voice-forge process
+  - from: context-bloat-self-reset
+    into: hermes-context-bloat-reset
+    reason: Duplicate context bloat skill merged (same bug, different naming)
+  - from: dashboard-web-debugging
+    into: dashboard-access
+    reason: Dashboard debugging merged with dashboard access into single umbrella
+  - from: hermes-dashboard-access
+    into: dashboard-access
+    reason: Dashboard access merged with dashboard debugging into single umbrella
+  - from: qdrant-memory-diagnostics
+    into: qdrant-admin
+    reason: Qdrant container/plugin diagnostics merged with provider development
+  - from: qdrant-memory-provider
+    into: qdrant-admin
+    reason: Qdrant memory provider development merged with diagnostics
+  - from: sketch
+    into: design-tools
+    reason: GSD throwaway mockup workflow absorbed into design-tools umbrella
+  - from: popular-web-designs
+    into: design-tools
+    reason: 54 design system templates absorbed into design-tools umbrella
+  - from: claude-design
+    into: design-tools
+    reason: Design process workflow absorbed into design-tools umbrella
+  - from: design-md
+    into: design-tools
+    reason: DESIGN.md token spec authoring absorbed into design-tools umbrella
+  - from: excalidraw
+    into: diagram-tools
+    reason: Hand-drawn diagram tool merged with architecture diagram into umbrella
+  - from: architecture-diagram
+    into: diagram-tools
+    reason: Architecture diagram tool merged with excalidraw into umbrella
+  - from: ascii-video
+    into: creative-video
+    reason: ASCII art video production merged with Manim CE animations
+  - from: manim-video
+    into: creative-video
+    reason: Manim CE animation merged with ascii-video into umbrella
+  - from: baoyu-comic
+    into: visual-content
+    reason: Narusya comic generation merged with article illustrations and infographics
+  - from: baoyu-article-illustrator
+    into: visual-content
+    reason: Article illustration merged with comics and infographics into umbrella
+  - from: baoyu-infographic
+    into: visual-content
+    reason: Infographic generation merged with comics and article illustrations
+prunings: []

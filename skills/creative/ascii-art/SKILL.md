@@ -1,10 +1,11 @@
 ---
 name: ascii-art
-description: Generate ASCII art using pyfiglet (571 fonts), cowsay, boxes, toilet, image-to-ascii, remote APIs (asciified, ascii.co.uk), and LLM fallback. No API keys required.
+description: "ASCII art: pyfiglet, cowsay, boxes, image-to-ascii."
 version: 4.0.0
 author: 0xbyt4, Hermes Agent
 license: MIT
 dependencies: []
+platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [ASCII, Art, Banners, Creative, Unicode, Text-Art, pyfiglet, figlet, cowsay, boxes]
@@ -25,6 +26,18 @@ Render text as large ASCII art banners. 571 built-in fonts.
 ```bash
 pip install pyfiglet --break-system-packages -q
 ```
+
+**⚠️ PEP 668 / Externally-Managed Environments:** On modern Debian/Ubuntu (23.04+), Fedora, and other distros, system Python is externally managed. The `--break-system-packages` flag is REQUIRED to install into site-packages. Without it, pip will error with `externally-managed-environment`.
+
+**If pip install fails even with the flag**, or if you lack write permissions:
+- Use **Tool 2 (asciified API)** — zero install, works via curl
+- Use **Tool 7 (ascii.co.uk)** — zero install, works via curl
+- Create a **virtual environment** for pyfiglet: `python3 -m venv ~/.venv/ascii && ~/.venv/ascii/bin/pip install pyfiglet`
+- Use **pipx**: `pipx install pyfiglet` (isolates in its own venv)
+
+**If running via Hermes' python (`/usr/bin/python3` vs venv python):** The system python3 may not see packages installed in a user venv. Either:
+- Run with the venv's python: `~/.venv/ascii/bin/python -m pyfiglet ...`
+- Or install with `--break-system-packages` for the system python
 
 ### Usage
 
@@ -92,6 +105,8 @@ sudo apt install cowsay -y    # Debian/Ubuntu
 # brew install cowsay         # macOS
 ```
 
+**⚠️ No sudo / no apt?** If you can't install system packages (no sudo, no apt, container without package manager), skip to **Tool 2 (asciified API)** or **Tool 9 (LLM-generated)** — both work zero-install.
+
 ### Usage
 
 ```bash
@@ -136,6 +151,8 @@ sudo apt install boxes -y    # Debian/Ubuntu
 # brew install boxes         # macOS
 ```
 
+**⚠️ No sudo / no apt?** If you can't install system packages, combine **Tool 2 (asciified API)** or **Tool 1 (pyfiglet via pip)** with manual box-drawing characters, or use **Tool 9 (LLM-generated)** with the Unicode box-drawing palette.
+
 ### Usage
 
 ```bash
@@ -171,6 +188,8 @@ sudo apt install toilet toilet-fonts -y    # Debian/Ubuntu
 # brew install toilet                      # macOS
 ```
 
+**⚠️ No sudo / no apt?** If you can't install system packages, use **Tool 1 (pyfiglet via pip --break-system-packages)** for basic banners, or **Tool 9 (LLM-generated)** with ANSI color codes (`\033[31m` red, `\033[32m` green, etc.) for colored output.
+
 ### Usage
 
 ```bash
@@ -184,13 +203,25 @@ toilet -f pagga "Block"                 # Block-style font (unique to toilet)
 toilet -F list                          # List available filters
 ```
 
-### Filters
+## Tool 10: Fallback Chain When AI Image Gen Is Unavailable
 
-`crop`, `gay` (rainbow), `metal`, `flip`, `flop`, `180`, `left`, `right`, `border`
+When GPU/ComfyUI is not available (e.g., `hardware_check.py` verdict = `cloud`) and no API keys are configured:
 
-**Note**: toilet outputs ANSI escape codes for colors — works in terminals but may not render in all contexts (e.g., plain text files, some chat platforms).
+| Step | Tool | Why |
+|------|------|-----|
+| 1 | **pyfiglet** (local) | Text banners, 571 fonts, zero deps after install |
+| 2 | **asciified API** (remote) | FIGlet via curl, no install needed |
+| 3 | **ascii.co.uk** (remote + parse) | Pre-made art library, reliable HTML structure |
+| 4 | **qrenco.de** (remote) | QR codes as ASCII |
+| 5 | **wttr.in** (remote) | Weather/moon phase art |
+| 6 | **cowsay + boxes** (local) | Message framing + decorative borders |
+| 7 | **p5.js sketch** (browser) | Generative art, runs client-side |
+| 8 | **LLM Unicode generation** | Custom art with box-drawing/block chars |
 
-## Tool 6: Image to ASCII Art
+**Verified working on Narusya VM (June 2025):** pyfiglet, asciified API, ascii.co.uk parsing via Python, qrenco.de, wttr.in. No GPU, no API keys required.
+
+---
+
 
 Convert images (PNG, JPEG, GIF, WEBP) to ASCII art.
 
@@ -319,3 +350,14 @@ When tools above don't have what's needed, generate ASCII art directly using the
 7. **Weather/moon art** → wttr.in via curl
 8. **Something custom/creative** → LLM generation with Unicode palette
 9. **Any tool not installed** → install it, or fall back to next option
+
+**Fallback Chain When No Local Tools Can Be Installed:**
+- **Text banners** → asciified API (curl) → pyfiglet in venv → LLM generation
+- **Character art** → asciified API doesn't do cows; use LLM generation with Unicode
+- **Borders** → LLM generation with box-drawing chars
+- **Pre-made art** → ascii.co.uk (curl + parse) — always works
+- **QR codes** → qrenco.de (curl) — always works
+- **Weather/Moon** → wttr.in (curl) — always works
+- **Image → ASCII** → requires local tool (ascii-image-converter/jp2a) or upload to a service
+
+**The remote APIs (asciified, ascii.co.uk, qrenco.de, wttr.in) are your universal fallback — they require only `curl` and work on any system with network access.**

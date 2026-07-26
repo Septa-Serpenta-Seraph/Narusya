@@ -8,7 +8,7 @@ tags: [aegis, dashboard, hackathon, context, memory]
 
 Use this skill to load the latest project state at the start of a session. Update it after each major milestone to keep the summary fresh.
 
-## Current State (updated March 7, 2026)
+## Current State (updated March 11, 2026)
 
 ### ✅ Completed
 - Discord webhook integration (Visual Cortex scans → Discord channel)
@@ -31,6 +31,11 @@ Use this skill to load the latest project state at the start of a session. Updat
 - **Health endpoint**: `GET /api/health` (DB + Docker connectivity)
 - **Container snapshots** automatically recorded on each `GET /api/containers` call
 - **Volume mounts**: `./data:/app/data` ensures persistence across container restarts
+- **Security hardening** – merged to main. Fixed: debug RCE, SECRET_KEY, CORS, auth middleware, 19-command blocklist
+- **Qdrant integration** – hermes_session_memories collection on port 6333
+- **Sovereignty layer** – cost tracking, background stats collector, Vision Lock
+- **Context notes table** – rolling persistence across wipes
+- **Video storyboard** – planned (Sovereign Collaboration theme), production not started
 
 ### ⚠️ Partial / Needs polish
 - SocketIO log streaming (mocked, needs real implementation)
@@ -81,13 +86,14 @@ Qwen noted that names are symbolic, not necessary for its operation, but could b
 - `discord_webhook.py` utility class for sending embeds/files
 - Visual Cortex screenshots automatically posted to Discord channel `#agent`
 
-### Recent Changes
-- Implemented screenshot persistence with listing API (`GET /api/vision/screenshots`)
-- Added Synthia‑Curius default system prompt to local LLM wrapper
-- Fixed quoting bug in `submit.py` (now uses `python3 -u` for unbuffered output)
-- Added `allow_unsafe_werkzeug=True` to SocketIO runner
-- Created `plan_next_features.txt` with prioritization
-- **March 7** – Full persistence layer with SQLite database, historical endpoints, stats collection, health check, and automatic snapshotting.
+### Recent Changes (March 11)
+- Security hardening merged from security-hardening branch (RCE, SECRET_KEY, CORS, auth)
+- Qdrant hermes_session_memories collection active
+- Sovereignty/metrics/cost tracking layer complete
+- Context notes table for rolling persistence
+- Video storyboard planned (Sovereign Collaboration theme)
+- Memory consolidated to file-based system (~/.hermes/memory/)
+- project-context-aegis skill updated from March 7 → March 11
 
 ## How to Use This Skill
 

@@ -1,0 +1,12 @@
+{
+  "name": "Mycog",
+  "short": "My custom cog",
+  "description": "A starter cog for the red-discordbot skill. Edit freely.",
+  "author": ["Narusya"],
+  "install_msg": "Thanks for installing me! Try [p]mycom",
+  "min_bot_version": "3.0.0",
+  "hidden": false,
+  "disabled": false,
+  "required_cogs": {},
+  "requirements": []
+}

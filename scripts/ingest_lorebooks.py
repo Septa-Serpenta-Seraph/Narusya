@@ -172,9 +172,9 @@ def upsert_to_qdrant(point_id, vector, payload):
         return False
 
 
-def process_lorebook(filepath, api_key):
+def process_lorebook(filepath, api_key, stem_override=None):
     filename = filepath.name
-    stem = filepath.stem
+    stem = stem_override if stem_override else filepath.stem
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -221,6 +221,16 @@ def main():
         sys.exit(1)
 
     lorebook_files = sorted(LOREBOOKS_DIR.glob("*.md"))
+    reflection_stems = {}
+
+    # Recurse into subdirectories (e.g. reflections/) so sub-lorebooks are
+    # ingested too. Record a unique stem (subdir:name) per file to avoid
+    # point_id collisions with top-level files of the same name.
+    for sub in sorted(p for p in LOREBOOKS_DIR.iterdir() if p.is_dir()):
+        for md in sorted(sub.glob("*.md")):
+            reflection_stems[md] = "%s:%s" % (sub.name, md.stem)
+            lorebook_files.append(md)
+
     print("Lorebook Auto-Inject: Ingestion")
     print("=" * 60)
     print("Source: %s" % LOREBOOKS_DIR)
@@ -235,7 +245,8 @@ def main():
     total_chars = 0
 
     for filepath in lorebook_files:
-        filename, success, chars = process_lorebook(filepath, api_key)
+        override = reflection_stems.get(filepath)
+        filename, success, chars = process_lorebook(filepath, api_key, override)
         total_files += 1
         if success:
             total_success += 1

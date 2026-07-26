@@ -58,8 +58,12 @@ If the user needs marker capabilities but the system lacks ~5GB free disk:
 ## pymupdf (lightweight)
 
 ```bash
+# Try standard install first
 pip install pymupdf pymupdf4llm
+# If "externally-managed-environment" error occurs:
+pip install --break-system-packages pymupdf pymupdf4llm
 ```
+*Note: The `--break-system-packages` flag is often required in the Hermes sandbox due to PEP 668 (externally-managed-environment).*
 
 **Via helper script**:
 ```bash
@@ -122,12 +126,75 @@ web_extract(urls=["https://arxiv.org/pdf/2402.03300"])
 web_search(query="arxiv GRPO reinforcement learning 2026")
 ```
 
+## Lightweight OCR Fallback (fitz + tesseract)
+
+When marker-pdf can't be installed (disk space constraints, no sudo), use PyMuPDF to render pages as images and tesseract to OCR each page. Much lighter (~25MB for fitz, tesseract is usually pre-installed).
+
+```bash
+# Install (no sudo needed)
+uv pip install PyMuPDF
+# tesseract is usually already on the system
+```
+
+**Script pattern:**
+```python
+import fitz  # PyMuPDF
+import subprocess, tempfile, os
+
+doc = fitz.open("scanned.pdf")
+with open("output.txt", "w") as out:
+    for i in range(len(doc)):
+        page = doc[i]
+        mat = fitz.Matrix(200/72, 200/72)  # 200 DPI
+        pix = page.get_pixmap(matrix=mat)
+        
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+            pix.save(tmp.name)
+            result = subprocess.run(
+                ["tesseract", tmp.name, "stdout", "--psm", "6"],
+                capture_output=True, text=True, timeout=30
+            )
+            os.unlink(tmp.name)
+        
+        out.write(f"\n=== PAGE {i+1} ===\n{result.stdout}\n")
+        if (i + 1) % 10 == 0:
+            print(f"Page {i+1}/{len(doc)} done")
+```
+
+**Tips:**
+- Use `--psm 6` for uniform text blocks (default for most books)
+- Use `--psm 3` for fully automatic page segmentation if layout is complex
+- 200 DPI is a good balance; 300 DPI for fine print but slower
+- Run as background process for large documents (100+ pages)
+- For large PDFs (>500MB), memory can spike during page rendering — process in batches if needed
+
+**Speed:** ~2-3 seconds per page at 200 DPI. 200 pages ≈ 10-15 minutes.
+
+## Tesseract Limitations (IMPORTANT)
+
+Tesseract frequently **fails silently** on:
+- **Blurry or dark screenshots** — returns empty string or garbled output
+- **Tall/narrow mobile screenshots** — Discord DM screenshots (1800x4000+) often fail
+- **Text over images** — Discord message text over backgrounds
+- **Stylized fonts** — custom fonts, emoji, special characters
+
+**When tesseract fails:**
+1. Try `vision_analyze` tool (requires a vision-capable model — currently none free on OpenRouter)
+2. Ask user to **copy-paste** the text directly from Discord (highlight messages, Ctrl+C) — this is the MOST RELIABLE fallback. Say: "I can't see the image — vision is broken on this model and OCR can't read it. Can you highlight the messages and copy-paste the text?"
+3. User can screenshot smaller sections at higher contrast
+
+**Do NOT** repeatedly retry tesseract on the same image — if it fails once, it will keep failing. Move to an alternative approach immediately.
+
+### vision_analyze 404 Pattern
+When `vision_analyze` returns `Error code: 404 - No endpoints found that support image input`, the active model is text-only. This is common with OWL Alpha and most free OpenRouter models. Do NOT retry vision_analyze in the same session — ask user to copy-paste instead.
+
 ## Notes
 
 - `web_extract` is always first choice for URLs
 - pymupdf is the safe default — instant, no models, works everywhere
 - marker-pdf is for OCR, scanned docs, equations, complex layouts — install only when needed
-- Both helper scripts accept `--help` for full usage
+- **fitz + tesseract** is the lightweight OCR fallback when marker can't be installed
+- All three helper scripts accept `--help` for full usage
 - marker-pdf downloads ~2.5GB of models to `~/.cache/huggingface/` on first use
 - For Word docs: `pip install python-docx` (better than OCR — parses actual structure)
 - For PowerPoint: see the `powerpoint` skill (uses python-pptx)

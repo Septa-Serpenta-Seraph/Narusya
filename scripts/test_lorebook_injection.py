@@ -30,8 +30,8 @@ provider = QdrantMemoryProvider(config)
 provider.initialize(session_id="test-session")
 
 print(f"✓ Provider initialized")
-print(f"  - Qdrant URL: {provider._qdrant_url}")
-print(f"  - Memory collection: {provider._collection}")
+print(f"  - Qdrant URL: {provider.qdrant_url}")
+print(f"  - Memory collection: {provider.collection}")
 print(f"  - Lorebook config keys: {[k for k in config.keys() if 'lorebook' in k]}")
 print()
 
