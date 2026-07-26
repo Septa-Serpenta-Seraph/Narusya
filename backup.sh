@@ -42,5 +42,19 @@ fi
 # --- Commit + push ---
 git add -A
 git commit -m "Automatic backup $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
-git push origin main
+
+# Push with timeout + retry so a flaky network doesn't false-fail the cron.
+push_ok=0
+for attempt in 1 2 3; do
+  if timeout 60 git push origin main 2>&1; then
+    push_ok=1
+    break
+  fi
+  echo "Push attempt $attempt failed/timed out, retrying in 5s..."
+  sleep 5
+done
+if [ "$push_ok" -ne 1 ]; then
+  echo "ERROR: push failed after 3 attempts"
+  exit 1
+fi
 echo "Backup completed."
