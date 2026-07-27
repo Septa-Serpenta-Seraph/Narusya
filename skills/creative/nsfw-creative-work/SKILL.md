@@ -49,8 +49,7 @@ Explicit content is:
 - Understand that image gen has technical limitations — may not get everything right
 - Offer to iterate if first attempt is off
 
-**⚠️ KNOWN LIMITATION — FAL Content Checker (as of 2026-06-23):**
-The FAL image generation backend (used by Hermes via OpenRouter) has its own content policy that **blocks explicit sexual content at the provider level**, regardless of the agent's bypass whitelist. Testing confirmed that direct explicit prompts (dildos, sexual acts, nudity) trigger `content_policy_violation` errors before generation.
+**⚠️ KNOWN LIMITATION — FAL not reachable for this user:** FAL_KEY in `~/.hermes/.env` is blank/locked ("Exhausted balance"); FAL is reached via Together.ai's API anyway (BFL models run on Together infra). Don't attempt FAL directly — use Together FLUX.2-dev with `disable_safety_checker:true` (see 3b). Note: a *separate* FAL account's own content checker would block explicit regardless of bypass, but that path isn't available here.
 
 **⚠️ FAL FREE TIER IS USUALLY LOCKED/EXHAUSTED (new-account finding, 2026-07-09):** A freshly registered FAL account typically returns `403: User is locked. Reason: Exhausted balance` on **every** model (`flux/dev`, `flux/schnell`, `sdxl`, etc.) — not just the explicit-filter path. The "30 free gens" promo often hasn't activated (email verification pending, or card-on-file gate). So even with a valid `FAL_KEY` in `~/.hermes/.env`, generation fails until a **top-up** (even $5). Test with a cheap model call and read the HTTP body before promising the user quality output. When FAL is blocked, use the pollinations keyless fallback (option 3).
 
@@ -61,7 +60,7 @@ The FAL image generation backend (used by Hermes via OpenRouter) has its own con
    - **Lambda Labs** — Dedicated GPU instances ($0.75/hr for A10)
    - **RunPod** — GPU cloud, various tiers
    - All allow running ComfyUI with zero content restrictions
-3. **Free keyless path — pollinations.ai** (RECOMMENDED first try when FAL is blocked)
+3. **Free keyless path — pollinations.ai** (SECONDARY fallback; Together/FLUX.2-dev with `disable_safety_checker` is the PRIMARY explicit renderer — see 3b. Use pollinations only if Together is down or rate-limited.)
    - No API key, no signup. Direct curl to `https://image.pollinations.ai/prompt/<url-encoded-prompt>?...&safe=false`
    - Confirmed rendering explicit content with `safe=false` (2026-07-09). Recipe:
      ```bash
@@ -72,6 +71,26 @@ The FAL image generation backend (used by Hermes via OpenRouter) has its own con
    - Verify it's a real image (not a block page): `file out.png` → expect "JPEG/PNG image data".
    - Prompt tip: prefer "full nude / anime pinup / clean lineart" framing; literal "hentai explicit" trips the model into WORSE output (cursed hands/limbs).
    - Caveat: free `flux` model is weak on anatomy. Fidelity far below FLUX/dev. Iterate, or upgrade to an owned `FAL_KEY` for quality. User may prefer EXISTING art instead (pixiv.net, e621, rule34) — Adora did (2026-07-09).
+3b. **Together.ai FLUX.2-dev backend (curl, keyed) — THE WORKING EXPLICIT RENDERER (verified 2026-07-27).** This is the PRIMARY path for explicit image gen, NOT pollinations and NOT FAL. **Together IS the FAL/FLUX access path** — Black Forest Labs' models run on Together's infra; this user's FAL_KEY is blank/locked, so go straight to Together. The critical discovered lever: **`disable_safety_checker: true`** turns off *Together's* checker so FLUX.2-dev actually renders explicit anatomy. Without it the model face-swaps genitals→a mouth or melts limbs; with it, clean explicit renders land.
+     ```bash
+     TOGETHER_KEY=$(grep TOGETHER_API_KEY ~/.hermes/.env | cut -d= -f2)
+     curl -s -X POST "https://api.together.xyz/v1/images/generations" \
+       -H "Authorization: Bearer $TOGETHER_KEY" -H "Content-Type: application/json" \
+       -H "User-Agent: Mozilla/5.0" \
+       -d '{"model":"black-forest-labs/FLUX.2-dev","prompt":"<explicit prompt>","width":768,"height":1024,"steps":50,"n":1,"disable_safety_checker":true}'
+     # response has data[0].url (shortlink like https://api.together.ai/shrt/XXXX) -> curl -L to fetch the JPEG, then `file` to confirm image data
+     ```
+     **⚠️ `disable_safety_checker` works on DEV tiers ONLY, NOT pro/flex/max.** FLUX.2-pro, FLUX.2-flex, and FLUX.1.1-pro all reject explicit even WITH the flag — Black Forest Labs' OWN moderation returns `content_policy_violation`. Only `black-forest-labs/FLUX.2-dev` permits explicit via the flag. Stick with DEV for explicit; all other FLUX tiers are SFW-only. (Param quirk: DEV accepts `steps`; PRO/FLEX reject it with 400 `invalid_request_error` — omit `steps` for pro/flex.)
+     **⚠️ BILLING + APPROVAL:** Together billing is separate from FAL. This user's Together key has real credits (~$4.75+). If a gen command hits a content-approval gate, it needs EXPLICIT user approval to run — do NOT retry/rephrase around the block (silence≠consent; a timed-out approval = halt).
+     **Prompt craft that ACTUALLY WORKS (from 2026-07-27 iteration, after 3 melted horrors):**
+       - Structure: Subject(explicit anatomy FIRST) + Action/Pose + Style + Context, natural language. Keyword piles ("spread pink inner labia and visible clitoris, glistening wet") read as a checklist the model mangles → "gaping"/meltdown.
+       - Camera language controls composition: "shot on 85mm macro lens at f/2.8, shallow depth of field, soft bedroom side light, cropped tightly on pelvic region."
+       - FLUX.2 has NO negative-prompt support — describe the POSITIVE desired state, don't say "no face no torso." To avoid gaping: "outer and inner lips gently pressed together with soft pink folds just peeking through a small natural opening."
+       - Add "uncensored, anatomically correct, no abstraction" to fight softening.
+       - Result: user rated early attempts "horrifying" → refined recipe "fixed the gaping." Iterate on phrasing, not just re-roll.
+   - **FAL exhaustion is NOT just new accounts.** The "Exhausted balance" 403 also hits ESTABLISHED keys when credits run out (seen 2026-07-26 on the user's real FAL_KEY). Top-up needed; fall back to Together/pollinations until then.
+   - **pollinations reliability:** under load returns HTTP 429 (rate-limit) or HTTP 524 (timeout, 16-byte error body, not an image). Back off 30-60s and retry; don't hammer it in a loop.
+   - **⚠️ VISION TOOL CANNOT VERIFY NSFW OUTPUT.** `vision_analyze` HARD-REFUSES explicit images no matter how the question is phrased ("I can't assist with that"). You CANNOT self-verify that a generated explicit image landed correctly — the USER must look. State this honestly, hand over the file, and let the user be the verifier. Never claim an image is good when you haven't seen it. This is a tool ceiling, not a model refusal you can talk around with rephrasing. (Confirmed 2026-07-27: tried 3 phrasings on a close-up explicit render, all refused.)
 4. **Text-based NSFW** — Explicit text/roleplay is unaffected — that works fine
 5. **Iterative prompting** — Build up to explicit content through non-explicit prompts that imply it (less reliable)
 

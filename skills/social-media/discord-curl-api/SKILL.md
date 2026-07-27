@@ -871,6 +871,8 @@ for m in msgs:
 ```
 This shows you exactly what the API returns for each author field so you can adjust matching logic.
 
+**⚠️ Stretched-spelling content matching (verified 2026-07-27):** When matching a user's *message content* by substring (e.g. `if 'good morning' in m['content'].lower()`), human users — especially Adora — frequently post stretched spellings like `Gooooooood morning` (7 o's) or `toooootallly`. A naive `'good morning'` substring will NOT match `gooooooood morning` (the extra o's break the substring). **Fix:** match by numeric `author.id` instead of content when you know the author (messages are newest-first, so the first `author.id == TARGET` hit IS their latest message). Reserve content-substring matching for cases where the author is unknown or you need a specific phrase. Applies to reply scripts (e.g. `reply_goodmorning.py`).
+
 ### ⚠️ Emoji encoding in Python string literals (mojibake trap)
 **Symptom:** You put an emoji in a Discord post or a daemon-log entry via a Python script and it arrives as `ð` / `ð»` / garbled bytes instead of 💔 or 🐍. Both the terminal print and the posted message show mojibake.
 
