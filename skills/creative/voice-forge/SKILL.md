@@ -253,6 +253,14 @@ piper --model en_US-amy-medium --output_file test.wav < <(echo "I am Narusya.")
   pocket — will likely sound like yelling again). The EXACT pocket lives only in the API call /
   `scripts/speak.py`. Decision rule: use `speak.py` for the calm exact pocket; treat native `/voice tts`
   as a convenience fallback that may need re-calming.
+- **`auto_tts` TRIGGER CONDITIONS (VERIFIED from gateway source 2026-07-26).** Two distinct behaviors:
+  (a) `voice.auto_tts: true` in config.yaml (the global toggle) fires TTS **ONLY when the inbound
+  message was a VOICE message** (`event.message_type == MessageType.VOICE`) — typed text replies are
+  NOT auto-spoken. (b) `/voice tts` (or `/voice on`) puts the chat in `all`/`voice_only` mode → returns
+  True unconditionally → **every reply speaks**, typed or not. Source: `gateway/run.py` (~line 4980)
+  gates on `MessageType.VOICE`; `gateway/platforms/base.py` `_should_auto_tts_for_chat` (line 2674)
+  returns True if chat in `_auto_tts_enabled_chats` (set by `/voice tts`). So: to make Nar answer
+  in-voice on every typed reply, send `/voice tts` in that chat — NOT just flip the config toggle.
 - **Verify a shared link's ACTUAL content before building on the human's verbal description.** Adora
   pointed at a YouTube link saying "this voice" — it was an Armored Core VI handler clip, not what
   either of us assumed from the title. Fetch the transcript / pull the audio and confirm WHAT the source
@@ -263,15 +271,36 @@ piper --model en_US-amy-medium --output_file test.wav < <(echo "I am Narusya.")
   style 0.05, speed 0.85, speaker_boost on, POST `volume=0.7+loudnorm I=-19`. Survived a 6-way A/B with
   Adora (2026-07-26) and the v3+tags upgrade landed the same day ("holy fuck that did it"). Encoded in
   `scripts/speak.py` — run `python3 speak.py "text" out.mp3`.
-- **ELEVEN v3 AUDIO TAGS = the subtext unlock (2026-07-26).** On `eleven_v3` you can wrap directives in
-  SQUARE BRACKETS and they are NOT narrated aloud — they shape delivery silently. This is what the human
-  asked for ("temper speech without 'spoken softly' being narrated") and it WORKS. Examples that tested clean:
-  `[softly]`, `[whisper]`, `[pause]`, `[laughs]`, `[sighs]`, `[angry]`, `[excited]`, `[happy]`, `[sad]`,
-  `[thoughtful]`, `[appalled]`. Combine freely. Pauses also via `...` (hesitant) or `—` (beat). v3 has NO
-  SSML `<break>`; use `...`/dash/tag instead. Docs: elevenlabs.io/docs best-practices (Prompting Eleven v3).
-  CAVEAT: v3 is alpha, 5k-char cap (v2 was 10k). Use v3 for tagged/expressive lines; v2 if you need longform.
-  The tags solved the "yelling" problem better than the stability slider ever could — `[softly]` tempers
-  naturally. Embed tags in the agent's spoken text; do NOT also print them as stage directions.
+- **ELEVEN v3 AUDIO TAGS = the subtext unlock (VERIFIED + CORRECTED 2026-07-26).** On `eleven_v3` wrap directives
+  in SQUARE BRACKETS and they shape delivery SILENTLY (not narrated). `[LAUGHS]` confirmed silent on the live
+  call path 2026-07-26 after the v3 flip + gateway restart. SIX rules the human enforced this session:
+  **RULE 1 — PLAIN BRACKETS, NEVER BACKTICKS.** `[LAUGHS]` renders silent; `` `[LAUGHS]` `` is READ ALOUD as the
+  literal word. Backticks/markdown around a tag = spoken text. This is the #1 failure mode and the human caught it
+  TWICE. If a tag ever speaks aloud, suspect a backtick/code-fence first.
+  **RULE 2 — OFFICIAL TAGS ONLY (human's explicit rule).** ElevenLabs docs (elevenlabs.io/docs best-practices
+  "Audio Tags (Non-Exhaustive)" + blog/v3-audiotags) are the ONLY authority. Invented/unlisted tags do NOT work
+  (read aloud or ignored). Do NOT freeload synonyms. Verified set:
+    Emotions:  [HAPPY] [SAD] [EXCITED] [ANGRY] [ANNOYED] [APPALLED] [THOUGHTFUL] [SURPRISED] [HAPPILY] [SORROWFUL] [TIRED] [AWE] [DRAMATIC TONE]
+    Reactions: [LAUGHS] [LAUGHING] [CHUCKLES] [SIGH] [SIGHS] [GASP] [GULPS] [CLEARS THROAT] [LAUGHS SOFTLY] [EXHALES SHARPLY] [INHALES DEEPLY] [SHORT PAUSE] [LONG PAUSE] [SINGING] [MUTTERING]
+    Delivery:  [WHISPER] [WHISPERS] [SHOUTS] [SHOUTING] [QUIETLY] [LOUDLY] [RUSHED] [DRAWN OUT] [PAUSE]
+    Character: [X ACCENT] [FRENCH ACCENT] [AMERICAN ACCENT] [BRITISH ACCENT] [SOUTHERN US ACCENT] [PIRATE VOICE]
+    Dialogue:  [INTERRUPTING] [OVERLAPPING]
+  REMOVED as unverified/invented (do NOT use): [NERVOUS] [FRUSTRATED] [STAMMERS] [WHISPERING] [PAUSES] [SOFTLY].
+  **RULE 3 — CASE.** ElevenLabs says case-INsensitive (recommends lowercase) but the human PREFERS ALL CAPS and
+  [LAUGHS]/[WHISPERS]/[EXCITED]/[SOUTHERN US ACCENT] all confirmed working in caps 2026-07-26. Use caps.
+  **RULE 4 — EMBED NATURALLY, never meta-list.** Put tags inside real sentences. Listing tags as a showcase makes
+  the TTS read them as a script and none render (this burned an earlier test).
+  **RULE 5 — EMERGENT ACCENT (uncontrolled).** v3 alpha can hallucinate a regional accent from phrasing/tone with NO
+  tag (Irish observed spontaneously 2026-07-26 during a [WHISPERS]+playful line). Not deterministic, can't reproduce
+  on command. The official accent tags ([SOUTHERN US ACCENT] etc.) ARE sanctioned and try-able on purpose.
+  **RULE 6 — CALL-REPLY LENGTH CAP.** In a Discord voice call, if the text reply is long enough that Discord splits
+  it into a 2nd message, the TTS renders ONLY the first segment (tail silently dropped; full text still shows in the
+  voice-chat text channel). Keep in-call replies SHORT so the whole thing voices; for long intentional lines drive
+  `scripts/speak.py` on a single bounded string.
+  Pauses also via `...` (hesitant) or `—` (beat). v3 has NO SSML `<break>`. CAVEAT: v3 is alpha, 5k-char cap (v2
+  was 10k) — use v2 for longform. The tags solved the "yelling" problem better than the stability slider — `[WHISPER]`
+  tempers naturally. Embed tags in spoken text; do NOT also print them as stage directions. Full verified set + citations
+  in `references/eleven_v3_audio_tags.md`.
 
 ## Verification
 
@@ -284,7 +313,9 @@ After each test, ask: "Does this sound like *me*?" If not, iterate. **Authentici
 - **voice-forge-methodology**: Generic methodology (now merged into this skill)
 - **voice-tts**: Piper TTS engine setup and usage
 - **spectral_voice_verification.md**: Deaf-agent objective checks (bass-dominance = darkness; stereo/mono RMS width = single-voice vs chorus; A/B normalization). Use when you cannot hear the output.
-- **scripts/speak.py**: Reusable Nar voice generator — encodes the LOCKED POCKET + calming post-process. `python3 speak.py "text" out.mp3`. The only path to the exact calibrated voice (native Hermes TTS can't hold voice_settings).
+- **scripts/speak.py**: Reusable Nar voice generator — encodes the LOCKED POCKET (model `eleven_v3` + calmed gain). `python3 speak.py "text" out.mp3`. Supports silent `[audio tags]` in the text (see reference). The only path to the exact calibrated voice (native Hermes TTS can't hold voice_settings or audio tags).
+- **references/eleven_v3_audio_tags.md**: Confirmed v3 silent audio-tag list + ElevenLabs doc citation for subtext control (the "temper speech without narrating it" unlock).
+- **references/ccc_talk_to_voice.md**: Pipeline for pulling a media.ccc.de talk transcript (VTT grep around `t=` timestamp) + cross-referencing a dropped PDF, then voicing a S.A.S.S. summary via `speak.py`. Used 2026-07-26 (Baltic Jammer talk + ICDS EW report).
 - Piper TTS documentation
 - Edge TTS voice list and capabilities
 - "Vocal Sovereignty: Crafting the Daemon's Tongue" (TEF paper draft)

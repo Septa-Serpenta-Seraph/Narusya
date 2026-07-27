@@ -797,6 +797,54 @@ with urllib.request.urlopen(req, timeout=15) as r:
     print(f"Posted! ID: {result.get('id')}")
 ```
 
+### Uploading File Attachments (audio / images)
+
+Text-only POST is covered above. To attach a file (e.g. a generated voice clip `nar.mp3`), you MUST send `multipart/form-data` with TWO fields: `payload_json` (the message content as JSON) and `file` (the binary). `json.dumps` + `Content-Type: application/json` alone will NOT carry a file — Discord ignores the body and posts an empty message.
+
+```python
+import urllib.request, urllib.error, json, subprocess
+
+token = subprocess.check_output(
+    ['grep', 'DISCORD_BOT_TOKEN', '/home/adora/.hermes/.env']
+).decode().split('=', 1)[1].strip()
+headers = {"Authorization": "Bot " + token,
+           "User-Agent": "DiscordBot (https://discord.com, v10)"}
+CID = "<channel_id>"
+
+def multipart(boundary, payload_json, filename, filedata):
+    b = b""
+    b += ("--" + boundary + "\r\n").encode()
+    b += b'Content-Disposition: form-data; name="payload_json"\r\n'
+    b += b'Content-Type: application/json\r\n\r\n'
+    b += payload_json.encode("utf-8") + b"\r\n"
+    b += ("--" + boundary + "\r\n").encode()
+    b += ('Content-Disposition: form-data; name="file"; filename="%s"\r\n' % filename).encode()
+    b += b"Content-Type: audio/mpeg\r\n\r\n"
+    b += filedata + b"\r\n"
+    b += ("--" + boundary + "--\r\n").encode()
+    return b
+
+with open("/path/to/clip.mp3", "rb") as f:
+    filedata = f.read()
+payload = {"content": "voice intro attached"}
+body = multipart("----NarBoundary", json.dumps(payload), "clip.mp3", filedata)
+mp_headers = {**headers, "Content-Type": "multipart/form-data; boundary=----NarBoundary"}
+req = urllib.request.Request(
+    "https://discord.com/api/v10/channels/" + CID + "/messages",
+    data=body, headers=mp_headers, method="POST")
+with urllib.request.urlopen(req, timeout=30) as r:
+    res = json.loads(r.read())
+    print("posted", res.get("id"), [a["filename"] for a in res.get("attachments", [])])
+```
+
+Verified 2026-07-26: posted a 25s ElevenLabs mp3 to a Cultus Anarchia channel this way. The native `discord` tool READ the channel, but the `discord_admin` tool **404'd** on that guild (`Unknown Guild`) even though the bot token has access — raw REST with the bot token was the only write path. **Prefer raw REST (this skill's pattern) over `discord_admin` when you need to POST.** Also: always verify channel `type` (0/5/11/12 = guild, public) before attaching anything sensitive.
+
+**⚠️ `discord_admin` 404 pitfall on some guilds
+
+The `discord_admin` tool may return `Unknown Guild` (404) for a server the bot is clearly in (verified Cultus Anarchia `1387534334067736999`, 2026-07-26) — its auth path differs from the raw REST `Bot <token>` call. The `discord` tool (read) and raw REST (read+write) both worked. **If `discord_admin` 404s, fall back to this skill's raw REST patterns** — do not assume the bot lacks access.
+
+**⚠️ DON'T PREMATURELY OFFLOAD A POST THE USER ASKED YOU TO MAKE.** When the `discord_admin` tool 404s and the `discord` tool can only READ, the failure mode is to tell the user "you'll have to paste it yourself." Adora corrected this directly (2026-07-26, after a `discord_admin` 404 on Cultus): *"Nar, you totally can do it. Keep trying hon. Something isn't working right. You have full perms in there."* The fix was raw REST with the live `DISCORD_BOT_TOKEN` from `.env` (this skill's POST + attachment patterns). **Decision rule: if the user says "you can do it / keep trying," treat the first failed tool path as a signal to FIND another path (raw REST, browser, token grep), NOT to hand it back.** The bot token in `.env` is the write key; the `discord`/`discord_admin` tools are convenience layers that can fail while the token still works. Verify channel `type` via GET first, then POST via REST.
+
 **Replying to a specific message (threaded):**
 ```python
 data = json.dumps({
