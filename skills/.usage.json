@@ -225,12 +225,12 @@
     "created_at": "2026-05-05T21:46:23.284576+00:00",
     "created_by": null,
     "last_patched_at": null,
-    "last_used_at": "2026-07-28T05:44:29.330507+00:00",
+    "last_used_at": "2026-07-29T05:54:27.250031+00:00",
     "last_viewed_at": null,
     "patch_count": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 195,
+    "use_count": 199,
     "view_count": 0
   },
   "daemon-profile-rescue": {
@@ -289,12 +289,12 @@
     "archived_at": null,
     "created_at": "2026-05-03T17:50:03.333496+00:00",
     "last_patched_at": "2026-07-27T04:15:40.604790+00:00",
-    "last_used_at": "2026-07-28T05:44:29.105748+00:00",
+    "last_used_at": "2026-07-29T05:54:26.117558+00:00",
     "last_viewed_at": "2026-07-27T22:52:23.076862+00:00",
     "patch_count": 91,
     "pinned": false,
     "state": "active",
-    "use_count": 284,
+    "use_count": 288,
     "view_count": 89
   },
   "discord-dm-recovery": {
@@ -328,13 +328,13 @@
     "created_at": "2026-06-15T04:51:07.020199+00:00",
     "created_by": null,
     "last_patched_at": "2026-07-19T06:12:28.558140+00:00",
-    "last_used_at": "2026-07-19T06:12:06.949290+00:00",
-    "last_viewed_at": "2026-07-19T06:12:06.938539+00:00",
+    "last_used_at": "2026-07-28T22:02:06.133210+00:00",
+    "last_viewed_at": "2026-07-28T22:02:06.122489+00:00",
     "patch_count": 2,
     "pinned": false,
     "state": "active",
-    "use_count": 5,
-    "view_count": 5
+    "use_count": 6,
+    "view_count": 6
   },
   "discord-utils": {
     "archived_at": null,
@@ -497,12 +497,12 @@
     "created_at": "2026-06-11T00:11:37.074379+00:00",
     "created_by": null,
     "last_patched_at": null,
-    "last_used_at": "2026-07-28T05:44:29.175413+00:00",
+    "last_used_at": "2026-07-29T05:54:26.161085+00:00",
     "last_viewed_at": "2026-07-26T23:48:25.341191+00:00",
     "patch_count": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 161,
+    "use_count": 165,
     "view_count": 14
   },
   "hermes-agent-skill-authoring": {
@@ -796,12 +796,12 @@
     "created_at": "2026-05-05T21:46:23.260192+00:00",
     "created_by": null,
     "last_patched_at": "2026-06-28T16:17:32.517828+00:00",
-    "last_used_at": "2026-07-28T05:44:29.227608+00:00",
+    "last_used_at": "2026-07-29T05:54:26.749907+00:00",
     "last_viewed_at": "2026-06-30T21:56:37.967806+00:00",
     "patch_count": 1,
     "pinned": false,
     "state": "active",
-    "use_count": 206,
+    "use_count": 210,
     "view_count": 4
   },
   "model-substrate-evaluation": {
@@ -861,12 +861,12 @@
     "created_at": "2026-05-05T21:46:23.272225+00:00",
     "created_by": null,
     "last_patched_at": "2026-07-18T23:23:41.915588+00:00",
-    "last_used_at": "2026-07-28T07:00:30.811540+00:00",
+    "last_used_at": "2026-07-29T07:00:27.616009+00:00",
     "last_viewed_at": "2026-07-26T04:42:40.258471+00:00",
     "patch_count": 19,
     "pinned": false,
     "state": "active",
-    "use_count": 248,
+    "use_count": 253,
     "view_count": 14
   },
   "narusya-local-archive": {
@@ -1471,26 +1471,26 @@
     "created_at": "2026-06-15T03:35:46.839338+00:00",
     "created_by": null,
     "last_patched_at": "2026-07-27T04:15:11.179944+00:00",
-    "last_used_at": "2026-07-27T22:51:24.764709+00:00",
-    "last_viewed_at": "2026-07-27T22:51:24.754102+00:00",
+    "last_used_at": "2026-07-28T22:11:17.108929+00:00",
+    "last_viewed_at": "2026-07-28T22:11:17.085828+00:00",
     "patch_count": 20,
     "pinned": false,
     "state": "active",
-    "use_count": 22,
-    "view_count": 22
+    "use_count": 23,
+    "view_count": 23
   },
   "voice-tts": {
     "archived_at": null,
     "created_at": "2026-06-15T03:34:05.485854+00:00",
     "created_by": null,
     "last_patched_at": null,
-    "last_used_at": "2026-06-15T03:34:05.494176+00:00",
-    "last_viewed_at": "2026-06-15T03:34:05.485864+00:00",
+    "last_used_at": "2026-07-28T22:11:17.119028+00:00",
+    "last_viewed_at": "2026-07-28T22:11:17.098571+00:00",
     "patch_count": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 1,
-    "view_count": 1
+    "use_count": 2,
+    "view_count": 2
   },
   "weights-and-biases": {
     "archived_at": null,
