@@ -1,5 +1,8 @@
 # Available Voices
 
+> **Note (2026-07-28):** Narusya's primary voice is now the 'Nar' ElevenLabs clone (ID `9wvWoMWVngRWpC0GltZ3`), not Piper.
+> Piper/edge-tts are the **offline/fallback** path. See `references/elevenlabs-tags.md` for the ElevenLabs tag system.
+
 ## Piper (Local)
 
 ### en_US-libritts-high (131MB)

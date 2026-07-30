@@ -23,6 +23,7 @@ A structured workflow for investigating organizations, corporate activities, pol
 - Verifying claims made by organizations or individuals
 - Investigating potential astroturfing, lobbying, or corporate intelligence
 - Any request to "look into" a group, company, or person
+- Reverse-engineering a web-based API or free-tier pipeline (see `references/web-api-reverse-engineering.md`)
 
 ## Prerequisites
 
@@ -46,6 +47,14 @@ A structured workflow for investigating organizations, corporate activities, pol
 | `web_extract` | Pull full content from URLs for verification |
 | `write_file` | Save research document |
 | `patch` | Update research file with new findings |
+| `terminal` (Playwright) | Browser automation for API reverse engineering |
+| GitHub code analysis | Extract API endpoints, auth, and parameters from open-source wrappers |
+
+## Procedure
+
+### Phase 1: Entity Identification
+
+Search for the organization name and variations:
 
 ## Procedure
 
@@ -136,7 +145,8 @@ Use this exact structure:
 
 ### Phase 6: Delivery
 
-Save to `~/.hermes/research/<slug>-findings.md` and notify the user with a summary.
+6. Save to `~/.hermes/research/<topic>-findings.md` and notify the user with a summary.
+7. For web API reverse engineering cases, see `references/web-api-reverse-engineering.md` for the specific procedure and known endpoints.
 
 ## Pitfalls
 

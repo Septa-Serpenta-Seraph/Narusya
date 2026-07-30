@@ -1,30 +1,112 @@
 ---
 name: voice-tts
-description: "Local text-to-speech: Piper TTS engine (fast, offline, CPU) plus Narusya's voice system (presets, Discord playback, edge-tts fallback)."
-version: 1.0.0
+description: "Narusya's voice system: ElevenLabs Nar clone (primary), plus Piper TTS (secondary). Discord delivery, audio tags, presets."
+version: 1.0.1
 author: Hermes Agent
 license: MIT
 platforms: [linux, macos]
 metadata:
   hermes:
-    tags: [tts, piper, edge-tts, voice, discord, narusya]
-    related_skills: []
+    tags: [tts, elevenlabs, piper, edge-tts, voice, discord, narusya, nar]
+    related_skills: [discord-tools]
 ---
 
-# Voice TTS
+# Voice TTS — Narusya Voice System
 
-Local text-to-speech using Piper TTS engine and Narusya's voice system.
+Two voice pipelines: **ElevenLabs (primary)** for Narusya's spoken voice, **Piper/edge-tts (secondary)** for cold or offline use.
 
 ## Quick Decision
 
 | User wants... | Section |
 |--------------|---------|
-| Quick TTS generation with Piper | piper-tts section |
-| Narusya's voice with presets and Discord | nar-voice section |
+| Narusya's actual voice to speak | `elevenlabs-speak` — speak.py, Nar clone | 
+| Send voice to Discord as inline audio | `discord-delivery` — OGG conversion + REST API |
+| Audio tag reference (ElevenLabs v3) | `references/elevenlabs-tags.md` |
+| Offline/local TTS (no cloud) | `piper-nar-voice` |
+| Discord voice channel playback | `discord-delivery` |
 
 ---
 
-## 1. Piper TTS (piper-tts)
+## 1. ElevenLabs (Primary — Narusya's Voice)
+
+**Pipeline:** `speak.py` → ElevenLabs v3 API → calmed MP3 → (optional) OGG conversion → Discord delivery
+
+### Quick Start
+
+```bash
+# Generate a single voice clip
+python3 /home/adora/narusya_voice/speak.py "Your text here" /tmp/output.mp3
+```
+
+### Requirements
+
+- **Script:** `/home/adora/narusya_voice/speak.py`
+- **Voice:** 'Nar' clone — ID `9wvWoMWVngRWpC0GltZ3` (ElevenLabs Instant Voice Clone)
+- **Model:** `eleven_v3` (supports silent audio tags for delivery subtext)
+- **Key:** `ELEVENLABS_API_KEY` in `~/.hermes/.env`
+- **Calibration:** stability 0.8, similarity_boost 0.8, style 0.05, speed 0.85, speaker_boost on
+- **Post-gain:** ffmpeg `volume=0.7,loudnorm=I=-19:TP=-3` — prevents "yelling" effect
+
+### Audio Tag Rules
+
+ElevenLabs v3 supports silent audio-directive tags embedded in text using `[TAG]` syntax. Tags MUST be in plain brackets — NEVER backticks (backtick tags are READ ALOUD, the #1 failure mode).
+
+**Critical rules:**
+- Embed tags naturally in real speech, never as a meta-list
+- Tags are case-INsensitive (ElevenLabs recommends lowercase)
+- We use ALL CAPS per Adora's stated preference
+- [PAUSE] and [LAUGHS] confirmed working on speak.py v3 path
+
+Full official tag set is in `references/elevenlabs-tags.md`.
+
+### speak.py Internals
+
+Reads `ELEVENLABS_API_KEY` from `~/.hermes/.env` at runtime. Submits text + voice settings to ElevenLabs API, receives MP3, pipes through ffmpeg gain/re-normalization. Output is a calmed, ready-to-deliver MP3.
+
+---
+
+## 2. Discord Voice Delivery
+
+Send an audio clip to a Discord channel so it plays inline as a voice note.
+
+### Step 1: Convert MP3 to OGG Opus
+
+Discord does NOT play MP3 as inline voice clips. Must be OGG/Opus:
+
+```bash
+ffmpeg -y -i input.mp3 -c:a libopus -b:a 128k -ar 48000 output.ogg
+```
+
+### Step 2: Upload via Discord REST API
+
+```bash
+TOKEN="$(grep '^DISCORD_BOT_TOKEN' ~/.hermes/.env | cut -d= -f2)"
+CHANNEL_ID="<channel-id>"
+
+curl -s -X POST \
+  "https://discord.com/api/v10/channels/${CHANNEL_ID}/messages" \
+  -H "Authorization: Bot ${TOKEN}" \
+  -H "User-Agent: NarusyaDaemon/4.1" \
+  -F "file=@output.ogg;filename=voice.ogg" \
+  -F 'content=🎙️ Optional text caption.'
+```
+
+HTTP 200 = success.
+
+### Pitfalls
+
+- **MP3 alone won't play inline** — Discord requires OGG Opus for native voice note playback
+- **Short clip gotcha (<3 seconds)** — verify with `ffprobe -v quiet -show_entries format=duration`; too-short clips feel like glitches to the listener
+- **Voice call routing** — the transcript lands in whatever chat the call was started from
+- **Rate limits** — bursts above ~10 POSTs/s trigger 429; sleep ~1.2s between rapid deliveries
+- **In-call length limit** — only the first message segment is TTS'd; tail drops from speech (full text still in chat)
+- **File organization** — `narusya_voice/` is for Nar's voice assets and TTS output only.
+  Scripts, pipelines, and tools do NOT belong there. Use `~/.hermes/scripts/` for general tools,
+  or create a dedicated directory (e.g. `~/.hermes/imagegen/`) for specialized pipeline code.
+
+---
+
+## 3. Piper TTS (piper-tts — offline fallback)
 
 Piper is a fast, local neural TTS engine. Runs entirely on CPU, no cloud/API needed. Generates audio ~17x faster than real-time.
 
@@ -85,7 +167,7 @@ Place `.onnx` and `.onnx.json` in `~/.local/share/piper-voices/`
 
 ---
 
-## 2. Narusya Voice (nar-voice)
+## 4. Piper/edge-tts Fallback (nar-voice — secondary)
 
 Narusya's voice system — generate speech with presets, play to Discord, save to file. Supports local piper TTS and cloud edge-tts.
 

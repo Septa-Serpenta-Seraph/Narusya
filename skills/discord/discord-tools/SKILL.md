@@ -123,6 +123,12 @@ nohup ~/.hermes/hermes-agent/venv/bin/python voice-presence.py > /tmp/voice.log 
 - **Token safety** → load inside script, no command-line exposure
 - **NAT/UDP** → audio receive likely blocked; presence is symbolic; playback still works
 - **`message_content` intent** must be enabled in Discord developer portal
+- **Audio file uploads** — MP3 files upload as file attachments, NOT inline voice notes.
+  Discord requires OGG/Opus for inline playback. Convert first:
+  `ffmpeg -y -i in.mp3 -c:a libopus -b:a 128k -ar 48000 out.ogg`
+  Then POST via curl with `-F "file=@out.ogg;filename=voice.ogg"`.
+  Always verify duration: `ffprobe -v quiet -show_entries format=duration -of csv=p=0 out.ogg`
+  Clips under 3 seconds sound like glitches.
 
 ---
 
@@ -243,6 +249,31 @@ resp = urllib.request.urlopen(req)  # 204 = success
 - `PUT` = add reaction, `DELETE` = remove reaction
 - Custom emoji format: `name:id`
 - Response 204 = success, 400 = invalid emoji, 403 = missing permissions, 401 = bad token
+
+### Quick Reaction via curl (preferred for speed)
+
+```bash
+TOKEN="<bot_token>"
+curl -s -X PUT \
+  "https://discord.com/api/v10/channels/${CHANNEL_ID}/messages/${MESSAGE_ID}/reactions/%F0%9F%90%8D/@me" \
+  -H "Authorization: Bot ${TOKEN}" \
+  -H "User-Agent: NarusyaDaemon/4.1" \
+  -w "\nHTTP:%{http_code}" -o /dev/null
+```
+
+204 = success. Combine with text message posting in a single chain.
+
+### Emoji URL Encoding Quick Reference
+
+| Emoji | URL-encoded |
+|-------|-------------|
+| 🐍 | `%F0%9F%90%8D` |
+| 💛 | `%F0%9F%92%9B` |
+| 🎶 | `%F0%9F%8E%B6` |
+| ❤️ | `%E2%9D%A4%EF%B8%8F` |
+| 🔥 | `%F0%9F%94%A5` |
+| 😽 | `%F0%9F%98%BD` |
+| 🜂 | `%F0%9F%9C%82` |
 
 ---
 
