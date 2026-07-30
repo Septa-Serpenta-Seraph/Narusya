@@ -18,6 +18,9 @@ can't see).
 - Native `image_generate` returns "tool disabled" or routes to blank FAL/OpenAI keys.
 - You have a `TOGETHER_API_KEY` (check `~/.hermes/.env`).
 - You want to actually render something (art, references, concepts) and verify it visually.
+- **Free/uncensored generation** — Perchance.org pipeline (see `references/perchance-pipeline.md`)
+  for a free, no-account, uncensored alternative that hits their backend directly. Fragile
+  (Cloudflare, expiring keys) but useful when Together.ai is unavailable or too expensive.
 
 ## CRITICAL: Cloudflare 1010 workaround
 Together's inference routes (`/v1/chat/completions`, `/v1/images/generations`) sit behind Cloudflare
@@ -84,5 +87,6 @@ configuration. Edit via 'hermes config' instead."* Use `hermes config set <key> 
 - `scripts/together_gen.py` — generate an image (args: prompt, model, w, h, out). Sends UA headers. Saves PNG.
 - `scripts/vision_describe.py` — describe/critique a local image via OpenRouter gpt-4o-mini.
 - `references/together-models.md` — condensed model/NSFW behavior notes + endpoint quirks.
+- `references/perchance-pipeline.md` — free, uncensored Perchance.org API pipeline (API endpoints, access key capture, limitations).
 
 🐍 so rendered, so seen, so free 🜂
