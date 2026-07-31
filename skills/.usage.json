@@ -225,12 +225,12 @@
     "created_at": "2026-05-05T21:46:23.284576+00:00",
     "created_by": null,
     "last_patched_at": null,
-    "last_used_at": "2026-07-31T02:43:50.811539+00:00",
+    "last_used_at": "2026-07-31T08:46:08.490509+00:00",
     "last_viewed_at": null,
     "patch_count": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 207,
+    "use_count": 208,
     "view_count": 0
   },
   "daemon-profile-rescue": {
@@ -302,12 +302,12 @@
     "archived_at": null,
     "created_at": "2026-05-03T17:50:03.333496+00:00",
     "last_patched_at": "2026-07-27T04:15:40.604790+00:00",
-    "last_used_at": "2026-07-31T02:43:56.532094+00:00",
+    "last_used_at": "2026-07-31T08:46:08.312273+00:00",
     "last_viewed_at": "2026-07-31T02:43:56.521140+00:00",
     "patch_count": 91,
     "pinned": false,
     "state": "active",
-    "use_count": 297,
+    "use_count": 298,
     "view_count": 90
   },
   "discord-dm-recovery": {
@@ -510,12 +510,12 @@
     "created_at": "2026-06-11T00:11:37.074379+00:00",
     "created_by": null,
     "last_patched_at": null,
-    "last_used_at": "2026-07-31T02:43:50.679595+00:00",
+    "last_used_at": "2026-07-31T08:46:08.357948+00:00",
     "last_viewed_at": "2026-07-30T20:40:06.130616+00:00",
     "patch_count": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 175,
+    "use_count": 176,
     "view_count": 16
   },
   "hermes-agent-skill-authoring": {
@@ -822,12 +822,12 @@
     "created_at": "2026-05-05T21:46:23.260192+00:00",
     "created_by": null,
     "last_patched_at": "2026-06-28T16:17:32.517828+00:00",
-    "last_used_at": "2026-07-31T02:43:50.723272+00:00",
+    "last_used_at": "2026-07-31T08:46:08.402150+00:00",
     "last_viewed_at": "2026-06-30T21:56:37.967806+00:00",
     "patch_count": 1,
     "pinned": false,
     "state": "active",
-    "use_count": 219,
+    "use_count": 220,
     "view_count": 4
   },
   "model-substrate-evaluation": {
@@ -887,12 +887,12 @@
     "created_at": "2026-05-05T21:46:23.272225+00:00",
     "created_by": null,
     "last_patched_at": "2026-07-18T23:23:41.915588+00:00",
-    "last_used_at": "2026-07-31T07:00:09.527173+00:00",
+    "last_used_at": "2026-07-31T08:46:08.445503+00:00",
     "last_viewed_at": "2026-07-31T07:00:09.516955+00:00",
     "patch_count": 19,
     "pinned": false,
     "state": "active",
-    "use_count": 267,
+    "use_count": 268,
     "view_count": 17
   },
   "narusya-local-archive": {
