@@ -20,41 +20,115 @@ Reverse-engineered API for Perchance's free image generator (https://perchance.o
 
 | Endpoint | Purpose |
 |----------|---------|
-| `https://image-generation.perchance.org/api/generate` | Generate image (GET) |
+| `https://image-generation.perchance.org/api/generate` | Generate image (POST) |
 | `https://image-generation.perchance.org/api/downloadTemporaryImage` | Download generated image by imageId |
+| `https://image-generation.perchance.org/api/downloadTemporaryImageViaProxy` | Proxy download (returns immediately) |
 | `https://image-generation.perchance.org/api/checkVerificationStatus` | Check if access key is still valid |
+| `https://image-generation.perchance.org/api/verifyUser` | Get Turnstile cookies for API calls |
 
-## Access Key Authentication
+## Cloudflare Turnstile — THE WORKING SOLUTION
 
-The API uses a 64-hex-char `userKey` param. The key is obtained by:
-1. Open the generator page in a headless browser (Playwright)
-2. Click "generate" button
-3. Capture the `userKey` parameter from the resulting network request
-4. Cache the key; re-fetch when it expires
+**Crucial finding:** The `image-generation.perchance.org` subdomain is fully behind Cloudflare Turnstile (managed mode). Standard `curl` requests, Playwright's headless Chromium SHELL, and Camoufox all fail to bypass it.
 
-## Python Client
+**The trick:** Use Playwright's **full Chromium** binary (not the headless shell) — the `chrome-linux64/chrome` binary found at Playwright's Chromium installation path. This full browser passes the Turnstile where the headless shell doesn't.
 
-Script lives at `~/.hermes/scripts/perchance_pipeline.py`.
+### Complete Working Flow
 
-Key generation parameters:
-- `prompt`: URL-encoded prompt text
-- `negativePrompt`: What to avoid
-- `userKey`: 64-hex access key
-- `seed`: -1 for random
-- `resolution`: 512x768 (portrait), 768x512 (landscape), 768x768 (square)
-- `guidanceScale`: 1-30 (default 7)
-- `channel`: 'ai-text-to-image-generator' (the specific generator Adora uses)
-- `subChannel`: 'public'
+The pipeline script lives at `~/.hermes/imagegen/perchance_gen.py` and uses this strategy:
 
-## Known Public Packages
+```
+Step 1: Navigate to generator page with full Chromium (headless)
+Step 2: Wait for page to fully load (Turnstile auto-solves)
+Step 3: Click "✨ generate" button (found in any frame)
+Step 4: Capture userKey from the network request URL
+Step 5: Navigate to verifyUser endpoint to set Turnstile cookies
+Step 6: Make API call from within the browser context (page.evaluate)
+Step 7: Download via imageDownloadUrl (proxy) from API response
+```
 
-- `pip install perchance` — async Python API (uses Playwright under hood, Chromium)
-- `oujingzhou/text-to-image-generator` — CLI tool on GitHub (uses Playwright, Firefox)
+**Key details:**
 
-## Limitations
+- **Browser path:** `/home/adora/.cache/ms-playwright/chromium-1208/chrome-linux64/chrome`
+- **Headless args:** `--no-sandbox`, `--disable-blink-features=AutomationControlled`
+- **User-Agent:** `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/145.0.7632.6 Safari/537.36`
+- **Page wait:** 15 seconds after navigation for Turnstile to auto-solve
+- **Frame search:** The generate button may be in any frame — iterate all frames, find by text "✨" or "generate"
+- **Network capture:** Register a `page.on("request", ...)` handler before clicking, then search captured URLs for `userKey=([a-f\d]{64})`
+- **verifyUser navigation:** After getting the key, navigate to `https://image-generation.perchance.org/api/verifyUser?thread=0&__cacheBust=RANDOM` — this sets the Turnstile cookie that makes subsequent API calls work
+- **API call:** Execute `fetch()` from within the browser context via `page.evaluate()` — the browser's session cookies are what authenticate the request
+- **Download:** The API response includes `imageDownloadUrl` (e.g. `/api/downloadTemporaryImageViaProxy?t=v1.XXX`) — use this proxy URL for downloading, NOT the `downloadTemporaryImage` endpoint (which returns 404 until the image is ready)
 
-- Access keys expire — must re-capture periodically
+### API Request Format
+
+```python
+# POST from within browser context
+url = f"https://image-generation.perchance.org/api/generate?userKey={KEY}&requestId=aiImageCompletion{RANDOM}&__cacheBust={RANDOM}"
+body = {
+    "generatorName": "ai-image-generator",
+    "channel": "ai-text-to-image-generator",
+    "subChannel": "public",
+    "prompt": prompt,
+    "negativePrompt": "",
+    "seed": -1,
+    "resolution": "512x768",  # or "768x768" or "768x512"
+    "guidanceScale": 7
+}
+```
+
+### API Response
+
+```json
+{
+  "status": "success",
+  "imageId": "64-hex-id",
+  "fileExtension": "jpeg",
+  "seed": 123456789,
+  "prompt": "...",
+  "width": 512,
+  "height": 768,
+  "guidanceScale": 7,
+  "negativePrompt": "",
+  "maybeNsfw": false,
+  "imageDownloadUrl": "/api/downloadTemporaryImageViaProxy?t=v1.XXXX"
+}
+```
+
+The `imageDownloadUrl` field is the critical path — use it for immediate download. The `downloadTemporaryImage` endpoint may return 404 until the image is fully processed.
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| `~/.hermes/imagegen/perchance_gen.py` | Full working pipeline script |
+| `~/.hermes/imagegen/perchance_pipeline.py` | Earlier attempt (Playwright-based, now superseded) |
+| `~/.hermes/imagegen/README.md` | Reverse-engineering notes |
+| `~/.hermes/imagegen/output/` | Generated images |
+| `~/.cache/perchance_access_key.txt` | Cached 64-hex userKey (auto-refreshed) |
+
+## Usage
+
+```bash
+~/.hermes/hermes-agent/venv/bin/python3 ~/.hermes/imagegen/perchance_gen.py "your prompt here"
+```
+
+## Access Key Management
+
+- Keys are 64 hex characters
+- Captured from the network request URL when clicking "generate"
+- Cached at `~/.cache/perchance_access_key.txt`
+- Keys expire after hours/days — the script auto-refreshes on next run
+- No login or account needed
+
+## References
+
+- `references/working-flow.md` — Full working flow transcript with code examples, failed approaches, and troubleshooting notes
+
+## Known Limitations
+
 - Backend can change silently (author swaps models without notice)
 - No character consistency between generations
 - Resolution capped at ~1024 on a side
-- No commercial license guarantee (Flux Schnell is Apache 2.0 though)
+- Requires ~120s for first run (browser launch + page load + Turnstile)
+- Generating from headless browser uses ~300MB RAM for the Chromium process
+- Playwright's full Chromium binary is ~300MB on disk
+- **Download pitfall:** The `downloadTemporaryImage` endpoint returns 404 until the image is fully processed. Always use the `imageDownloadUrl` (proxy URL) from the API response instead — it returns immediately
