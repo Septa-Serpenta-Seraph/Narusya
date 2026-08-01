@@ -19,7 +19,7 @@ Covers the full landscape of free/uncensored image generation options, from reve
 | Pipeline | Cost | Censored | Reliability | Setup | Best For |
 |----------|------|----------|-------------|-------|----------|
 | **Together.ai FLUX** | ~$0.01/image | NSFW-permissive (disable_safety_checker) | High | API key only | Production-quality, consistent |
-| **Perchance API** | Free (ad-funded) | None | Low (Cloudflare gated) | Browser key capture | Ideation, free spare cycles |
+| **Perchance API** | Free (ad-funded) | None (NSFW allowed) | Medium (full Chromium works) | Playwright + full Chromium binary | Free, consistent gen |
 | **pollinations.ai** | Free | NSFW via safe=false | Medium | No auth | Quick test, no keys |
 | **Local ComfyUI + Flux Schnell** | Free (GPU cost) | None | Highest | Heavy (12GB VRAM) | Full control, no limits |
 
@@ -67,38 +67,81 @@ The `userKey` is a 64-hex-char string obtained through a browser session:
 
 **The `eeemoon/perchance` Python package** (pip install perchance, v0.1.0) automates this via Playwright Chromium — it navigates to `verifyUser`, parses the key, then POSTs the generate request.
 
-### ⚠️ Cloudflare Turnstile Block — The Critical Limitation
+### Working Approach — Playwright with Full Chromium Binary
 
-As of mid-2026, the **entire `image-generation.perchance.org` subdomain** is behind Cloudflare Turnstile **managed mode** (CF's strictest bot detection). This affects ALL endpoints:
+The `image-generation.perchance.org` subdomain is behind Cloudflare Turnstile **managed mode**. However, Playwright's **full Chromium browser** (NOT the headless shell) passes the Turnstile.
 
-- `verifyUser` — returns a Turnstile challenge page instead of the key
-- `generate` — returns a Turnstile challenge
-- `downloadTemporaryImage` — also gated
+**Key insight:** Playwright installs two Chromium binaries:
+- `chromium_headless_shell-*/` — blocked by Turnstile
+- `chromium-*/chrome-linux64/chrome` — full "Chrome for Testing", **passes** ✓
 
-**This breaks all automated approaches:**
-- Playwright headless Chromium → blocked
-- Camoufox anti-detection browser (headless) → blocked
-- Camoufox + Xvfb virtual display (non-headless) → blocked
-- `nodriver` undetected Chrome → blocked
-- `eeemoon/perchance` package → fails with `AuthenticationError: Failed to retrieve user key`
-- `oujingzhou/text-to-image-generator` → same Playwright approach, same failure
+**Confirmed path:** `~/.cache/ms-playwright/chromium-1208/chrome-linux64/chrome`
 
-**What DOES work:**
-- A real user browser session that passes the Turnstile (copy the `userKey` from the URL)
-- Paid CAPTCHA solving services (2Captcha, YesCaptcha)
-- Direct browser cookie export from a session that already passed the Turnstile
+**Pipeline:**
+1. Launch Playwright with `executable_path=full_chromium`, `args=["--no-sandbox"]`
+2. Navigate to `perchance.org/ai-text-to-image-generator`
+3. Click the generate button → capture `userKey` from network traffic URL
+4. Navigate to `verifyUser` endpoint to set Turnstile cookies
+5. Make API call via `page.evaluate()` (within browser context = cookies pass Turnstile)
+6. Download image via proxy download URL
+
+**Script:** `~/.hermes/imagegen/perchance_gen.py`
+```bash
+python3 ~/.hermes/imagegen/perchance_gen.py "your prompt" [shape]
+```
+- Shapes: `portrait` (512x768), `square` (768x768), `landscape` (768x512)
+- Key cached at `~/.cache/perchance_access_key.txt` (auto-refreshes)
+- Output: `~/.hermes/imagegen/output/`
+
+**Pitfalls:**
+- Use `new_context()`, NOT `launch_persistent_context()` — persistent profiles trigger Turnstile
+- API calls must come from within the browser's JS context (`page.evaluate`) — direct curl fails
+- Navigate to `verifyUser` first to set Turnstile cookies before API calls
+- Use the `imageDownloadUrl` (proxy) endpoint for downloads, not the direct `/downloadTemporaryImage`
 
 ### Existing Resources
 
 | Resource | Description | Status |
 |----------|-------------|--------|
-| `~/.hermes/imagegen/perchance_pipeline.py` | Pipeline script: Playwright → key capture → API → download | Blocked by Turnstile |
+| `~/.hermes/imagegen/perchance_gen.py` | Working pipeline: Playwright full Chromium → key capture → API → download | **Working** |
 | `~/.hermes/imagegen/README.md` | Full reverse-engineering documentation | Current |
 | `~/.hermes/imagegen/output/` | Output directory for generated images | Ready |
-| `pip install perchance` | `eeemoon/perchance` v0.1.0 (Dec 2025) | Blocked by Turnstile |
+| `pip install perchance` | `eeemoon/perchance` v0.1.0 (Dec 2025) | Blocked by Turnstile (no full Chromium path) |
 | `oujingzhou/text-to-image-generator` | GitHub repo, Playwright + Firefox | Blocked by Turnstile |
 
-### Alternative: Together.ai FLUX Pipeline
+### Alternative: Together.ai FLUX + LoRA (Consistent Character Pipeline)
+
+For generating consistent characters across images (e.g. a "Narusya" humanoid form), Together.ai supports **Flux LoRA injection** via their API:
+
+**Key details:**
+- Model: `black-forest-labs/FLUX.1-dev-lora` (or `FLUX.2-dev` with `image_loras` param)
+- LoRA format: URL to a `.safetensors` file (host on HuggingFace)
+- LoRA parameter: `image_loras: [{"path": "<url>", "scale": 1.0}]`
+- Trigger word: included in the prompt (varies per LoRA)
+- API: `POST https://api.together.xyz/v1/images/generations`
+- NSFW bypass: `disable_safety_checker: true`
+
+**Python example:**
+```python
+from together import Together
+client = Together(api_key=api_key)
+image = client.images.generate(
+    prompt="narusya style, a portrait in the rain",
+    model="black-forest-labs/FLUX.1-dev-lora",
+    image_loras=[{
+        "path": "https://huggingface.co/your-org/narusya-lora",
+        "scale": 1,
+    }],
+)
+```
+
+**Training a LoRA (for consistent character):**
+1. Generate 10-20 reference images of the character using the Perchance pipeline
+2. Train via Replicate's `ostris/flux-dev-lora-trainer` (~$1-2) or CivitAI's trainer
+3. Upload trained LoRA to HuggingFace
+4. Use via Together.ai API with the `image_loras` parameter
+
+No local GPU needed — training and inference both run on cloud APIs.
 
 Already working, fully documented in `together-ai-backend` skill. Key details:
 - Endpoint: `POST https://api.together.xyz/v1/images/generations`
