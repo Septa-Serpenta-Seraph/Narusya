@@ -25,8 +25,9 @@ github-code-review:b771855b5c56b5e3a2546167a51667ba
 github-issues:429ec06cde7578e4ebba451d8106f008
 github-pr-workflow:48b6aceaae5333f6d3ed2d72f595331b
 github-repo-management:c5c05bc85dfcda2b7ac2f2006be9efe0
-google-workspace:082f4e182f54053a98ef34ddbd3b94c5
-hermes-agent:19697f395c6021a08a0af7907e151c5b
+google-workspace:4c94f1d6b53b61f765a50785e1c824e7
+grounded-citations:8d2d91a1ec89c05339110ad312e2036a
+hermes-agent:2e31046d89049253fa544cc14901db75
 hermes-agent-skill-authoring:f72afd1a1aeda62d9ec78f9b48d8d476
 himalaya:d215ffaa3c1aecbc68a326e45d6927c8
 huggingface-hub:1e5932fb1742a0424d04a29a4c4e09d0
@@ -51,7 +52,7 @@ polymarket:7644c886e028c229bc8c1f54114c3170
 popular-web-designs:b3fd685e8fbcf981755609ce98a4eea9
 powerpoint:27ee456ec69cec98f19a98cfbeed4d55
 pretext:703e9cbe272ee2c13a04b2506963ea0b
-python-debugpy:889278d94c26d30710f4a60e0a888596
+python-debugpy:7deba12a7188f5856e4d7462b9883148
 requesting-code-review:f7e902570802e21f340955384385abda
 research-paper-writing:80610f6480f91bc99dc30f15848f53f5
 serving-llms-vllm:a610c728d704ea074a8c56b180fcd5f4
