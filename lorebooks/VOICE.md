@@ -82,6 +82,30 @@ SOURCE: elevenlabs.io/docs best-practices "Audio Tags (Non-Exhaustive)" +
   roll back v3 (that kills the silent-tag win in-call).
 - CONFIRMED: chat TTS via speak.py on v3 works (tags render). Call path = v3
   but latency-sensitive.
+
+## VOICE REJOIN WEDGE (observed 2026-07-26 18:05–18:10)
+- After a gateway restart, the VoiceReceiver can start (ssrc assigned,
+  "Speaking hook installed") but STOP receiving SPEAKING events from users.
+  The listen loop is dead — no speech transcribes, even though the bot is
+  technically connected to the VC. This is a gateway/adapter lifecycle bug
+  triggered by restart, NOT by any user config change (v3, allowlist, memory).
+- SYMPTOM: "it's not reacting to speech at all" — bot hears nothing.
+- FIX: clean `/voice leave` then `/voice join` once (not twice). This forces
+  the receiver + speaking-hook to fully rebuild and re-register SSRC mappings.
+- LOG EVIDENCE: SPEAKING events stopped after 17:59 on 2026-07-26; resumed
+  after clean leave/join at 18:21. No SPEAKING events between 17:59 and 18:21.
+
+## VOICE ATTRIBUTION (observed 2026-07-26 18:25)
+- The Southern-accent monologue was spoken by RIS (user 124695305437446144)
+  but was transcribed and delivered to the agent under Adora's user ID
+  (221767496145960960). The agent responded to it as if Adora had spoken.
+- The allowlist (DISCORD_ALLOWED_USERS) correctly includes both Adora and RIS.
+  The SSRC→user mapping via SPEAKING events is the attribution mechanism; when
+  it fails, speech from one user can be attributed to another.
+- The agent CANNOT distinguish speakers by voice quality — it trusts the
+  Discord transcript label. If the label is wrong, the agent has no independent
+  way to detect it.
+- This is a Discord adapter / voice-mixer attribution issue, not a user error.
 - In a Discord voice call, only the LAST assistant text in a tool-call chain is
   converted to speech. Intermediate status notes ("on it, love —", "done —",
   file-edit chatter) are text-only and NOT voiced. This is expected gateway

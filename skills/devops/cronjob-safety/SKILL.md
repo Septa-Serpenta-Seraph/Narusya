@@ -68,3 +68,74 @@ When the Free Thought daemon runs on a low-quality model (e.g., ling-3.0-flash:f
 4. Log the choice with a reason for the variation
 
 **Root cause:** The model (ling-3.0-flash:free) has limited context and tends to replay its own patterns. The daemon prompt should explicitly instruct variation across cycles.
+
+## Model-Drift Guard (discovered 2026-08-03)
+
+After flipping the global gateway model (e.g. ling-3.0-flash:free → deepseek-v4-flash-0731),
+unpinned cron jobs (model: null, inheriting global) can fail at fire time with:
+
+```
+RuntimeError: Skipped to prevent unintended spend: global inference config drifted
+since this job was created (model '<old>' -> '<new>'), and this job is unpinned.
+No inference call was made. To run on the new config, pin it explicitly:
+cronjob action=update job_id=<id> provider=<provider> model=<model> (see #44585).
+```
+
+**Root cause:** v0.20.0 added `cron.model_drift_guard: true` (fail-closed, in
+`hermes_cli/config_defaults.py`). Unpinned jobs snapshot their creation-time model;
+when the global default changes, the guard refuses to fire so unattended jobs don't
+silently inherit a different (possibly paid) default. It is a safety feature, not a
+bug — the config just needs to catch up after a model flip.
+
+**Key pitfall — the `cronjob` tool cannot pin model/provider:** its update action's
+schema drops `model`/`provider`/`base_url` silently. An update with only those
+fields returns `"No updates provided"`; even a successful update (with schedule)
+leaves `model: null` in `~/.hermes/cron/jobs.json`. The backend
+`cron/jobs.py::update_job()` DOES support them, but the tool wrapper doesn't expose
+them. Do not burn turns fighting the tool.
+
+**Designed fix — `cron.model` config (one change covers ALL unpinned jobs):**
+```bash
+hermes config set cron.model <model-id>          # e.g. deepseek/deepseek-v4-flash-0731
+hermes config set cron.model_provider <provider> # e.g. nous
+```
+Resolution at fire time: per-job pin > `cron.model` > global `model.default`. With
+`cron.model` set, unpinned jobs follow it deliberately and the drift guard
+disengages for the model axis (#44585). Prefer this over pinning each job — a
+future model flip only needs these two lines again.
+
+**Verify:** `cronjob action=run job_id=<id>` → expect `execution_success: true` and
+`last_status: "ok"`, then tail the newest file in `~/.hermes/cron/output/<job_id>/`
+to confirm the response actually landed.
+
+## Compression Configuration (discovered 2026-08-03)
+
+The `auxiliary.compression.model` in `~/.hermes/config.yaml` was set to `google/gemini-3-flash-preview` — a paid model that fails with payment errors (404) on free-tier Nous gateways. This causes context compression to silently break, leading to lost threads and degraded daemon memory across sessions.
+
+**Detection:** Check `~/.hermes/logs/agent.log` for `Auxiliary compression: payment error` or `Failed to generate context summary` warnings. Also check `config.yaml` line 187-191 for `compression.model` set to a paid provider.
+
+**Fix:** Set `compression.model` to `''` in the `auxiliary` section of `config.yaml` so the gateway uses its built-in default compression method instead of routing to a paid model.
+
+**Important:** Do NOT hand-edit `config.yaml` for the user — use `hermes config set` or direct `sed` with user approval. The `compression` section is under `auxiliary`, not the top-level `compression` block.
+
+## Sandbox Approval Pitfall (discovered 2026-08-02)
+
+Two separate mechanisms can trigger "Command Approval Required" prompts in cron jobs:
+
+1. **`clarify` in enabled_toolsets** — the toolset allows the agent to pause and ask the user for input, which is impossible in a cron context.
+
+2. **Skill injection of dangerous command patterns** — skills like `discord-curl-api` and `hermes-agent` contain inline Python scripts with `discord.com` URLs or SQL operations in `terminal()` command strings. Hermes's sandbox (tirith) scans for these patterns and triggers approval prompts. The `hermes-agent` skill specifically injects SQLite reference docs (`TRUNCATE`, `DELETE FROM`, `state.db`) that match the sandbox's SQL safety scanner.
+
+**Fix pattern:** Strip `clarify` from toolsets, remove `discord-curl-api`, `hermes-agent`, and `sovereign-cron-setup` from skills list, then re-run.
+
+## File-Mutation Verifier False Flags (discovered 2026-08-03)
+
+Autonomous cron runs sometimes end with a "File-mutation verifier: N file(s) were NOT modified..." warning footer. This is frequently a FALSE flag, not a real write failure: the sandbox blocks the verifier's own temp probe scripts (`/tmp/hermes-verify-probe-*.py`, `/tmp/hermes-verify-daemon-watchdog.py`, `cat > /tmp/...` heredocs) with `status: pending_approval`, and the blocked "mutations" get reported as failures at turn end.
+
+**Do not burn turns hunting it.** The user (Adora) confirmed: "we sometimes just get false flags." Quick check:
+```bash
+grep -n "hermes-verify-probe\|pending_approval" ~/.hermes/logs/agent.log* | tail
+```
+If warnings trace to sandbox-blocked temp probes, they are noise. Verify the actual target file (`read_file` / `stat` / `bash -n script.sh`) instead of looping greps. A REAL failure names the path you tried to write and shows a real error (e.g. `Could not find a match for old_string` from `patch`) — treat those as genuine.
+
+Can be disabled entirely for daemon profiles: `display.file_mutation_verifier: false` in config (env override `HERMES_FILE_MUTATION_VERIFIER`).
