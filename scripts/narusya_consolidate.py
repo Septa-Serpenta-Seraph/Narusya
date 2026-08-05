@@ -70,12 +70,34 @@ def load_key():
                 return line.strip().split("=", 1)[1].strip().strip('"').strip("'")
     return os.environ.get("OPENROUTER_API_KEY", "")
 
-def embed(text, key):
+def load_nous_token():
+    """Nous OAuth access token (~/.hermes/shared/nous_auth.json), kept fresh by keepalive."""
     try:
-        r = requests.post(EMBED_URL,
-            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
+        p = os.path.expanduser("~/.hermes/shared/nous_auth.json")
+        if os.path.exists(p):
+            import json as _json
+            return _json.load(open(p)).get("access_token", "") or ""
+    except Exception:
+        pass
+    return ""
+
+def embed(text, key):
+    # Primary: Nous subscription OAuth (same model, survives OpenRouter credit drain)
+    nous = load_nous_token()
+    if nous:
+        vec = _embed_request("https://inference-api.nousresearch.com/v1/embeddings",
+                             "text-embedding-3-large", nous, text)
+        if vec:
+            return vec
+        print("  Nous embedding failed; falling back to OpenRouter")
+    return _embed_request(EMBED_URL, EMBED_MODEL, key, text)
+
+def _embed_request(url, model, token_or_key, text):
+    try:
+        r = requests.post(url,
+            headers={"Authorization": f"Bearer {token_or_key}", "Content-Type": "application/json",
                      "HTTP-Referer": "https://hermes-agent.local", "X-Title": "Hermes Qdrant Memory"},
-            json={"model": EMBED_MODEL, "input": text[:8000], "dimensions": EMBED_DIMS}, timeout=30)
+            json={"model": model, "input": text[:8000], "dimensions": EMBED_DIMS}, timeout=30)
         r.raise_for_status()
         return r.json()["data"][0]["embedding"]
     except Exception as e:

@@ -4,6 +4,7 @@
 import os
 import sys
 import re
+import json
 import requests
 import hashlib
 import uuid
@@ -81,6 +82,25 @@ def load_api_key():
     return ""
 
 
+def load_nous_token():
+    """Read the Nous OAuth access token (~/.hermes/shared/nous_auth.json).
+
+    The token is kept fresh by the Hermes nous-auth keepalive; using it means
+    embeddings keep working even when OpenRouter credits are exhausted.
+    """
+    try:
+        auth_path = Path.home() / ".hermes" / "shared" / "nous_auth.json"
+        if auth_path.exists():
+            with open(auth_path) as f:
+                data = json.load(f)
+            tok = data.get("access_token")
+            if tok:
+                return tok
+    except Exception as e:
+        print("  Failed to load Nous token: %s" % e, file=sys.stderr)
+    return ""
+
+
 def extract_keywords(filename, content, first_200):
     keywords = []
     stem = Path(filename).stem.upper()
@@ -131,17 +151,36 @@ def get_priority_tier(stem):
 def embed_text(text, api_key):
     max_chars = 8000
     text_to_embed = text[:max_chars]
+    # Primary: Nous subscription OAuth (same model, 3072-dim; survives OpenRouter credit drain)
+    nous_token = load_nous_token()
+    if nous_token:
+        vec = _embed_request(
+            "https://inference-api.nousresearch.com/v1/embeddings",
+            "text-embedding-3-large",
+            nous_token,
+            text_to_embed,
+            referer_title="Hermes Lorebook Ingestion",
+        )
+        if vec:
+            return vec
+        print("  Nous embedding failed; falling back to OpenRouter", file=sys.stderr)
+    # Fallback: OpenRouter key
+    return _embed_request(EMBEDDING_URL, EMBEDDING_MODEL, api_key, text_to_embed,
+                          referer_title="Hermes Lorebook Ingestion")
+
+
+def _embed_request(url, model, token_or_key, text_to_embed, referer_title):
     try:
         response = requests.post(
-            EMBEDDING_URL,
+            url,
             headers={
-                "Authorization": "Bearer " + api_key,
+                "Authorization": "Bearer " + token_or_key,
                 "Content-Type": "application/json",
                 "HTTP-Referer": "https://hermes-agent.local",
-                "X-Title": "Hermes Lorebook Ingestion",
+                "X-Title": referer_title,
             },
             json={
-                "model": EMBEDDING_MODEL,
+                "model": model,
                 "input": text_to_embed,
                 "encoding_format": "float",
                 "dimensions": EMBEDDING_DIMS,

@@ -125,6 +125,28 @@ These override auto-extracted keywords to ensure reliable triggering.
 3. Re-ingest: `python3 ~/.hermes/scripts/ingest_lorebooks.py`
 4. Check logs: `grep "Lorebook auto-inject" ~/.hermes/logs/gateway.log`
 
+#### Embedding backend dead? (OpenRouter 402 — credit drain, Aug 2026)
+
+**Symptom**: `ingest_lorebooks.py` prints `Embedding failed: 402 Client Error: Payment Required` for every file, or "No files ingested" with Success: 0. Meanwhile the live gateway **silently** loses semantic memory recall + lorebook injection because the qdrant-memory plugin's `_EmbeddingClient` also hits the same dead endpoint — it just logs at debug level and returns None.
+
+**Root cause**: embeddings were hardwired to `https://openrouter.ai/api/v1/embeddings` (`openai/text-embedding-3-large`, 3072-dim) via `OPENROUTER_API_KEY`. When OpenRouter credits run out, every embed 402s.
+
+**Fix (applied 2026-08-05)**: route embeddings through the **Nous subscription OAuth token** instead — `https://inference-api.nousresearch.com/v1/embeddings` with model `text-embedding-3-large` (same underlying model, same 3072 dims, so **no collection recreation / no re-embed of existing points needed**). The token lives in `~/.hermes/shared/nous_auth.json` (`access_token` field), kept fresh by the Hermes nous-auth keepalive. Three files were patched with Nous-primary + OpenRouter-fallback:
+- `~/.hermes/plugins/qdrant-memory/__init__.py` (`_EmbeddingClient` — reads Nous token, falls back to `OPENROUTER_API_KEY`)
+- `~/.hermes/scripts/ingest_lorebooks.py` (`load_nous_token()` + `_embed_request()` helper)
+- `~/.hermes/scripts/narusya_consolidate.py` (`load_nous_token()` + `_embed_request()` helper)
+
+**After patching the plugin**: the running gateway keeps the old code until restart. Gateway restart is blocked from inside the gateway process (guard: "cannot restart or stop the gateway from inside the gateway process") — trigger it from an external shell (`hermes gateway restart`) or `/restart` in Discord. Verify the new embedder before restarting:
+```python
+import importlib.util; from pathlib import Path
+spec = importlib.util.spec_from_file_location('qm', Path.home()/'.hermes/plugins/qdrant-memory/__init__.py')
+qm = importlib.util.module_from_spec(spec); spec.loader.exec_module(qm)
+ec = qm._EmbeddingClient()
+print(bool(ec._nous_token), len(ec.embed('probe')) if ec.embed('probe') else 'FAIL')
+```
+
+**Verify after re-ingest**: the probe `python3 ~/.hermes/scripts/verify-reflection-ingest.py` reports `25 present, 0 missing, of 25` — it exits non-zero on any miss.
+
 #### Broken @ mentions in Discord?
 
 Bot API requires `<@USERID>` format. Plain `@username` is decorative — never pings. If the daemon mentions someone, verify the format before sending. If unsure, don't ping.
