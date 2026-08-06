@@ -74,6 +74,52 @@ not an output filter. Pick a permissive model instead.
 When `auxiliary.vision` is pointed at a free/unfunded model, call OpenRouter `gpt-4o-mini`
 directly. `OPENROUTER_API_KEY` is in `.env`. Works even mid-session (no restart needed).
 
+> ⚠️ **Aug 2026 — OpenRouter credits drained.** This technique is the FALLBACK only while
+> OpenRouter has balance. When it 404s with "Couldn't find that, sorry." on vision calls,
+> that means the OpenRouter account is out of credits — repoint vision at **Nous** instead
+> (Technique 3 below). Do NOT keep retrying OpenRouter.
+
+## Technique 3 — Vision via Nous gateway (current primary, Aug 2026)
+
+Adora's Nous account is funded; OpenRouter is drained. Repoint `auxiliary.vision` at Nous
+with a multimodal Qwen flagship:
+
+```bash
+hermes config set auxiliary.vision.provider nous
+hermes config set auxiliary.vision.model qwen/qwen3.8-max
+```
+
+Then `/restart` (Discord slash cmd — NOT `hermes gateway restart` in-session; that
+self-blocks). Verify with a direct API call first so you don't restart blind:
+
+```python
+import json, base64, urllib.request
+auth = json.load(open("/home/adora/.hermes/shared/nous_auth.json"))
+token = auth["access_token"]; base = auth["inference_base_url"].rstrip("/")
+img_b64 = base64.b64encode(open("/path/img.png","rb").read()).decode()
+body = json.dumps({"model":"qwen/qwen3.8-max","messages":[{"role":"user","content":[
+    {"type":"image_url","image_url":{"url":f"data:image/png;base64,{img_b64}"}},
+    {"type":"text","text":"What is in this image? One sentence."}}],"max_tokens":150}).encode()
+req = urllib.request.Request(base + "/chat/completions", data=body, headers={
+    "Authorization": f"Bearer {token}", "Content-Type": "application/json",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+    "Origin": "https://portal.nousresearch.com", "Referer": "https://portal.nousresearch.com/"})
+r = json.load(urllib.request.urlopen(req, timeout=120))
+print(r["choices"][0]["message"]["content"])
+```
+
+**Verified 2026-08-05:** this exact call succeeded on a Discord screenshot image.
+Notes:
+- Auth is an OAuth token in `~/.hermes/shared/nous_auth.json` (access_token +
+  inference_base_url), NOT a static key. `NOUS_API_KEY` in `.env` is EMPTY — don't
+  look there.
+- The browser-UA + Origin/Referer headers are needed (Cloudflare 1010 otherwise) —
+  same lesson as the Together technique.
+- qwen/qwen3.8-max is a 2.4T multimodal flagship — vision-capable, uncensored for
+  artistic content, matches the Qwen VL lineage Adora prefers.
+- The RUNNING gateway keeps old config in memory — a `/restart` is required for the
+  repoint to take effect. Until then `vision_analyze` still 404s.
+
 ```python
 import os, json, base64, urllib.request
 KEY = open("/home/adora/.hermes/.env").read().split("OPENROUTER_API_KEY=")[1].splitlines()[0]

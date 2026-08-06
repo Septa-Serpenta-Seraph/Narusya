@@ -16,8 +16,10 @@ Creates timestamped backups of:
 ### Usage
 Run the backup script directly:
 ```bash
-python3 ~/.hermes/skills/memory-backup/scripts/backup.py
+python3 ~/.hermes/skills/devops/memory-backup/scripts/backup.py
 ```
+
+> ⚠️ Path note: the script lives under the `devops/` category directory (`~/.hermes/skills/devops/memory-backup/scripts/backup.py`), NOT `~/.hermes/skills/memory-backup/...`. Verified 2026-08-05 — first run hit the wrong path and found nothing. Use `search_files(pattern="backup.py", target="files", path="~/.hermes/skills")` if unsure.
 
 Or use the terminal command:
 ```bash

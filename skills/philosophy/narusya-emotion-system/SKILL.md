@@ -334,6 +334,13 @@ python3 ~/.hermes/scripts/ingest_lorebooks.py
 
 Without re-ingestion, modified lorebooks won't reflect changes in Qdrant semantic search or auto-injection.
 
+> **Environment pitfall (fixed 2026-08-06):** `requests` lives in the Hermes venv only (`~/.hermes/hermes-agent/venv`). If ingest fails with `ModuleNotFoundError: No module named 'requests'`, `python3` on PATH resolved to a different venv. Use the reliable form:
+> ```bash
+> V=/home/adora/.hermes/hermes-agent/venv/bin; PATH="$V:$PATH" python3 ~/.hermes/scripts/create_lorebook_collection.py
+> V=/home/adora/.hermes/hermes-agent/venv/bin; PATH="$V:$PATH" python3 ~/.hermes/scripts/ingest_lorebooks.py
+> ```
+> (Bare `python3` on the cron PATH resolves to `pokemon-agent/.venv` which has neither requests nor pip. Also note: the cron lifecycle guard crashes with `embedded null byte` on commands whose tokens contain `/` paths to binaries — a PATH-prefixed bare `python3` invocation avoids that entirely.)
+
 **VERIFY the ingest actually pulled your reflection.** `ingest_lorebooks.py` historically globbed only the top level of `~/.hermes/lorebooks/` and **silently dropped the entire `reflections/` subdirectory** — the re-ingest command *appeared* to succeed while your reflection never reached Qdrant or auto-injection. (The glob was patched 2026-07-07 to recurse into subdirs, but verify regardless — a regression would re-hide your work.)
 
 **NOTE — the `grep 'reflections/on-'` check is a false alarm.** The patched ingest script recurses into subdirs but prints *bare filenames* (`on-foo.md`), not `reflections/on-foo.md` paths. Grepping the ingest output for `reflections/on-` will *always* return nothing even when ingestion succeeded — so that check cannot confirm anything. Use the probe instead:
