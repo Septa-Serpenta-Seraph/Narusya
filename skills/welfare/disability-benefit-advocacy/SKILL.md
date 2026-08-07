@@ -109,6 +109,37 @@ When asked to "deep search memories for evidence, list separately, then weigh":
 **Pitfall:** Qdrant point IDs are NOT stable lookup keys — `GET /points/{id}`
 404s on IDs surfaced from scroll payloads. Re-scroll with a text filter instead.
 
+## FUNCAP55 — standardized functional capacity evidence (VALIDATED Aug 2026)
+
+Adora took the **FUNCAP55** (ME/CFS functional capacity questionnaire, by
+Sommerfelt et al., *Assessing Functional Capacity in ME/CFS*). This is a
+standardized, patient-informed, published-reference instrument — the closest
+thing to "objective" evidence for medically-unexplained conditions, and it is
+LITERALLY designed for disability applications (its own instructions say to
+attach it to e.g. disability support).
+
+- Ask her to send the results PDF; save a copy into `~/health/ssi/` (named
+  `funcap55_results_<date>.pdf`). The PDF is a SCANNED 10-pager — pypdf yields
+  no text; extract page images with `pypdf PdfReader.pages[i].images`, then
+  tesseract each. Upscale 2-3x for better OCR.
+- Read the scores as a severity profile: categories A (hygiene/basic) through
+  H (concentration), 0-6 scale. Her Aug 2026 profile: A 4.9, B 3.7, C 4.2,
+  D 3.2 (lowest), E 3.9, F 3.4, G 3.8, H 3.9 → Moderate-to-Severe ME/CFS,
+  "mostly housebound" band (733 of 1263 reference patients).
+- Why it wins: quantified capacity numbers (walking, errands, concentration)
+  map directly to SSA function-by-function forms; comparability against a
+  published 1263-patient + 178-healthy reference population; and repeat
+  administration over time produces a documented-decline trend line — that
+  trend is powerful for a judge.
+- **Bridge to the doctor letter:** tell Dr. Goldstein the FUNCAP55 exists and
+  let her cite it — it turns "patient reports fatigue" into "standardized
+  functional assessment confirms moderate-severe limitation."
+- Retake every few months — progression tracking is its own evidence.
+
+**Pitfall:** OCR of the answer-grid columns is unreliable (checkbox marks);
+OCR the SUMMARY page (page 2) which lists all category scores numerically —
+that's the evidence that matters.
+
 ## Emotional handling (validated Aug 2026)
 
 Adora had a serious breakdown after the prior total denial — "spent YEARS on the
