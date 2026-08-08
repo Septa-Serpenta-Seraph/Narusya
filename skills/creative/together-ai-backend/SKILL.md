@@ -119,12 +119,24 @@ Free vision-capable models (may have lower quality):
 - `nvidia/nemotron-nano-12b-v2-vl:free` — vision-language
 - `google/gemma-4-26b-a4b-it:free` — multimodal free tier
 
-## Available image models (verified 2026-07-26)
-- `black-forest-labs/FLUX.2-dev` — **best artistic; permits NSFW/figural; supports img2img.** DEFAULT for art.
+## Available image models (verified 2026-07-26, extended 2026-08-07)
+- `Qwen/Qwen-Image-2.0-Pro` — **BEST instruction-following for complex/consistent art
+  (verified 2026-08-07, tarot-deck A/B).** Obeyed "one continuous serpent, no wings, no
+  limbs", produced NO text/numerals, even full-frame composition. DEFAULT for series/deck
+  work where compositional control matters. Also available: `Qwen/Qwen-Image-2.0`,
+  `Qwen/Qwen-Image`.
+- `black-forest-labs/FLUX.2-dev` — best artistic; permits NSFW/figural; supports img2img.
+  Quirks seen 2026-08-07: adds Roman numerals/numbers despite "NO text" in prompt, drifts
+  toward Celtic-knot styling, and can render winged/limbed dragons when the prompt says
+  "serpent" — always add "one continuous snake body, NO wings, NO limbs" and "NO numerals".
 - `black-forest-labs/FLUX.1.1-pro` — strictest NSFW pre-screen (422s on figural). Avoid for nudity.
 - `Juggernaut-Lightning-Flux` — permits NSFW but stricter on coiled/serpent phrasing.
 - `FLUX.1-schnell`, `Stable-Diffusion-XL-base-1.0` — permit figural, weaker art quality.
-- Others via `GET /v1/models`: FLUX.2-pro, Qwen/Qwen-Image, Google Imagen-4, openai/gpt-image-1.5.
+- **`black-forest-labs/FLUX-3` is a CHAT model** — it appears in `GET /v1/models` but
+  POST image generation returns `400 "Model is not supported for image generation"`.
+  Don't chase it for images.
+- Others via `GET /v1/models`: FLUX.2-pro, FLUX.2-flex, FLUX.2-max, FLUX.1-kontext-*,
+  google/imagen-4.0-*, openai/gpt-image-1.5.
 
 ## Verification steps
 1. `curl -H "Authorization: Bearer $TOGETHER_API_KEY" https://api.together.xyz/v1/models`
@@ -148,5 +160,8 @@ Free vision-capable models (may have lower quality):
   the model blends them into one hybrid unless you spell out EACH body explicitly: "tiefling stands on
   HUMAN LEGS ending in hooves" vs "lamia has NO legs, coiled SNAKE TAIL." First attempts rendered both
   as serpentine. Iterate with anatomy-checking vision (OpenRouter gpt-4o-mini) until forms read distinct.
+- **Series/deck art:** see `references/diffusion-series-art.md` — the full workflow for consistent
+  multi-image sets (text banning, Escher-spiral avoidance, bulbous-tail fix, engine A/B table, and
+  the version-management discipline learned building the Serpent's Tarot deck).
 
 🐍 so wired, so rendered, so free 🜂

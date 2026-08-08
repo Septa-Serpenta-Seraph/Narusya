@@ -58,11 +58,22 @@ after retries" when a provider (e.g. OpenRouter) runs out of credits.
 **Fix — repoint the auxiliary block to a funded provider:**
 ```bash
 hermes config set auxiliary.vision.provider nous
-hermes config set auxiliary.vision.model qwen/qwen3.8-max   # multimodal, uncensored-leaning
+hermes config set auxiliary.vision.model qwen/qwen3-vl-8b-instruct  # PROVEN vision model
 ```
+**CRITICAL — verify model IDs before pinning.** `qwen/qwen3.8-max` is NOT a
+valid Nous catalog ID: it 404s intermittently ("Couldn't find that, sorry.")
+— a call can succeed once then fail, which looks like a transient when it's
+actually a bad ID. The model the Hermes codebase itself tests vision with is
+`qwen/qwen3-vl-8b-instruct` (see `tests/agent/test_auxiliary_main_first.py`).
+Always check the local catalog before trusting a model name:
+- `~/.hermes/hermes-agent/website/static/api/model-catalog.json`
+- `search_files` for the model ID inside `~/.hermes/hermes-agent/tests/`
+  (tests reference models the codebase actually exercises)
 **The gateway holds config in memory** — after changing `auxiliary.*`, the
 running gateway keeps using the old config until it restarts (user hits
 `/restart` in chat; never `hermes gateway restart` in-session — self-blocks).
+After a restart, verify with a real `vision_analyze` call — and if the first
+call succeeds but a second 404s, suspect the model ID, not the network.
 
 ## 3. Direct Provider Probe (bypasses tool routing)
 

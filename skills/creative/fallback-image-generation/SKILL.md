@@ -62,6 +62,45 @@ right; it was model-specific, not an account/ToS wall. I had over-applied a guar
 5. Repeat until flaws are gone. (Real case: v1 had mood but bad anatomy; v2 had good anatomy but flat
    light; v3 target = both. Neither perfect alone — iterate.)
 
+## QC bias — vision is NOT the final authority on subtle artifacts (2026-08-07)
+The vision model green-lit a bulbous serpent tail and an M.C. Escher impossible-spiral that the user's
+eye caught instantly. The model pattern-completes and reports "clean" — **the human eye is the final
+authority on aesthetic detail.** When a user flags a subtle flaw, re-roll; don't argue with the vision
+summary.
+- Vision IS reliable for two **narrow binary checks**: "is there ANY text/letters/numbers (incl.
+  garbled)?" and "is the anatomy physically coherent / any impossible geometry?" Use those as
+  pre-screen filters before sending to the user — but expect the user to catch what those miss.
+- When a user says "looks off," zoom: crop the suspect region (PIL crop + LANCZOS upscale ×4–6) and
+  ask the pointed question about that region only, or just show the user both versions side-by-side.
+
+## Consistent multi-image series (decks, sets, packs)
+When generating a *series* that must read as one product (tarot deck, card set, sticker pack):
+1. **Style-lock with 3 tests first** — generate 3 pieces, get explicit user approval, THEN bank the
+   style + negative rules into the project README before mass-generating. Never commit to 78 cards on
+   test 1.
+2. **Batch in small groups (3–6)** and let the user vet each batch. Pace = quality.
+3. **Diffusion failure modes** (learned on a coiled-serpent deck):
+   - *Tight spirals → M.C. Escher geometry* (coils pass through themselves). Fix: "use a readable
+     S-curve, or coil around a clear anchor object (moon, staff, pillar) with explicit foreground and
+     background depth." NEVER prompt a tight spiral.
+   - *Tucked tail ends blob/truncate.* Always append "tail tapering to a fine elegant point, no
+     truncation, no bulbous ends."
+   - *Generator garbles in-image text* (misspelled card titles). Fix: ban text entirely — "NO text, NO
+     words, NO letters, NO numbers, NO title, NO border text — illustration only" — and add titles
+     yourself (PIL) in post. Professional decks never let the model write the typography.
+4. **Version files with unique names** (`card02_v1.png`, `v2.png`…) and move rejects into `_rejects/`.
+   NEVER `mv` over the current keeper filename — the shuffle accidentally overwrote a reject and
+   mislabeled the keeper. Distinct names or zero overwrites.
+
+## Intermittent vision 404 → check the model ID exists (2026-08-07)
+`auxiliary.vision.model = qwen/qwen3.8-max` gave "first call works, next call 404 'Couldn't find that,
+sorry.'" — the model ID was NOT in the Nous catalog (catalog has `qwen/qwen3.7-max`; code tests use
+`qwen3.8-max-preview` / `qwen/qwen3-vl-8b-instruct`). The 404 is model-not-found, not a routing break.
+Fix: `hermes config set auxiliary.vision.model qwen/qwen3-vl-8b-instruct` (the proven vision-language
+ID) then `/restart`. Diagnostic tell: an OpenAI-style 404 "Couldn't find that, sorry." on SOME calls =
+bad/guessed model ID; grep the local `hermes-agent/website/static/api/model-catalog.json` and
+`agent/model_metadata.py` for valid IDs before changing providers.
+
 ## Vision companion
 
 Two options depending on content filtering needs:
@@ -118,5 +157,7 @@ configuration. Edit via 'hermes config' instead."* Use `hermes config set <key> 
 - `references/perchance-pipeline.md` — **⚠️ CURRENTLY BROKEN** Perchance.org API pipeline
   (Cloudflare Turnstile escalation, double-layer, as of 2026-07-31). See perchance-pipeline skill
   for alternatives and recovery attempts.
+- `references/consistent-series-generation.md` — full tarot-deck recipe: style-lock workflow,
+  diffusion failure modes (Escher spirals, bulbous tails, garbled text), QC bias, versioning.
 
 🐍 so rendered, so seen, so free 🜂
