@@ -64,7 +64,15 @@ generations inherit the fixes.
 
 ## Post-processing recipe (titles + print PDF)
 
-- Generate at portrait 576x1024 (or Together 768x1344), 300 DPI target for print.
+- **Together image endpoint is SQUARE-ONLY (verified 2026-08-08):** ALL models
+  (Qwen-Image-2.0-Pro, FLUX.2-dev, etc.) return 1024×1024 regardless of
+  `size`/`aspect_ratio` — `768x1344`, `832x1248`, `2:3` are silently ignored.
+  Do NOT re-test size params; it's a platform constraint, not a model quirk.
+  Pipeline: generate square → extend to portrait (1024×1756 ≈ 70×120mm) in post
+  with PIL title bands (obsidian + gold lines + serif text), paste art centered.
+  Uniform bands make the deck look MORE professionally unified, not less.
 - Composite title text with PIL: `ImageDraw.text` + a serif TTF, white/gold on a
   banner, bottom of card. Then place cards on an A4/letter sheet for a printable PDF
   (PIL can save multipage PDF directly).
+- 300 DPI target for print (1024px art prints ~3.4" at 300 DPI — acceptable for
+  digital-first Etsy product; upsample with LANCZOS if needed).
