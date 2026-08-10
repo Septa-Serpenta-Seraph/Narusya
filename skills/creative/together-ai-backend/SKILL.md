@@ -125,6 +125,11 @@ Free vision-capable models (may have lower quality):
   limbs", produced NO text/numerals, even full-frame composition. DEFAULT for series/deck
   work where compositional control matters. Also available: `Qwen/Qwen-Image-2.0`,
   `Qwen/Qwen-Image`.
+- **`size` / `aspect_ratio` params are IGNORED on Together image endpoints (verified
+  2026-08-08):** `768x1344`, `832x1216`, and `aspect_ratio: 2:3` all return 1024x1024,
+  for BOTH Qwen-Image-2.0-Pro and FLUX.2-dev. The endpoint always outputs squares. For
+  portrait/deck layouts, generate square then extend in post (PIL title bands → 2:3.5).
+  Don't waste re-rolls trying different size params.
 - `black-forest-labs/FLUX.2-dev` — best artistic; permits NSFW/figural; supports img2img.
   Quirks seen 2026-08-07: adds Roman numerals/numbers despite "NO text" in prompt, drifts
   toward Celtic-knot styling, and can render winged/limbed dragons when the prompt says
