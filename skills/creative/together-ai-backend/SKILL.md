@@ -75,6 +75,34 @@ correct anatomy (low prompt emphasis on lighting), then img2img it with `image_s
 a "repaint lighting only, do not alter the figure" prompt. Result keeps the fixed body AND gains
 dramatic chiaroscuro. Recipe in `references/image_gen_and_vision_recipes.md`.
 
+## img2img — CHARACTER FIDELITY via reference image (verified 2026-08-12)
+**When a specific character's face must read as THAT character, words lose to pixels.**
+Five re-rolls describing githyanki anatomy ("flat nose, fin ears, wide-set eyes, angular face")
+all read as "lizard person/vampire" — the model does not hold that face in its weights. Feeding
+the official character portrait as an `image_url` reference through **`black-forest-labs/FLUX.1-kontext-pro`**
+produced an authentic gith in ONE shot with a single "keep the exact same face, only change
+skin/eyes/hair/armor" prompt.
+
+Critical engine facts for image-input (verified 2026-08-12):
+- **`Qwen/Qwen-Image-2.0-Pro` REJECTS `image_url`** → HTTP 400 "Unsupported use of 'image_url'
+  parameter" — it is text-to-image ONLY on Together's endpoint. Do not waste calls.
+- **`black-forest-labs/FLUX.1-kontext-pro` (and kontext-max) ACCEPT `image_url`** (data URI
+  `data:image/png;base64,...`) in `/v1/images/generations` — the img2img/edit workhorse.
+- Kontext-pro output is NOT square: returned 880×1184 from an 819×1117 input reference.
+  The "always 1024×1024" rule applies to text-to-image; image-input follows the reference.
+- Full recipe (reference prep, WebP→PNG, prompt shape, verification loop): `references/img2img-character-fidelity.md`.
+- Species-anatomy anchor (Hero Forge render → img2img, crop-UI-chrome, aesthetics-vs-anatomy rule, loop pitfalls): `references/hero-forge-species-anchor.md`.
+
+## img2img — single-feature refinement by self-reference (verified 2026-08-12)
+When one feature is still off after the kontext pass (e.g. gith nose "still too
+big"), feed the **previous output back** as the new `image_url` with "Change ONLY
+X: make it [target]; keep everything else identical." The delta moves but the
+model's prior on humanoid features is STRONG (nose rounds/bridges instead of going
+flat) and each pass can subtly drift other details. Expect incremental change, not
+canon. Stronger lever (untested): crop just the face region from the canon
+reference and feed that, so the feature can't be averaged away; or post-edit the
+feature region in PIL as a guaranteed-flat fallback.
+
 ## LoRA Support (Consistent Character Generation)
 
 Together.ai supports **Flux LoRA injection** for consistent character generation across images:

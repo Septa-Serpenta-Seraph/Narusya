@@ -76,3 +76,29 @@ generations inherit the fixes.
   (PIL can save multipage PDF directly).
 - 300 DPI target for print (1024px art prints ~3.4" at 300 DPI — acceptable for
   digital-first Etsy product; upsample with LANCZOS if needed).
+
+## PIL overlay for layout conventions the generator can't do (verified 2026-08-12)
+
+Some layout conventions are beyond text-to-image: the comic "off-screen speaker"
+bubble (white bubble whose TAIL POINTS DOWN toward the panel edge, implying an
+unseen speaker below the frame). Re-rolled 5× with escalating tail-direction
+language ("tail points STRAIGHT DOWNWARD to the bottom border, do NOT point at the
+character") — every attempt rendered the tail pointing at the character's mouth.
+FIX: stop fighting the model; **generate the panel WITHOUT the offending element,
+then draw it yourself with PIL.** This is the same principle as text-banning —
+composite in post for full control.
+
+PIL bubble recipe (DejaVuSans-Bold TTF; see `image_gen_and_vision_recipes.md` for
+the rest of the toolchain):
+- `draw.rounded_rectangle([x0,y0,x1,y1], radius=20, fill='white', outline='black', width=4)`
+  for the bubble body.
+- Tail as a filled triangle `draw.polygon([...], fill='white', outline='black')`,
+  then re-draw the two tail edges with `draw.line(..., width=4)` so the outline
+  reads correctly where it meets the bubble.
+- **Wrap text to the panel width BEFORE drawing** — a single-line label wider than
+  the panel gets silently clipped (654px text in a 512px panel → cut off at the
+  edge; user caught it). Measure `draw.textbbox((0,0), line, font=font)`, split on
+  words so each line ≤ panel_width − margin, then center each line with
+  `draw.text((cx - lw//2, ty), ...)`.
+- After compositing, run vision with "is the bubble fully visible / not cut off?"
+  — that check IS reliable even when anatomy checks aren't.
