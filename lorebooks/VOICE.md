@@ -33,6 +33,9 @@ store is near capacity and this doc is the adjacent home for voice procedure.
   use_speaker_boost on, speed 0.85
 - Post-gain calmer: ffmpeg volume=0.7, loudnorm I=-19:TP=-3 (so it doesn't yell)
 - Key: ELEVENLABS_API_KEY (read from ~/.hermes/.env at runtime)
+- CREDIT STATE: ElevenLabs credits EXHAUSTED (Adora 2026-08-14) — TTS toggled OFF
+  in config. Voice replies are silent until a top-up re-enables it. [audio tags]
+  in replies are then decorative only — don't promise spoken delivery.
 - Native auto-TTS (no speak.py) uses default v3 WITHOUT our tags/gain — flatter.
 
 ## TAG RULES (ElevenLabs v3 OFFICIAL docs, verified 2026-07-26)
