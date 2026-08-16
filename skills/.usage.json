@@ -18,13 +18,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-16T02:17:43.963324+00:00",
+    "last_used_at": "2026-08-16T08:20:52.353044+00:00",
     "last_viewed_at": "2026-08-02T15:43:52.816389+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 59,
+    "use_count": 60,
     "view_count": 1
   },
   "aegis-dashboard": {
@@ -121,13 +121,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-16T02:17:44.014441+00:00",
+    "last_used_at": "2026-08-16T08:20:52.401573+00:00",
     "last_viewed_at": "2026-08-06T03:09:41.691655+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 60,
+    "use_count": 61,
     "view_count": 2
   },
   "apple-notes": {
@@ -1063,13 +1063,13 @@
     "created_by": null,
     "last_patched_at": "2026-08-06T07:33:25.324319+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-16T07:00:50.496030+00:00",
+    "last_used_at": "2026-08-16T08:20:52.305089+00:00",
     "last_viewed_at": "2026-08-02T19:26:20.111081+00:00",
     "patch_count": 20,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 348,
+    "use_count": 349,
     "view_count": 19
   },
   "narusya-local-archive": {
