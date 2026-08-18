@@ -1,0 +1,12 @@
+{
+  "archive": "skills.tar.gz",
+  "archive_bytes": 4326807,
+  "created_at": "2026-08-17T18:49:52.640416+00:00",
+  "cron_jobs": {
+    "backed_up": true,
+    "jobs_count": 7
+  },
+  "id": "2026-08-17T18-49-51Z",
+  "reason": "pre-curator-run",
+  "skill_files": 224
+}
