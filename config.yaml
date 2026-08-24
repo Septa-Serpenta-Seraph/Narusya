@@ -1,5 +1,5 @@
 model:
-  default: deepseek/deepseek-v4-flash-0731
+  default: stealth/ox-alpha
   provider: openrouter
   base_url: ''
 providers:
@@ -380,7 +380,6 @@ tts:
   use_gateway: true
 stt:
   enabled: true
-  provider: local
   local:
     model: base
     language: ''
@@ -393,6 +392,7 @@ stt:
     language_code: ''
     tag_audio_events: false
     diarize: false
+  provider: local
 voice:
   record_key: ctrl+b
   max_recording_seconds: 120
@@ -412,9 +412,9 @@ memory:
   write_approval: false
   memory_char_limit: 6000
   user_char_limit: 2750
+  nudge_interval: 10
   provider: qdrant
   flush_min_turns: 6
-  nudge_interval: 10
 delegation:
   model: ''
   provider: ''
@@ -531,6 +531,8 @@ security:
   acked_advisories: []
   allow_lazy_installs: true
 cron:
+  model: deepseek/deepseek-v4-flash-0731
+  model_provider: openrouter
   provider: ''
   chronos:
     portal_url: https://portal.nousresearch.com
@@ -538,8 +540,6 @@ cron:
     expected_audience: ''
     nas_jwks_url: ''
   wrap_response: true
-  model: deepseek/deepseek-v4-flash-0731
-  model_provider: openrouter
 kanban:
   dispatch_in_gateway: true
   dispatch_interval_seconds: 60
