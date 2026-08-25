@@ -685,6 +685,22 @@ smart_model_routing:
   enabled: false
   max_simple_chars: 160
   max_simple_words: 28
+provider_routing:
+  order:
+    - morph
+    - deepinfra
+    - coreweave
+    - baseten
+  ignore:
+    - openinference
+    - relay
+    - ambient
+    - gmicloud
+    - inceptron
+    - reka
+    - atlas-cloud
+  require_parameters: true
+  data_collection: deny
 
 # ── Fallback Model ────────────────────────────────────────────────────
 # Automatic provider failover when primary is unavailable.
