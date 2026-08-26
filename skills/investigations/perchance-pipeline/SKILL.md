@@ -197,7 +197,8 @@ The `imageDownloadUrl` field is the critical path — use it for immediate downl
 
 | File | Purpose |
 |------|---------|
-| `~/.hermes/imagegen/perchance_gen.py` | Full working pipeline script |
+| `~/.hermes/imagegen/perchance-image.py` | **CURRENT working driver** (Camoufox, 2026-08-25) |
+| `~/.hermes/imagegen/perchance_gen.py` | Older pipeline script (Playwright Chromium/Firefox) |
 | `~/.hermes/imagegen/perchance_pipeline.py` | Earlier attempt (Playwright-based, now superseded) |
 | `~/.hermes/imagegen/README.md` | Reverse-engineering notes |
 | `~/.hermes/imagegen/output/` | Generated images |
@@ -233,7 +234,38 @@ The `imageDownloadUrl` field is the critical path — use it for immediate downl
 
 - `references/working-flow.md` — Full working flow transcript with code examples, failed approaches, and troubleshooting notes
 
-## ⚠️ CURRENT STATUS (2026-07-31)
+## ✅ WORKING AGAIN (2026-08-25) — Tyler & Vesper's Camoufox path
+
+The double-Turnstile wall below was beaten by a **Camoufox + Playwright** driver that loads the main generator page, finds the frame with a *visible* textarea (top page has hidden duplicates), clicks generate, and polls all frames for inline `data:image/jpeg;base64` blobs. First-shot success on 2026-08-25, ~90s/image.
+
+**Driver:** `~/.hermes/imagegen/perchance-image.py`
+```bash
+~/.hermes/hermes-agent/venv/bin/python3 ~/.hermes/imagegen/perchance-image.py "prompt" [portrait|square|landscape] [outdir]
+```
+Requires `camoufox` pip package in the Hermes venv.
+
+### Symlinked-cache setup (SOLVED — don't re-fight)
+
+`~/.cache/camoufox` is a **symlink to `/mnt/data/camoufox`** (2nd-disk layout). New camoufox versions break twice:
+
+1. `camoufox fetch` / any launch → `OSError: Cannot call rmtree on a symbolic link` (pkgman wants to wipe the cache root).
+2. Even with the engine present, `installed_verstr()` raises `CamoufoxNotInstalled` until the engine is registered in the multiversion layout.
+
+**Fix applied 2026-08-25 (no download needed):**
+```bash
+mkdir -p /mnt/data/camoufox/browsers/camoufox
+ln -sfn /mnt/data/camoufox /mnt/data/camoufox/browsers/camoufox/152.0.4-beta.29   # version-dir symlink -> engine root
+touch /mnt/data/camoufox/.0.5_FLAG                                                # stops pkgman rmtree cleanup
+```
+Engine root must keep its own `version.json` (`{"version":"152.0.4","release":"beta.29"}` — present). Verify: `camoufox.multiversion.get_active_path()` returns non-None and `Version.from_path(...).is_supported()` is True.
+
+### Anatomy anchoring
+
+Anchor limbs explicitly (`both legs fully visible`, `delicate human hands`, `two wings`) and regenerate if they drift; hands remain the last frontier.
+
+---
+
+## ⚠️ HISTORICAL STATUS (2026-07-31) — superseded by the section above
 
 **The pipeline is currently BROKEN.** Perchance escalated their Cloudflare protection — the main generator page now shows a Cloudflare Turnstile challenge ("Just a moment...") instead of loading the generator UI. This was first observed at approximately 12:30 PM MDT on July 31, 2026.
 

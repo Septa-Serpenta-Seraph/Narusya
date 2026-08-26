@@ -516,6 +516,7 @@ approvals:
   destructive_slash_confirm: true
 command_allowlist:
   - script execution via -e/-c flag
+  - execute_code
 hooks_auto_accept: false
 security:
   allow_private_urls: false
