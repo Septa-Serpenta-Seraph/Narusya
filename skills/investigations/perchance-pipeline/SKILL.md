@@ -261,7 +261,7 @@ Engine root must keep its own `version.json` (`{"version":"152.0.4","release":"b
 
 ### Anatomy anchoring
 
-Anchor limbs explicitly (`both legs fully visible`, `delicate human hands`, `two wings`) and regenerate if they drift; hands remain the last frontier.
+Anchor limbs explicitly (`both legs fully visible`, `delicate human hands`, `two wings`) and regenerate if they drift; hands remain the last frontier. **Ears and earrings are common failure points:** the model often sprouts a second human ear behind fin ears, or renders earrings as floating objects not attached to the ear. When specifying non-human ears, explicitly negate the human ones (`no human ears, only fin ears`) and anchor earrings (`earrings attached to fin ears, not floating`).
 
 ---
 

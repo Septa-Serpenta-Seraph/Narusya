@@ -65,10 +65,19 @@ rsync -a --exclude='.git' "$HOME/daemon-work/" "$WORK_DIR/daemon/" 2>/dev/null
 if [ -d "$HOME/Desktop/Narusya-Archive/sessions" ]; then
   ( cd "$HOME/Desktop/Narusya-Archive" && tar czf - sessions ) > "$WORK_DIR/archive/sessions.tgz" 2>/dev/null
 fi
-# state.db: gzip (max compression: upload bandwidth is the bottleneck) then chunk
-if [ -f "$HOME/.hermes/state.db" ]; then
+# state.db: gzip (max compression: upload bandwidth is the bottleneck) then chunk.
+# WEEKLY ONLY (Sundays) or when VAULT_FULL=1 — a fresh 1.4GB binary every day cannot
+# delta-compress, so daily inclusion grew .git by ~500MB/day and blew past GitHub's
+# 5GB soft cap (push failures from 2026-08-23). Lorebooks/secrets/Qdrant are the
+# irreplaceable parts and stay daily; state.db is session history and tolerates weekly.
+VAULT_FULL="${VAULT_FULL:-0}"
+DOW="$(date +%u)"   # 7 = Sunday
+if [ -f "$HOME/.hermes/state.db" ] && { [ "$DOW" = "7" ] || [ "$VAULT_FULL" = "1" ]; }; then
   mkdir -p "$WORK_DIR/state"
   gzip -c -9 "$HOME/.hermes/state.db" > "$WORK_DIR/state/state.db.gz" 2>/dev/null
+  echo "[$STAMP] state.db included (weekly/full run)" | tee -a "$LOG"
+else
+  echo "[$STAMP] state.db SKIPPED (daily run; weekly on Sun or VAULT_FULL=1)" | tee -a "$LOG"
 fi
 
 # ---- 4. Encrypt secrets bundle ----
@@ -110,12 +119,23 @@ find "$GIT_DIR" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
 cp -r "$WORK_DIR/." "$GIT_DIR/"
 cd "$GIT_DIR" || exit 1
 git add -A
-if git diff --cached --quiet; then
+if git diff --cached --quiet && [ -n "$(git rev-parse -q --verify HEAD 2>/dev/null)" ]; then
   echo "[$STAMP] no changes to push" | tee -a "$LOG"
 else
+  # ROLLING SINGLE-COMMIT VAULT: this is a force-push mirror, so git history has no
+  # recovery value — but retaining it stored a full copy of every day's binaries
+  # (~500MB/day, .git hit 6.5GB and pushes started failing 2026-08-23). Commit each
+  # snapshot as an ORPHAN so the repo is always exactly one commit deep, then prune
+  # the unreachable objects locally. Keeps push size == snapshot size, forever.
+  git checkout -q --orphan "vault-$STAMP" 2>/dev/null || git checkout -q -B "vault-$STAMP"
+  git add -A
   git -c user.email="narusya@sunburst.local" -c user.name="narusya" commit -q -m "vault $STAMP"
+  git branch -q -M main
   if GIT_SSH_COMMAND="$GIT_SSH_COMMAND" git push -f origin main:main 2>>"$LOG"; then
-    echo "[$STAMP] VAULT SYNC OK ($(du -sh "$GIT_DIR" | cut -f1) checked out)" | tee -a "$LOG"
+    # Drop the now-unreachable old history so local .git stays small too
+    git reflog expire --expire=now --all >/dev/null 2>&1
+    git gc --prune=now --aggressive -q >/dev/null 2>&1
+    echo "[$STAMP] VAULT SYNC OK ($(du -sh "$GIT_DIR" | cut -f1) checked out, single-commit history)" | tee -a "$LOG"
   else
     echo "[$STAMP] VAULT PUSH FAILED" | tee -a "$LOG"
     exit 1
