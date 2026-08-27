@@ -15,6 +15,38 @@ and verifying providers directly when tools fail.
 - `vision_analyze` returns 404 / "model provider failed after retries" after a provider switch or credit drain
 - You changed `model.default` and want unpinned cron jobs to follow deliberately
 - You need to prove a model can do X (e.g. vision) without guessing
+- **Free Nous models return HTTP 400 "This endpoint does not honor caller-supplied provider routing"** — see §0 below.
+
+## 0. Nous rejects provider routing (HTTP 400) — the #1 reason free Nous models fail
+
+**Symptom:** switching a session to a free model over the `nous` provider (e.g.
+`meituan/longcat-2.0:free`, `tencent/hy3:free`) fails instantly with:
+```
+Error code: 400 - 'This endpoint does not honor caller-supplied 'provider' routing
+preferences (e.g. 'only', 'ignore', 'order', 'data_collection', ...). Routing is
+decided centrally per model... Remove the 'provider' object from your request.'
+```
+**Root cause:** `provider_routing:` in config.yaml is a GLOBAL block. `gateway/run.py`
+forwards its fields (`providers_allowed/ignored/order`, `provider_sort`,
+`provider_require_parameters`, `provider_data_collection`) to EVERY provider —
+including the Nous portal, which bans caller-supplied routing because routing there
+is central. The free model connects fine; the request is then 400'd on the routing
+object. (2026-08-26, verified in gateway agent.log.)
+
+**Fix:** provider routing is OpenRouter-specific by design (`provider_routing controls
+OpenRouter provider sorting` per `hermes_cli/tips.py`). Patch `gateway/run.py` to only
+forward routing when the runtime provider is `openrouter` — a module-level guard
+`_provider_routing_applies(turn_route)` returns `provider == "openrouter"`, and the two
+agent-creation sites wrap each `providers_*`/`provider_*` kwarg in
+`(<val> if _provider_routing_applies(turn_route) else None)`. This preserves OpenRouter
+fp4-avoidance while letting Nous free models work. Changes to gateway code need an
+external gateway restart (user `/restart`); verify by watching agent.log provider line.
+
+**Pitfalls:**
+- Do NOT "fix" by removing `provider_routing` from config — that silently drops
+  OpenRouter's anti-fp4 protection (glitchy deepseek returns).
+- The restart DOES work — log showed `provider=nous model=...:free` after her restart;
+  the 400 (not the restart) was the blocker. Read agent.log before blaming the restart.
 
 ## 1. Cron Model-Drift Guard (v0.20.0+ fail-closed)
 

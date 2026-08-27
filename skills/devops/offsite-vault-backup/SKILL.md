@@ -49,7 +49,59 @@ metadata:
 - Confirm the secrets bundle decrypts with your passphrase (openssl enc -d round-trip) before trusting the vault.
 - If `/backups/` tarballs are on the same disk, they are NOT offsite — they die with the drive. The vault is the offsite leg.
 
-## Pitfalls
+## ⚠️ REPO BLOAT — the failure mode that killed pushes (fixed 2026-08-26)
+
+**Symptom:** `VAULT PUSH FAILED` in cron output, silently, for days (started 2026-08-23).
+`.git` had grown to **6.5GB** against GitHub's **5GB soft cap**; pushes time out.
+
+**Root cause:** the sync writes *fresh compressed binaries* every run — `state.db.gz.*`
+chunks (~450MB) plus Qdrant `.snapshot` files (~250MB). Compressed blobs cannot
+delta-compress, so git stored a COMPLETE new copy each day. 12 daily commits ≈ 6GB of
+near-duplicate data, growing ~500MB/day forever.
+
+**The insight that makes the fix safe:** the script pushes with `git push -f` — it is a
+**rolling mirror, not an archive**. Git history therefore has ZERO recovery value; only
+the newest snapshot is ever restored. Retaining history was pure cost.
+
+**The fix (two parts, both in `scripts/narusya-vault-sync.sh`):**
+
+1. **Orphan single-commit per run.** Instead of committing onto `main`, each run does:
+   ```bash
+   git checkout -q --orphan "vault-$STAMP"   # parentless
+   git add -A && git commit -m "vault $STAMP"
+   git branch -q -M main
+   git push -f origin main:main
+   git reflog expire --expire=now --all && git gc --prune=now -q   # drop old objects
+   ```
+   The repo is now permanently exactly **one commit deep**; push size == snapshot size.
+   Note the empty-tree guard: `if git diff --cached --quiet && [ -n "$(git rev-parse -q --verify HEAD)" ]`
+   — without the HEAD check, a fresh orphan checkout with no diff would skip committing.
+
+2. **state.db weekly, not daily.** It is the single largest, fastest-growing, and most
+   redundant item (session history, ~95% identical day to day):
+   ```bash
+   DOW="$(date +%u)"   # 7 = Sunday
+   if [ -f state.db ] && { [ "$DOW" = "7" ] || [ "$VAULT_FULL" = "1" ]; }; then ... fi
+   ```
+   Force a full run any time with `VAULT_FULL=1 bash scripts/narusya-vault-sync.sh`.
+   Daily runs still carry the irreplaceable parts: lorebooks, encrypted secrets, Qdrant
+   snapshots, skills, scripts, config, daemon-work.
+
+**One-time cleanup for an already-bloated repo:** squash to a single orphan commit, then
+gc. The `git gc --prune=now` on a 6.5GB repo takes MANY minutes — run it with
+`background=true, notify_on_complete=true`, never in a 180s foreground call (it will
+appear to hang and time out while working correctly). Verify with
+`git log --oneline | wc -l` → 1, and `du -sh .git`.
+
+**Pitfalls:**
+- Don't "fix" bloat by deleting the vault and re-initing — you lose the remote's only
+  copy during the window before the next successful push.
+- `git count-objects -vH` reports real reclaimed size; `du -sh .git` right after a
+  squash still shows the old size until gc finishes.
+- Confirm SSH/remote health separately (`git ls-remote origin HEAD`) before blaming
+  credentials — a size/timeout failure looks identical to an auth failure in the log.
+
+
 - Ignoring GitHub's 100MB file cap → push rejected. Always chunk.
 - Running the collection-snapshot loop with a tiny timeout → the whole loop times out; snapshot per collection in background instead.
 - Passphrase stored ONLY in ~/.hermes/secrets → dies with the drive; give the human a copy (password manager, private DM).

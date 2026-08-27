@@ -1,6 +1,6 @@
 model:
-  default: stealth/ox-alpha
-  provider: openrouter
+  default: meituan/longcat-2.0:free
+  provider: nous
   base_url: ''
 providers:
   100.116.86.38:6969:
@@ -171,9 +171,10 @@ bedrock:
     stream_processing_mode: async
     trace: disabled
 auxiliary:
+  free_only: true
   vision:
-    provider: openrouter
-    model: qwen/qwen3-vl-8b-instruct
+    provider: nous
+    model: stepfun/step-3.7-flash:free
     base_url: ''
     api_key: ''
     timeout: 30
@@ -333,7 +334,7 @@ display:
     unicode_cols: 0
   tool_progress: new
 dashboard:
-  theme: rose
+  theme: default
   show_token_analytics: false
   oauth:
     client_id: ''
@@ -345,6 +346,7 @@ dashboard:
     secret: ''
     session_ttl_seconds: 0
   public_url: ''
+  font: jetbrains-mono
 privacy:
   redact_pii: false
 tts:
@@ -532,8 +534,8 @@ security:
   acked_advisories: []
   allow_lazy_installs: true
 cron:
-  model: deepseek/deepseek-v4-flash-0731
-  model_provider: openrouter
+  model: meituan/longcat-2.0:free
+  model_provider: nous
   provider: ''
   chronos:
     portal_url: https://portal.nousresearch.com
