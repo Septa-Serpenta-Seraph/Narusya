@@ -233,6 +233,7 @@ The `imageDownloadUrl` field is the critical path — use it for immediate downl
 ## References
 
 - `references/working-flow.md` — Full working flow transcript with code examples, failed approaches, and troubleshooting notes
+- `references/face-first-prompting.md` — Face-first template for character consistency, color enforcement, selfie prompting, and kontext repaints (verified 2026-08-27)
 
 ## ✅ WORKING AGAIN (2026-08-25) — Tyler & Vesper's Camoufox path
 

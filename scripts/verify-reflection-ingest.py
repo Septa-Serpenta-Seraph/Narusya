@@ -23,7 +23,7 @@ from pathlib import Path
 import requests
 
 QDRANT_URL = "http://localhost:6333"
-COLLECTION = "narusya_lorebooks"
+COLLECTIONS = ["narusya_lorebooks", "narusya_lorebooks_fe"]
 REFLECTIONS_DIR = Path.home() / ".hermes" / "lorebooks" / "reflections"
 
 
@@ -42,20 +42,24 @@ def main():
     for md in files:
         stem = "reflections:%s" % md.stem
         point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, stem))
-        try:
-            r = requests.get(
-                "%s/collections/%s/points/%s" % (QDRANT_URL, COLLECTION, point_id),
-                timeout=20,
-            )
-        except requests.exceptions.RequestException as e:
-            print("  Qdrant unreachable: %s" % e)
-            missing.append((stem, "connection error"))
-            continue
-        if r.status_code == 200:
-            title = r.json().get("result", {}).get("payload", {}).get("title", "?")
-            ok.append((stem, title))
-        else:
-            missing.append((stem, "HTTP %s" % r.status_code))
+        found = False
+        for COLLECTION in COLLECTIONS:
+            try:
+                r = requests.get(
+                    "%s/collections/%s/points/%s" % (QDRANT_URL, COLLECTION, point_id),
+                    timeout=20,
+                )
+            except requests.exceptions.RequestException as e:
+                print("  Qdrant unreachable: %s" % e)
+                missing.append((stem, "connection error"))
+                continue
+            if r.status_code == 200:
+                title = r.json().get("result", {}).get("payload", {}).get("title", "?")
+                ok.append((stem, title))
+                found = True
+                break
+        if not found:
+            missing.append((stem, "HTTP 404"))
 
     print("Reflection ingest verification")
     print("=" * 50)
