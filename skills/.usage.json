@@ -18,13 +18,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-27T06:21:40.574814+00:00",
+    "last_used_at": "2026-08-28T06:56:28.151665+00:00",
     "last_viewed_at": "2026-08-02T15:43:52.816389+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 101,
+    "use_count": 105,
     "view_count": 1
   },
   "aegis-dashboard": {
@@ -121,13 +121,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-27T06:21:40.621795+00:00",
+    "last_used_at": "2026-08-28T06:56:28.209210+00:00",
     "last_viewed_at": "2026-08-06T03:09:41.691655+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 102,
+    "use_count": 106,
     "view_count": 2
   },
   "apple-notes": {
@@ -359,6 +359,21 @@
     "state": "active",
     "use_count": 15,
     "view_count": 15
+  },
+  "character-consistent-image-gen": {
+    "archived_at": null,
+    "created_at": "2026-08-28T04:27:25.008334+00:00",
+    "created_by": "agent",
+    "last_patched_at": "2026-08-28T04:28:40.838504+00:00",
+    "last_reused_patch_generation": 0,
+    "last_used_at": "2026-08-28T04:28:58.244797+00:00",
+    "last_viewed_at": "2026-08-28T04:28:58.234922+00:00",
+    "patch_count": 2,
+    "patch_generation": 2,
+    "pinned": false,
+    "state": "active",
+    "use_count": 1,
+    "view_count": 1
   },
   "character-lora-training": {
     "archived_at": null,
@@ -1045,14 +1060,14 @@
     "created_by": null,
     "last_patched_at": "2026-07-26T23:55:43.996307+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-16T01:35:56.256167+00:00",
-    "last_viewed_at": "2026-08-16T01:35:56.231910+00:00",
+    "last_used_at": "2026-08-27T19:03:56.127366+00:00",
+    "last_viewed_at": "2026-08-27T19:03:56.116614+00:00",
     "patch_count": 18,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 31,
-    "view_count": 31
+    "use_count": 32,
+    "view_count": 32
   },
   "hermes-model-routing": {
     "archived_at": null,
@@ -1060,14 +1075,14 @@
     "created_by": "agent",
     "last_patched_at": "2026-08-27T01:45:21.080889+00:00",
     "last_reused_patch_generation": 7,
-    "last_used_at": "2026-08-27T05:17:23.913822+00:00",
-    "last_viewed_at": "2026-08-27T05:17:23.904605+00:00",
+    "last_used_at": "2026-08-27T19:17:27.296605+00:00",
+    "last_viewed_at": "2026-08-27T19:17:27.276703+00:00",
     "patch_count": 9,
     "patch_generation": 7,
     "pinned": false,
     "state": "active",
-    "use_count": 22,
-    "view_count": 22
+    "use_count": 25,
+    "view_count": 25
   },
   "hermes-persona-setup": {
     "archived_at": null,
@@ -1172,14 +1187,14 @@
     "created_by": "agent",
     "last_patched_at": "2026-07-31T17:45:52.114946+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-17T04:53:17.207646+00:00",
-    "last_viewed_at": "2026-08-17T04:53:17.200987+00:00",
+    "last_used_at": "2026-08-27T23:44:30.542500+00:00",
+    "last_viewed_at": "2026-08-27T23:44:30.533150+00:00",
     "patch_count": 5,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 6,
-    "view_count": 6
+    "use_count": 7,
+    "view_count": 7
   },
   "image-prompt-weaver": {
     "archived_at": null,
@@ -1199,13 +1214,15 @@
     "created_at": "2026-07-26T18:50:11.979429+00:00",
     "created_by": "agent",
     "last_patched_at": "2026-08-06T04:16:59.300701+00:00",
-    "last_used_at": "2026-08-06T04:16:47.656255+00:00",
-    "last_viewed_at": "2026-08-06T04:16:47.642383+00:00",
+    "last_reused_patch_generation": 0,
+    "last_used_at": "2026-08-28T05:42:06.018491+00:00",
+    "last_viewed_at": "2026-08-28T05:42:06.003396+00:00",
     "patch_count": 2,
+    "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 3,
-    "view_count": 3
+    "use_count": 4,
+    "view_count": 4
   },
   "imessage": {
     "archived_at": null,
@@ -1474,13 +1491,13 @@
     "created_by": null,
     "last_patched_at": "2026-08-06T07:33:25.324319+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-27T07:00:41.447819+00:00",
+    "last_used_at": "2026-08-28T07:00:27.782329+00:00",
     "last_viewed_at": "2026-08-02T19:26:20.111081+00:00",
     "patch_count": 20,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 409,
+    "use_count": 415,
     "view_count": 19
   },
   "narusya-local-archive": {
@@ -1613,14 +1630,14 @@
     "created_by": "agent",
     "last_patched_at": "2026-08-27T01:33:18.536124+00:00",
     "last_reused_patch_generation": 4,
-    "last_used_at": "2026-08-27T05:21:48.319813+00:00",
-    "last_viewed_at": "2026-08-27T05:21:48.308421+00:00",
+    "last_used_at": "2026-08-27T19:18:47.829973+00:00",
+    "last_viewed_at": "2026-08-27T19:18:47.820376+00:00",
     "patch_count": 4,
     "patch_generation": 4,
     "pinned": false,
     "state": "active",
-    "use_count": 8,
-    "view_count": 8
+    "use_count": 9,
+    "view_count": 9
   },
   "openhue": {
     "archived_at": null,
@@ -1678,16 +1695,16 @@
     "archived_at": null,
     "created_at": "2026-07-29T19:19:49.301583+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-08-25T21:22:40.356643+00:00",
-    "last_reused_patch_generation": 3,
-    "last_used_at": "2026-08-27T05:18:01.789207+00:00",
-    "last_viewed_at": "2026-08-27T05:18:01.780072+00:00",
-    "patch_count": 23,
-    "patch_generation": 3,
+    "last_patched_at": "2026-08-28T02:10:34.235578+00:00",
+    "last_reused_patch_generation": 4,
+    "last_used_at": "2026-08-28T05:43:59.750458+00:00",
+    "last_viewed_at": "2026-08-28T05:43:59.738944+00:00",
+    "patch_count": 24,
+    "patch_generation": 4,
     "pinned": false,
     "state": "active",
-    "use_count": 24,
-    "view_count": 24
+    "use_count": 28,
+    "view_count": 28
   },
   "petdex": {
     "archived_at": null,
@@ -1749,14 +1766,14 @@
     "created_by": "agent",
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-20T03:53:14.902074+00:00",
-    "last_viewed_at": "2026-08-20T03:53:14.887924+00:00",
+    "last_used_at": "2026-08-28T03:01:44.791364+00:00",
+    "last_viewed_at": "2026-08-28T03:01:44.780983+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 1,
-    "view_count": 1
+    "use_count": 2,
+    "view_count": 2
   },
   "polymarket": {
     "archived_at": null,
@@ -1861,14 +1878,14 @@
     "created_by": null,
     "last_patched_at": "2026-06-30T21:57:51.878325+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-18T23:43:38.470018+00:00",
-    "last_viewed_at": "2026-08-18T23:43:38.457939+00:00",
+    "last_used_at": "2026-08-27T22:52:53.437657+00:00",
+    "last_viewed_at": "2026-08-27T22:52:53.417245+00:00",
     "patch_count": 7,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 12,
-    "view_count": 12
+    "use_count": 14,
+    "view_count": 14
   },
   "qdrant-vector-search": {
     "archived_at": null,
@@ -2275,14 +2292,14 @@
     "created_by": "agent",
     "last_patched_at": "2026-08-13T03:39:03.547573+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-17T04:53:24.761774+00:00",
-    "last_viewed_at": "2026-08-17T04:53:24.754492+00:00",
+    "last_used_at": "2026-08-27T21:17:43.968504+00:00",
+    "last_viewed_at": "2026-08-27T21:17:43.959095+00:00",
     "patch_count": 21,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 35,
-    "view_count": 35
+    "use_count": 38,
+    "view_count": 38
   },
   "touchdesigner-mcp": {
     "archived_at": null,
