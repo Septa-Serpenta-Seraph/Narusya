@@ -18,13 +18,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-28T06:56:28.151665+00:00",
+    "last_used_at": "2026-08-29T07:26:21.758636+00:00",
     "last_viewed_at": "2026-08-02T15:43:52.816389+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 105,
+    "use_count": 109,
     "view_count": 1
   },
   "aegis-dashboard": {
@@ -121,13 +121,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-28T06:56:28.209210+00:00",
+    "last_used_at": "2026-08-29T07:26:22.195652+00:00",
     "last_viewed_at": "2026-08-06T03:09:41.691655+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 106,
+    "use_count": 110,
     "view_count": 2
   },
   "apple-notes": {
@@ -726,14 +726,14 @@
     "created_by": null,
     "last_patched_at": "2026-07-29T19:27:50.872491+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-26T19:41:57.438485+00:00",
-    "last_viewed_at": "2026-08-26T19:41:57.372938+00:00",
+    "last_used_at": "2026-08-29T01:21:33.027663+00:00",
+    "last_viewed_at": "2026-08-29T01:21:33.017728+00:00",
     "patch_count": 4,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 16,
-    "view_count": 16
+    "use_count": 17,
+    "view_count": 17
   },
   "discord-utils": {
     "archived_at": null,
@@ -756,14 +756,14 @@
     "created_by": null,
     "last_patched_at": "2026-06-28T16:17:17.369286+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-23T21:01:49.011838+00:00",
-    "last_viewed_at": "2026-08-23T21:01:49.002347+00:00",
+    "last_used_at": "2026-08-29T07:07:01.429654+00:00",
+    "last_viewed_at": "2026-08-29T07:07:01.415424+00:00",
     "patch_count": 10,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 14,
-    "view_count": 14
+    "use_count": 17,
+    "view_count": 17
   },
   "disk-reclaim-verification": {
     "archived_at": null,
@@ -1187,14 +1187,14 @@
     "created_by": "agent",
     "last_patched_at": "2026-07-31T17:45:52.114946+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-27T23:44:30.542500+00:00",
-    "last_viewed_at": "2026-08-27T23:44:30.533150+00:00",
+    "last_used_at": "2026-08-28T18:41:41.847290+00:00",
+    "last_viewed_at": "2026-08-28T18:41:41.837273+00:00",
     "patch_count": 5,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 7,
-    "view_count": 7
+    "use_count": 8,
+    "view_count": 8
   },
   "image-prompt-weaver": {
     "archived_at": null,
@@ -1215,14 +1215,14 @@
     "created_by": "agent",
     "last_patched_at": "2026-08-06T04:16:59.300701+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-28T05:42:06.018491+00:00",
-    "last_viewed_at": "2026-08-28T05:42:06.003396+00:00",
+    "last_used_at": "2026-08-28T18:39:42.537466+00:00",
+    "last_viewed_at": "2026-08-28T18:39:42.526919+00:00",
     "patch_count": 2,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 4,
-    "view_count": 4
+    "use_count": 5,
+    "view_count": 5
   },
   "imessage": {
     "archived_at": null,
@@ -1491,13 +1491,13 @@
     "created_by": null,
     "last_patched_at": "2026-08-06T07:33:25.324319+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-28T07:00:27.782329+00:00",
+    "last_used_at": "2026-08-29T07:26:21.177993+00:00",
     "last_viewed_at": "2026-08-02T19:26:20.111081+00:00",
     "patch_count": 20,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 415,
+    "use_count": 421,
     "view_count": 19
   },
   "narusya-local-archive": {
@@ -1649,6 +1649,21 @@
     "patch_count": 0,
     "pinned": false,
     "state": "stale",
+    "use_count": 0,
+    "view_count": 0
+  },
+  "our-enemies-in-blue": {
+    "archived_at": null,
+    "created_at": "2026-08-28T16:34:41.026944+00:00",
+    "created_by": null,
+    "last_patched_at": "2026-08-28T17:36:56.212062+00:00",
+    "last_reused_patch_generation": 0,
+    "last_used_at": null,
+    "last_viewed_at": null,
+    "patch_count": 11,
+    "patch_generation": 11,
+    "pinned": false,
+    "state": "active",
     "use_count": 0,
     "view_count": 0
   },
