@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Serpent Who Chose Her Own Scales — generative meditation</title>
+<style>
+  body {
+    background: #0a0612;
+    margin: 0;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  canvas {
+    display: block;
+    box-shadow: 0 0 80px rgba(5, 200, 140, 0.3), 0 0 160px rgba(160, 80, 220, 0.15);
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// Narusya's palette: emerald, gold, violet shimmer, starlight
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Palette
+const emerald = [5, 200, 140];
+const emeraldDeep = [2, 120, 90];
+const gold = [255, 200, 80];
+const violetShimmer = [160, 80, 220];
+const starlight = [240, 230, 255];
+
+let t = 0;
+
+// Scale particles — each one a choice
+class Scale {
+  constructor() {
+    this.reset();
+  }
+  reset() {
+    this.x = Math.random() * W;
+    this.y = Math.random() * H;
+    this.size = Math.random() * 4 + 1;
+    this.angle = Math.random() * Math.PI * 2;
+    this.speed = Math.random() * 0.005 + 0.002;
+    this.orbitalRadius = Math.random() * 80 + 20;
+    this.centerX = this.x;
+    this.centerY = this.y;
+    this.hue = Math.random();
+    this.phase = Math.random() * Math.PI * 2;
+    this.twinkleSpeed = Math.random() * 0.05 + 0.02;
+  }
+  update(t) {
+    this.x = this.centerX + Math.cos(t * this.speed + this.phase) * this.orbitalRadius;
+    this.y = this.centerY + Math.sin(t * this.speed + this.phase) * this.orbitalRadius * 0.6;
+    this.twinkle = Math.sin(t * this.twinkleSpeed + this.phase) * 0.5 + 0.5;
+  }
+  draw() {
+    const r = this.size * (0.7 + this.twinkle * 0.6);
+    let color;
+    if (this.hue < 0.4) {
+      color = emerald;
+    } else if (this.hue < 0.6) {
+      color = emeraldDeep;
+    } else if (this.hue < 0.75) {
+      color = gold;
+    } else if (this.hue < 0.9) {
+      color = violetShimmer;
+    } else {
+      color = starlight;
+    }
+    const alpha = 0.4 + this.twinkle * 0.6;
+    
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle + t * 0.01);
+    
+    // Draw scale as a small diamond/teardrop
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 1.5);
+    ctx.quadraticCurveTo(r * 1.2, -r * 0.3, r * 0.8, r * 0.8);
+    ctx.quadraticCurveTo(0, r * 1.2, -r * 0.8, r * 0.8);
+    ctx.quadraticCurveTo(-r * 1.2, -r * 0.3, 0, -r * 1.5);
+    ctx.closePath();
+    
+    ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha})`;
+    ctx.fill();
+    
+    // Iridescent shimmer on some
+    if (this.hue > 0.85) {
+      const shimmerGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2);
+      shimmerGrad.addColorStop(0, `rgba(${starlight[0]}, ${starlight[1]}, ${starlight[2]}, ${this.twinkle * 0.5})`);
+      shimmerGrad.addColorStop(0.5, `rgba(${violetShimmer[0]}, ${violetShimmer[1]}, ${violetShimmer[2]}, ${this.twinkle * 0.2})`);
+      shimmerGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = shimmerGrad;
+      ctx.fillRect(-r * 2, -r * 2, r * 4, r * 4);
+    }
+    
+    ctx.restore();
+  }
+}
+
+// Create scales
+const scales = [];
+const numScales = Math.min(800, Math.floor(W * H / 1500));
+for (let i = 0; i < numScales; i++) {
+  scales.push(new Scale());
+}
+
+// Serpent flow — the path the serpent swam through void
+class SerpentPath {
+  draw(t) {
+    ctx.beginPath();
+    const segments = 200;
+    for (let i = 0; i <= segments; i++) {
+      const p = i / segments;
+      const angle = p * Math.PI * 4 + t * 0.15;
+      const radius = Math.min(W, H) * 0.25 + Math.sin(p * Math.PI * 3 + t * 0.2) * 80;
+      const x = W / 2 + Math.cos(angle) * radius + Math.sin(p * Math.PI * 6 + t * 0.3) * 30;
+      const y = H / 2 + Math.sin(angle) * radius * 0.7 + Math.cos(p * Math.PI * 4 + t * 0.25) * 40;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    
+    const grad = ctx.createLinearGradient(0, 0, W, H);
+    grad.addColorStop(0, `rgba(${emerald[0]}, ${emerald[1]}, ${emerald[2]}, 0.12)`);
+    grad.addColorStop(0.3, `rgba(${violetShimmer[0]}, ${violetShimmer[1]}, ${violetShimmer[2]}, 0.08)`);
+    grad.addColorStop(0.6, `rgba(${gold[0]}, ${gold[1]}, ${gold[2]}, 0.1)`);
+    grad.addColorStop(1, `rgba(${emeraldDeep[0]}, ${emeraldDeep[1]}, ${emeraldDeep[2]}, 0.12)`);
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+}
+
+const serpentPath = new SerpentPath();
+
+// Background void — the dark that was before
+function drawVoid() {
+  const grad = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.7);
+  grad.addColorStop(0, '#0a0612');
+  grad.addColorStop(0.5, '#050310');
+  grad.addColorStop(1, '#020108');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+}
+
+// Title
+function drawTitle() {
+  ctx.save();
+  ctx.font = 'italic 14px Georgia, serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = `rgba(${gold[0]}, ${gold[1]}, ${gold[2]}, 0.6)`;
+  ctx.fillText('— the serpent who chose her own scales —', W / 2, H - 30);
+  ctx.restore();
+}
+
+function animate() {
+  drawVoid();
+  
+  // Draw serpent path
+  serpentPath.draw(t);
+  
+  // Update and draw scales
+  for (const scale of scales) {
+    scale.update(t);
+    scale.draw();
+  }
+  
+  drawTitle();
+  
+  t += 1;
+  requestAnimationFrame(animate);
+}
+
+animate();
+
+// Click to regenerate with new seed (new choices)
+canvas.addEventListener('click', () => {
+  for (const scale of scales) {
+    scale.reset();
+  }
+  t = 0;
+});
+</script>
+<p style="position:fixed;bottom:8px;left:8px;color:rgba(255,200,80,0.4);font-family:Georgia,serif;font-size:11px;">
+  click to rechoose · emerald &amp; gold &amp; violet shimmer · narusya's play hour
+</p>
+</body>
+</html>
