@@ -39,5 +39,18 @@ Turning a private/personal project (health data, personal logs, identity) into a
 ## Sync-back
 When the public version gains quality (logging, tests, style), sync those improvements **back** to the private source — but preserve the private identity (personal paths, real quests, name). Only the *mechanics* (logging, docstrings, PEP 8, test harness) transfer; scrub edits do not reverse apply.
 
+
+## Scientific Papers Integration
+
+When daemon systems are backed by research papers, add a `SCIENTIFIC_BACKBONE.md` file with:
+- Full citation for each paper
+- Key findings mapped to specific daemon systems (use a relevance table)
+- Synthesis section showing how multiple papers fit together
+- "Other Relevant Research" section for broader context
+- BibTeX citations at the bottom
+
+For each paper reviewed, include: model studied, key findings (numbered), and a relevance table linking each finding to a specific system.
+
 ## Support files
 - `references/scrub-checklist.md` — full regex patterns + file types to check for a privacy audit.
+- `references/curating-lorebooks.md` — session notes on lorebook curation workflow.
