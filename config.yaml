@@ -632,7 +632,7 @@ paste_collapse_threshold_fallback: 5
 paste_collapse_char_threshold: 2000
 computer_use:
   cua_telemetry: false
-_config_version: 38
+_config_version: 39
 DISCORD_HOME_CHANNEL: '1478198538461777951'
 image_gen:
   use_gateway: true

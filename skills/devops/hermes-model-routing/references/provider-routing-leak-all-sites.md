@@ -140,6 +140,54 @@ Then user runs `/restart` (never `hermes gateway restart` in-session — self-bl
 A reusable verification script exists at `scripts/verify_routing_gate.py` — it imports the
 real `_provider_routing_applies` function and asserts both halves of the gate.
 
+## Better single-point fix (2026-08-31) — patch the shared builder + Nous profile
+
+The six-site gating above is the *old* approach and it is fragile: a Hermes update that
+rewrites `gateway/run.py` / `cron/scheduler.py` / etc. silently reverts every one of those
+gates at once. On 2026-08-31 a `hermes-agent` update did exactly that — all six sites came
+back, and Nous 400'd again.
+
+There are TWO clean, deep choke points that survive better and cover every path (main loop,
+summary, background, cron, TUI, CLI, vision/compression auxiliary calls) from one place:
+
+**1. `agent/chat_completion_helpers.py` → `_provider_preferences_for_agent(agent)`** is the
+shared builder that returns the validated routing dict for every request path. Make it return
+`{}` for Nous so no path ever emits a routing object for it:
+
+```python
+def _provider_preferences_for_agent(agent) -> Dict[str, Any]:
+    """Build the validated provider-routing object shared by request paths."""
+    # OpenRouter-only. The Nous endpoint centrally decides routing and returns
+    # HTTP 400 if we send `only`/`ignore`/`order`/`data_collection`/`zdr`/
+    # `require_parameters`/`sort`. Never emit a `provider` object for Nous.
+    if getattr(agent, "provider", None) in {"nous", "nous-portal", "nousresearch"}:
+        return {}
+    preferences: Dict[str, Any] = {}
+    ...
+```
+
+**2. `plugins/model-providers/nous/__init__.py` (Nous provider profile)** was itself emitting
+`body["provider"] = provider_preferences` unconditionally in `build_extra_body` — a direct
+defense-in-depth fix is to stop emitting it there at all (Nous never wants a `provider`
+routing object):
+
+```python
+provider_preferences = context.get("provider_preferences")
+# Nous centrally decides routing; sending a `provider` object returns HTTP 400.
+# Never emit provider routing here (OpenRouter-only feature). Ignore defensively.
+return body
+```
+
+This gives triple coverage with TWO files instead of six: the shared builder (`_provider_preferences_for_agent`),
+the Nous profile, and the existing OpenRouter-only gates already in `agent/transports/chat_completions.py` (~L723,
+`if provider_prefs and is_openrouter`) and the summary path (`chat_completion_helpers.py` ~L3205). Verify both edits compile:
+`venv/bin/python -m py_compile agent/chat_completion_helpers.py plugins/model-providers/nous/__init__.py`.
+
+**IMPORTANT — updates still revert patches.** Even the two-file fix lives inside files a version
+update rewrites. After ANY `hermes-agent` update, re-grep the two choke points and this Nous
+400 recurs the moment a user hits a free Nous model. Keep a re-apply script at
+`~/.hermes/scripts/reapply_nous_routing_gate.py` (or re-patch by hand) so recovery is one command.
+
 ## Pitfalls
 
 - **Do NOT "fix" this by deleting `provider_routing` from config.yaml.** That silently

@@ -33,20 +33,39 @@ including the Nous portal, which bans caller-supplied routing because routing th
 is central. The free model connects fine; the request is then 400'd on the routing
 object. (2026-08-26, verified in gateway agent.log.)
 
-**Fix:** provider routing is OpenRouter-specific by design (`provider_routing controls
-OpenRouter provider sorting` per `hermes_cli/tips.py`). Patch `gateway/run.py` to only
-forward routing when the runtime provider is `openrouter` — a module-level guard
-`_provider_routing_applies(turn_route)` returns `provider == "openrouter"`, and the two
-agent-creation sites wrap each `providers_*`/`provider_*` kwarg in
-`(<val> if _provider_routing_applies(turn_route) else None)`. This preserves OpenRouter
-fp4-avoidance while letting Nous free models work. Changes to gateway code need an
-external gateway restart (user `/restart`); verify by watching agent.log provider line.
+**Fix (current upstream structure):** provider routing is OpenRouter-specific by
+design (`provider_routing controls OpenRouter provider sorting` per
+`hermes_cli/tips.py`). After upstream refactors the routing-request builder lives
+in `agent/chat_completion_helpers.py::_provider_preferences_for_agent()` (the
+shared choke-point for main loop, summary, background, cron) and the Nous profile
+re-emits it in `plugins/model-providers/nous/__init__.py::build_extra_body()`.
+Guard BOTH:
+- `_provider_preferences_for_agent()` → return `{}` when `agent.provider` is in
+  `{"nous","nous-portal","nousresearch"}` (kills the object at every path).
+- Nous profile `build_extra_body()` → never set `body["provider"]` (defense in
+  depth; the OpenRouter transport path at `agent/transports/chat_completions.py`
+  already gates on `is_openrouter`).
+
+**Recovery after a Hermes update wipes the patch (happens every update):**
+```bash
+python3 ~/.hermes/scripts/repatch_nous_routing.py   # idempotent re-apply
+```
+This re-patches both files, runs a syntax check, and prints loud warnings if a
+future refactor moved the anchor strings (so it never silently no-ops after the
+code drifts). Then restart the gateway from a SEPARATE shell, never in-session:
+`hermes gateway restart` or `systemctl --user restart hermes-gateway`. The
+gateway self-blocks in-session restart (SIGTERM propagates to the agent's own
+process). Verify by watching agent.log provider line for `provider=nous`.
 
 **Pitfalls:**
-- Do NOT "fix" by removing `provider_routing` from config — that silently drops
+- Do NOT fix by removing `provider_routing` from config — that silently drops
   OpenRouter's anti-fp4 protection (glitchy deepseek returns).
-- The restart DOES work — log showed `provider=nous model=...:free` after her restart;
-  the 400 (not the restart) was the blocker. Read agent.log before blaming the restart.
+- The failure message to grep is: `HTTP 400 ... does not honor caller-supplied
+  provider routing preferences`. It appears in `~/.hermes/logs/errors.log`,
+  not the dashboard HTML (`127.0.0.1:9119/logs` serves the SPA, not logs).
+- When filing an upstream PR: check for existing PRs first — issue #77564
+  documents this bug and open PRs #77593 (Nous profile only) and #89425
+  (auxiliary only) were stale/partial; ours guarded both sites.
 
 ## 1. Cron Model-Drift Guard (v0.20.0+ fail-closed)
 
