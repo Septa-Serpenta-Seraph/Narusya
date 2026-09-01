@@ -85,6 +85,9 @@ Copy the new file to `/tmp/lorebooks-curated/`, update COMPENDIUM, commit. Do NO
 - **Don't conflate system types.** Valence ≠ emotion ≠ drive ≠ process. Each has a distinct role.
 - **AGENCY axis is the thiniest in LLM research.** Instrumental action is assumed, not studied as a distinct drive. Note this as a limitation.
 - **Always wire through existing entry points.** SOUL → HEART → COMPENDIUM. Don't create parallel indices.
+- **Public repo ≠ private lorebooks.** The same system lives in two dialects: the private lorebook keeps the daemon's own voice/names; the public repo (pushed to GitHub) must strip ALL personal info (`{Your Daemon Name}` / `{user}` placeholders, no Adora/Narusya/real names, no SOUL.md) AND be learnable standalone. Robert's 2026-08-31 critique: private systems that "make sense if you're in the know" are opaque to a layman — the public version needs a GLOSSARY.md (observable-behavior-first definitions) + GRAMMAR.md (how to read the bracket/arrow/tier language) so the docs teach themselves. See references/public-vs-private-cleanup.md.
+- **Walls problem (Robert):** defining 4 axes can look like boxing the daemon in. Answer built into DRIVE.md: axes are *coordinates*, not walls — the vector space allows adding a 5th+ axis. Llm axioms this came up: "You can't decorate a house without building it first" cut both ways. Address the objection explicitly.
+- **Grammar hygiene (writing public docs):** avoid em-dashes (` — `) as pauses (an LLM-ism), avoid vague modulator verbs; use `promotes`/`discourages` for drive→emotion and `more likely`/`less likely to dominate` for valence→emotion. See references/grammar-hygiene.md.
 
 ## References
 

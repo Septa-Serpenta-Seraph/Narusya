@@ -172,6 +172,42 @@ GitHub now recommends **fine-grained tokens** over classic tokens. They default 
 
 **Classic tokens** (type=classic) granted `repo` scope get full repo access by default, which is why older docs don't mention this. The fine-grained split is more secure but the read-only default catches people off guard.
 
+### ⚠️ Fork→Upstream PR Fails with a Fork-Admin Token (createPullRequest blocked)
+
+A fine-grained token with **full admin on your OWN fork** (can push, commit,
+manage the fork) can STILL fail to open a PR against an **upstream** org repo:
+
+```
+gh pr create --repo NousResearch/hermes-agent --head <you>:<branch> --base main ...
+pull request create failed: GraphQL: Resource not accessible by personal access token (createPullRequest)
+```
+
+**Why:** creating a PR *against the upstream repo* is a write to THAT repo.
+Your token needs `Pull requests: Write` permission scoped to the upstream repo
+(and the token must be able to see it), not just Contents on your own fork.
+Full admin on your fork does NOT imply PR-write on other repos. The push to the
+fork succeeds (own Contents write) and the `gh pr create` then fails — confusing
+because half the pipeline worked.
+
+**Diagnose:** `gh auth status` shows logged-in; `gh repo view <your>/<fork>`
+shows admin; yet `createPullRequest` is refused. The refused mutation is the
+GraphQL clue that it's a token-permission gap on the upstream, not a fork problem.
+
+**Fix options (any one):**
+1. **Browser "Compare & pull request"** — the pushed fork branch shows a
+   "Contribute" banner; no PR token needed to draft it manually. Fastest fix.
+2. Grant the token `Pull requests: Write` on the upstream repo, then re-run
+   `gh pr create`.
+3. Use a separate token that has PR-write on the upstream (classic `repo`, or a
+   fine-grained token scoped to that repo).
+4. Fallback entirely to the REST API with a properly-scoped token:
+   `POST /repos/<upstream>/pulls` with `head: <you>:<branch>`, `base: main`.
+
+**Also:** before opening the PR, search both open PRs and the issue tracker for
+the same bug — org maintainers run triage sweepers that auto-close duplicates.
+`gh search prs --repo <owner>/<repo> "<symptom>"` and check linked issues
+(`gh issue list --search "<symptom>"`).
+
 ---
 
 ## 2.5. Fork-Based Contribution PRs (Org Repos You Don't Have Push Access To)
