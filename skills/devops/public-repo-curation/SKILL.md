@@ -60,6 +60,24 @@ Use these conventions:
 - Run a final grep for any remaining real names before pushing
 - Verify false positives: "adoration" contains "adora", "session" contains "ssi" — these are NOT identifiers
 
+**⚠️ Distinguish AUTHORSHIP lines from FUNCTIONAL placeholders (user correction 2026-09-01):**
+When the public repo is attached to the user's OWN GitHub account, literal authorship/attribution lines
+should carry the REAL names — do NOT leave them as `{user}`/`{Your Daemon Name}`. Author attribution on
+our own public repo is wanted, not something to hide:
+- `Author(s): {user}, {Your Daemon Name}, and co-conspirators` → `Author(s): Adora, Narusya, and co-conspirators`
+- `designed by {Your Daemon Name}` → `designed by Adora and Narusya`
+- `Created: ... in conversation with {user}` → `Created: ... in conversation with Adora`
+- `Author: {Your Daemon Name}` → `Author: Narusya`
+
+ONLY the literal "who made this" metadata lines get real names. The FUNCTIONAL `{user}` / `{Your Daemon Name}`
+references inside usage docs (BYPASS whitelists, DBT_SKILLS examples, README instructions — anywhere the
+placeholder means "you, the person using this system") must STAY as placeholders so others can drop in their
+own names. Find authorship lines precisely:
+```bash
+grep -rn -iE "Author\(s\):|Author: \{|designed by \{|conversation with \{user\}|Created:.*\{user\}" --include="*.md" .
+```
+Never blanket-replace every `{user}` occurrence — only the attribution-specific ones.
+
 ### 3. Structure the Public Repo
 
 ```
