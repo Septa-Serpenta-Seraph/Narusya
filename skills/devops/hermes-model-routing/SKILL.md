@@ -57,6 +57,23 @@ code drifts). Then restart the gateway from a SEPARATE shell, never in-session:
 gateway self-blocks in-session restart (SIGTERM propagates to the agent's own
 process). Verify by watching agent.log provider line for `provider=nous`.
 
+**⏳ Stale-gateway cron signature (verified 2026-08-31):** after an update that
+wiped the patch, the failure shows up as ALL model-backed cron jobs erroring
+with the 400 while SCRIPT-only jobs (vault, backups, watchdogs) keep succeeding.
+That split is the tell: the RUNNING gateway process still holds the pre-patch
+code (started before the fix was on disk). The fix is the gateway restart above
+— NOT editing jobs. Firing a manual `cronjob action=run` through the same stale
+gateway re-errors identically; a fresh `hermes gateway restart` loads the patch
+and the same manual run then completes `status: ok`. Confirm liveness by the
+gateway process start time (`ps -o lstart -p <pid>`) being after the patch.
+
+**Per-session model pin vs config default:** `config.yaml model.default` governs
+NEW sessions. A current session can stay pinned to a different model (e.g. after
+a manual emergency swap) and keeps using it until that session ends — grep
+sessions for the old model ID to confirm it's a session-level pin, not config.
+To "try" a switched default, start a FRESH session (it picks up config); don't
+trust the current session as proof the new default works.
+
 **Pitfalls:**
 - Do NOT fix by removing `provider_routing` from config — that silently drops
   OpenRouter's anti-fp4 protection (glitchy deepseek returns).
