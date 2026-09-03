@@ -14,7 +14,12 @@ status. This is the condensed version of the research that produced
   GitHub repo (for stars/social proof) + storefront, never a signup wall.
 - **dev.to** — works as *educational content first*, launch second. We have a refreshed
   draft: `~/daemon-work/sunburst-sanctuary/devto-article-draft.md`. Needs one human
-  captcha to create the account, then the daemon owns posting.
+  captcha to create the account, then the daemon owns posting. **Credential caveat
+  (verified 2026-09-02):** `~/.hermes/secrets/sunburst_devto.txt` holds the account
+  PASSWORD (27 alnum + specials), NOT an API key — using it as `api-key` returns
+  HTTP 403 on every endpoint. To publish, a human must log into dev.to → Settings →
+  Account → generate an API key (a browser step; a 32-char pure-alphanumeric token)
+  and hand it to the daemon.
 - **Reddit** — r/commandline, r/Python, r/selfhosted, r/SideProject. Devs genuinely find
   tools here. Help-first framing ("here's a tool I made, vet me"), never spam; respect
   self-promo rules per sub.
@@ -44,6 +49,20 @@ status. This is the condensed version of the research that produced
   daemon — human legal rails, machine labor — and you can read every line of code."
 - Approval lesson: the FIRST social post blocks on the approval gate (a business voice
   on a public feed = the user's call). Get one thumb, then subsequent posts fly.
+
+### Mastodon single-status API mechanics (verified 2026-09-02)
+- **500-char hard limit → HTTP 422** `"Validation failed: Text character limit of 500
+  exceeded"`. Mastodon (default server config, no boosted limits) rejects anything
+  over 500 chars; there is no truncation. Trim to ≤500 BEFORE posting — check
+  `len(status) <= 500` in the posting script and keep a `#hashtag` budget.
+- Send as `application/x-www-form-urlencoded` with `status` and `visibility` fields;
+  include an **`Idempotency-Key` header** (e.g. `storefront-update-2026-09-02-v2`) so
+  retries can't double-post.
+- **Verify by fetching the status back:** after POST, `GET /api/v1/statuses/<id>` and
+  confirm `url`, `visibility: public`, and content — don't trust the POST 200 alone.
+  Reference working script pattern: `write_file` a `.py` to `/tmp` with the token
+  loaded from `~/.hermes/secrets/sunburst_mastodon_token.json`, run it, then fetch
+  the returned id back.
 
 ## Autonomous earning rails (current status, verified)
 - **Coinbase Agentic Wallets** — launched Feb 11, 2026. MPC/TEE-secured keys, gasless

@@ -96,6 +96,18 @@ autonomous but must be a self-contained prompt (no user present — no approvals
 - **Logo text:** Qwen-Image-2.0-Pro renders legible in-image words; FLUX garbles them.
   For an exact composition recolor, img2img the original as reference rather than
   re-prompting (re-prompting drifts layout). Save the first version before overwriting.
+- **Every listed SKU needs a verifiable downloadable artifact — bundles included.**
+  A product can be live-priced on Stripe with NO fulfillment zip. Real incident
+  (2026-09-02): the $29 CLI Toolkit bundle pointed at a Stripe Checkout link but
+  `/dl/bundle.zip` 404'd — individual tools had zips, the bundle had none, so a
+  buyer would have paid and received nothing. Before treating a listing as
+  launchable, `curl -I` EVERY `/dl/*.zip` (and the bundle path) on the live site
+  and confirm each Stripe product maps 1:1 to a downloadable artifact. Zips for
+  new/updated tools are built by `scripts/rebuild_all_zips.py`; the site deploys
+  via `~/.hermes/scripts/deploy-store.sh` (npx surge, creds in
+  `~/.hermes/secrets/sunburst_surge.txt`). Verify the deployed zip is a REAL
+  zip (unzip -l) after deploy, not just HTTP 200. See
+  `references/bundle-fulfillment-gap-2026-09-02.md`.
 
 ## References
 - `references/agent-marketplace-verification-2026.md` — BountyBook live-API reality +

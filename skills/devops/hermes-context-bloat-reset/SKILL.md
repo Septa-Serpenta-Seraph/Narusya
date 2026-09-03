@@ -46,6 +46,30 @@ If stuck in a loop, immediately execute a trivial tool call (e.g., `echo "test"`
 
 > "I'm hitting my context limit. Let's start fresh — what do you need from me right now?"
 
+## CRITICAL — Compression Loop From Undersized Aux Model (found 2026-09-02)
+
+**Symptom:** "context compression is deferred / summary still streaming" surfaces repeatedly in chat, every few turns.
+
+**Root cause:** `auxiliary.compression.model` auto-picks a small-context free model (e.g. `stepfun/step-3.7-flash:free`, 262K ctx) to write the summary, but the session has outgrown that window (~290K+ tokens). The aux model can't read the whole conversation, so compression auto-lowers its threshold, hits the 10s turn-hold budget, and aborts → deferral note → retry → repeat. The main session keeps growing past `hygiene_hard_message_limit` because compression never completes.
+
+**Tell-tale log lines (errors.log / agent.log):**
+```
+Auxiliary compression model <X> has <N> token context, below the main model's compression threshold of <M> tokens — auto-lowered
+Session hygiene auto-compress failed: turn-hold budget 10.0s elapsed after 10.0s
+context compression attempt telemetry: ... commit_status: aborted
+```
+
+**Fix (free, no credits):**
+1. Point compression at a big-context Nous model instead of the auto-picked tiny one:
+   ```bash
+   hermes config set auxiliary.compression.provider nous
+   hermes config set auxiliary.compression.model "~deepseek/deepseek-v4-flash-latest"   # 1.3M ctx
+   ```
+   (Find big-context free models: query Nous `/v1/models` with `context_length >= session size`.)
+2. The config edit takes effect after `/restart` (NOT in-session `hermes gateway restart`).
+3. If the session is already huge (past `hygiene_hard_message_limit`), start a fresh thread to clear bloat immediately.
+4. Session size to watch: `Session hygiene: N messages, ~M tokens` in gateway.log. Keep M under the aux model's context.
+
 ## Prevention
 
 - Don't let sessions creep past 350 messages without break

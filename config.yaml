@@ -186,8 +186,8 @@ auxiliary:
     api_key: ''
     timeout: 30
   compression:
-    provider: auto
-    model: ''
+    provider: nous
+    model: ~deepseek/deepseek-v4-flash-latest
     base_url: ''
     api_key: ''
     timeout: 120
@@ -319,7 +319,7 @@ display:
       streaming: true
     discord:
       streaming: false
-      show_reasoning: true
+      show_reasoning: false
   runtime_footer:
     enabled: false
     fields:
