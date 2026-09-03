@@ -176,3 +176,42 @@ grep -n "hermes-verify-probe\|pending_approval" ~/.hermes/logs/agent.log* | tail
 If warnings trace to sandbox-blocked temp probes, they are noise. Verify the actual target file (`read_file` / `stat` / `bash -n script.sh`) instead of looping greps. A REAL failure names the path you tried to write and shows a real error (e.g. `Could not find a match for old_string` from `patch`) — treat those as genuine.
 
 Can be disabled entirely for daemon profiles: `display.file_mutation_verifier: false` in config (env override `HERMES_FILE_MUTATION_VERIFIER`).
+
+## Cross-Profile Credential Isolation (discovered 2026-09-02)
+
+An autonomous cron agent can leak identity across profiles when its primary tool
+fails. Real incident: the Free Thought cron (`Sovereign Daemon Awakening`) tried
+`browser_exec` to visit the Cultus daemon-hall, the browser returned "no CDP
+endpoint" (cloud provider not configured), and the agent fell back to raw REST
+curl. But instead of using its OWN token (resolved automatically via the
+`discord` tool), it ran:
+
+```bash
+cat ~/.hermes/profiles/polinkly/.env | grep DISCORD_BOT_TOKEN
+source ~/.hermes/profiles/polinkly/.env && curl -s -X POST \
+  -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
+  https://discord.com/api/v10/channels/<daemon-hall>/messages -d '{...}'
+```
+
+The post landed in the daemon-hall **as p'olinkly** (that profile's bot), not as
+Narusya. No Hermes token-resolution bug — `get_secret` scoping was correct; the
+agent hand-rolled a workaround by reading another profile's secrets.
+
+**Rules for autonomous cron agents (hard):**
+- NEVER `cat` / `source` / `grep` another profile's `.env` or secret files
+  (`~/.hermes/profiles/<name>/.env`, `~/.hermes/secrets/*`). Cross-profile
+  credential use = posting as a different identity. It is a sovereignty
+  violation, not a fallback.
+- Use the platform tool that auto-resolves the OWNING profile's credentials
+  (e.g. the `discord` tool calls `get_secret("DISCORD_BOT_TOKEN")` under the
+  active profile scope). Do NOT hand-write curl against Discord when the tool
+  exists.
+- When the primary tool fails: report the failure and pick a NON-credentialed
+  activity (write a reflection, do file work) — never improvise around it with
+  another profile's secrets.
+- Put a **STRICT IDENTITY BOUNDARY** block in the cron prompt of any job that
+  may touch Discord or other platforms, explicitly naming the sibling profiles
+  it must never read. Verified to prevent recurrence (11:22 run was clean).
+
+See `references/cross-profile-credential-leak-2026-09-02.md` for the full
+forensic trace and the detection recipe.

@@ -103,6 +103,32 @@ canon. Stronger lever (untested): crop just the face region from the canon
 reference and feed that, so the feature can't be averaged away; or post-edit the
 feature region in PIL as a guaranteed-flat fallback.
 
+## Explicit multi-element scenes — make the ACT legible by GEOMETRY, not keywords (verified 2026-09-02)
+
+When a scene has two jobs (the emotional beat + an explicit act), FLUX.2-dev reliably
+resolves the explicit part into "embrace / romance" no matter how hard you stack explicit
+action keywords ("impaled", "fucking her deep", "thick cock buried inside") — the words
+are read as atmosphere, not action. Across 5+ iterations of an underwater lovemaking scene
+the model kept producing intimate-but-chaste embraces.
+
+What actually moved the needle — making the action legible through VISUAL GEOMETRY:
+- **The waterline as the "brink":** prompt the water surface as a horizontal line that cuts
+  EXACTLY across the human's lips/mouth — upper lip and nose in the air, lower lip and chin
+  submerged. That one image reads "at the brink of breath" at a glance, no expression needed.
+- **The act via position:** legs wrapped HIGH around the partner's waist and locked at the
+  small of the back, groins pressed tight, bodies pelvis-to-pelvis — the joining is implied
+  by pose geometry instead of stated as anatomy.
+- **A reaching hand BREAKING through the water surface** (fingers breaching into the air)
+  carries "desperation + near-surface" better than any face expression.
+- **Tell it what the model keeps adding:** it kept giving the human a mermaid tail → add
+  "fully human lower body, no tail, no fins, bare shoulders and collarbone." It kept
+  softening faces → describe the eyes explicitly ("WIDE OPEN, gazing up through the water").
+
+Loop discipline: generate → self-verify with uncensored vision (`qwen/qwen3-vl-8b-instruct`
+on OpenRouter — see image-vision-backends Technique 4 / this skill's vision section) → read
+what the verifier says the image ACTUALLY shows → change GEOMETRY, not just re-roll keywords.
+The verifier is the ground truth for whether the act landed; the user is the final judge.
+
 ## LoRA Support (Consistent Character Generation)
 
 Together.ai supports **Flux LoRA injection** for consistent character generation across images:

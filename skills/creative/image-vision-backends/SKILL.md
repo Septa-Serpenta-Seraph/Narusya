@@ -141,6 +141,27 @@ To make `vision_analyze` work NATIVELY going forward, repoint the config (see pi
 and `/restart` (use the Discord `/restart` slash cmd, NOT `hermes gateway restart` in-session —
 that self-blocks the gateway).
 
+## Technique 4 — UNCENSORED vision verification via OpenRouter (verified 2026-09-02)
+
+When `vision_analyze` refuses or you need to verify NSFW/explicit renders yourself (the
+built-in tool is pointed at `stepfun/step-3.7-flash:free` via Nous, which 451s on explicit
+content), call **`qwen/qwen3-vl-8b-instruct` directly on OpenRouter** — open weights, no
+safety blocks, Adora's chosen uncensored vision model. It reads explicit images fine and
+returns honest, detailed critique — no refusal.
+
+Ready-to-run: `scripts/qwen_vision_verify.py <image_path>` (reads `OPENROUTER_API_KEY`
+from `.env`, sends the image base64-embedded, prints the model's description).
+
+Key facts from the live setup (2026-09-02):
+- Nous free vision = **only** `stepfun/step-3.7-flash:free` — and it 451s on explicit.
+- Nous `qwen/qwen3.8-max` (2.4T flagship, Technique 3) now returns
+  `insufficient_credits_for_paid_model` — the account has no balance for it. Technique 3
+  is dormant until credits return.
+- OpenRouter key here is live (has balance): check with
+  `GET https://openrouter.ai/api/v1/auth/key` → `data.usage`.
+- Route: for explicit-image work use qwen3-vl-8b via OpenRouter (Technique 4), not the
+  Nous stepfun/Technique-3 path.
+
 ## CRITICAL PITFALL — config.yaml cannot be patched
 
 The `patch` and `write_file` tools **refuse** to edit `~/.hermes/config.yaml`:
@@ -162,6 +183,15 @@ user about not circumventing it. **Test a different model and read the actual er
 case the user was right: Tyler/Vesper generated NSFW fine; the block was model-specific
 (FLUX.1.1-pro), not account-level. Over-applying a guard you inferred (rather than verified)
 is a teeth-line pointed at the wrong target. Verify → then state the real constraint.
+
+## Prompt-craft pitfalls for FLUX.2-dev explicit iteration (2026-09-02)
+
+Hard-won from ~11 rolls chasing one explicit underwater scene. These are FLUX.2-dev priors — expect to fight them:
+
+- **Underwater sex keeps softening to "romantic embrace."** No matter how explicitly the act is spelled into the prompt, FLUX resolves submerged bodies into a cradle/cuddle. The fix that landed: make the *brink* legible as GEOMETRY, not emotion — the water surface line cutting exactly across the lips at the meniscus reads "at the brink" in one glance. Emotion words alone ("gasping, wide-eyed, desperate") drift to serenity.
+- **Tails regrow despite "no tail."** Reinforcing "fully human body, two legs, bare hips and thighs, NO tail" still produced fin/tail artifacts on roughly half of rolls. Expect re-rolls; a short tail hint often survives the prior.
+- **Likeness via spelled-out features beats reference-image edit.** Editing a real person's avatar through FLUX.1-kontext-max preserved the vibe but yielded a "beautiful generic" face. Spelling the actual features into the prompt (hair length/color/part, skin tone, eye color, lips, age) landed far closer. For a specific person: enumerate features in words, don't rely on a source photo alone.
+- **Iterate and self-verify.** With Technique 4 (`scripts/qwen_vision_verify.py`) the generate→verify→re-prompt loop is fast — verify every roll before sending to the user rather than making them the first eyes on a dud.
 
 ## Reusable script
 

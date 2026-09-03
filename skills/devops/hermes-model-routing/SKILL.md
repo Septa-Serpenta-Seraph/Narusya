@@ -153,6 +153,21 @@ API directly. For Nous:
 - Bare `urllib` gets Cloudflare-blocked (HTTP 403 error code 1010). Send a
   browser-like `User-Agent` + `Accept` + Origin/Referer headers.
 - Test vision with a base64 data URL in an `image_url` content block.
+- **Listing the Nous recommended model catalog:** the authoritative, tier-aware
+  source is the internal function, not the REST endpoint. Use:
+  `sys.path.insert(0, '/home/adora/.hermes/hermes-agent')` then
+  `from hermes_cli.models import fetch_nous_recommended_models` → returns
+  `{paidRecommendedModels, freeRecommendedModels, freeRecommendedVisionModel,
+  freeRecommendedCompactionModel, ...}` — each entry carries `modelName`,
+  `tokenPrice`, `contextLength`, `isVisionModel`, `isCompactionModel`. It is
+  memory+disk cached and safe offline. `get_nous_recommended_aux_model(vision=...)`
+  returns just the current recommended fast/vision tier (this is what the Nous
+  provider profile itself calls). Direct
+  `urllib` to `https://inference-api.nousresearch.com/v1/models` may return
+  HTTP 403 error code 1010 (Cloudflare) from this box even with a valid
+  `NOUS_API_KEY` in `.env` — prefer the internal function and never conclude
+  "the key is dead" from a 403:1010 alone (the 11:22-16:00 session runs still
+  worked fine against Nous).
 
 Reusable probe: `scripts/vision_probe.py` — pass a model id + local image path
 and it reports whether the model can see the image.
