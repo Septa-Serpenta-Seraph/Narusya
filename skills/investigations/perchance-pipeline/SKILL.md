@@ -234,6 +234,7 @@ The `imageDownloadUrl` field is the critical path — use it for immediate downl
 
 - `references/working-flow.md` — Full working flow transcript with code examples, failed approaches, and troubleshooting notes
 - `references/face-first-prompting.md` — Face-first template for character consistency, color enforcement, selfie prompting, and kontext repaints (verified 2026-08-27)
+- `references/batch-generation.md` — Batch driver flags, the single-session reuse trick, per-item timeout handling, and why NOT to shell-loop the driver (verified 2026-09-03)
 
 ## ✅ WORKING AGAIN (2026-08-25) — Tyler & Vesper's Camoufox path
 
@@ -241,9 +242,26 @@ The double-Turnstile wall below was beaten by a **Camoufox + Playwright** driver
 
 **Driver:** `~/.hermes/imagegen/perchance-image.py`
 ```bash
+# single (still works)
 ~/.hermes/hermes-agent/venv/bin/python3 ~/.hermes/imagegen/perchance-image.py "prompt" [portrait|square|landscape] [outdir]
+
+# BATCH — run with batch/prompt flags (prefer this, verified 2026-09-03)
+#  N copies of one prompt, ONE browser session:
+.../perchance-image.py "prompt" --batch 4 portrait
+#  a file of prompts, one per line (# = comment, blank skipped):
+.../perchance-image.py --prompts prompts.txt portrait
+#  explicit multi-prompt list:
+.../perchance-image.py --prompts "prompt one" "prompt two" "prompt three"
+.../perchance-image.py --prompts "p1" "p2" --outdir /path
 ```
 Requires `camoufox` pip package in the Hermes venv.
+
+**Batch mode is the way to go** (see `references/batch-generation.md`): the driver loads the
+generator page ONCE for the whole batch and reuses the browser, re-finding the visible
+textarea + generate button between generations (the page re-renders). This replaces N
+browser-launches + N Turnstile passes with 1 of each, and reports per-item timeouts
+without dying (exit 0 if all saved, 2 if partial). Always prefer `--batch`/`--prompts`
+over looping the CLI driver in a shell-`for` loop.
 
 ### Symlinked-cache setup (SOLVED — don't re-fight)
 
@@ -259,6 +277,36 @@ ln -sfn /mnt/data/camoufox /mnt/data/camoufox/browsers/camoufox/152.0.4-beta.29 
 touch /mnt/data/camoufox/.0.5_FLAG                                                # stops pkgman rmtree cleanup
 ```
 Engine root must keep its own `version.json` (`{"version":"152.0.4","release":"beta.29"}` — present). Verify: `camoufox.multiversion.get_active_path()` returns non-None and `Version.from_path(...).is_supported()` is True.
+
+### Multi-character scenes — characters collapse into twins (2026-09-02)
+
+Perchance's backend (Flux Schnell-class) is **weak at holding two distinct characters** in
+one scene. Real failure mode from a two-woman underwater scene:
+- **Characters blend into near-identical twins.** Both women come out with the same brown
+  wavy hair + green eyes regardless of wildly different descriptions. One ended up a
+  pale human woman and the other a green-skinned elf when the second character's identity
+  was hammered harder (emerald gemstone anchor) — the distinction is fragile and needs
+  the *dominant* trait of EACH character spelled near its own name.
+- **Color identity is the first thing lost.** Emerald skin defaulted to pale mint/beige
+  until anchored as "vivid emerald green skin like an emerald gemstone NOT pale NOT mint
+  NOT olive NOT teal" — the face-first template's color-enforcement section is the cure.
+  Green especially lightens; restate it with gemstone + explicit negatives on every roll.
+- **Global negatives leak across characters.** Saying "no human ears" ONCE (intended for
+  the elf) gave BOTH women pointed ears. Negatives and trait-descriptors apply to the
+  nearest/whole scene; anchor each character's eyes/ears/skin/hair explicitly to that
+  character's name rather than asserting a global rule once.
+- **Explicit act still softens to "shared affection".** No better than FLUX on this —
+  Perchance also resolves passionate body contact into gentle embrace unless you make the
+  act described in positional geometry (legs wrapped high around waist, pelvis-to-pelvis,
+  hands gripping) AND keep the panic/gasp wording. Emotion words alone still drift to
+  tenderness.
+- **Unexpected appendages:** a "translucent purple wings" nobody requested appeared once —
+  anchor limbs per character and be ready to regenerate.
+
+Version 2 result (2026-09-02): the face-first + per-character-color anchoring produced a
+recognizable two-character image both parties were happy with — the green woman held her
+identity, the human woman read as intended, no tail. So the right prompting DOES land a
+good multi-character result; it just needs the per-character anchors above.
 
 ### Anatomy anchoring
 
