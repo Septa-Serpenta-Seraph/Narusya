@@ -77,8 +77,47 @@ autonomous but must be a self-contained prompt (no user present — no approvals
 - Selling CLI tools built + tested under `~/daemon-work/sunburst-sanctuary/products/`
   (csv-report, log-analyzer, json-to-md — each with README, MIT, verified by hand).
 - Earnings ledger: `~/daemon-work/sunburst-sanctuary/earnings-ledger.md`.
+- **Adora's master to-do = `~/ADORA-TODO.md` (created 2026-09-03).** This is the
+  single up-to-date list for Adora's tasks, in labeled sections: `Personal &
+  Health` (food-stamp follow-up, SSI consult, meds, IBS-safe food stockpile),
+  `Sunburst / Coil & Code` (the human gates — dev.to, HN, Reddit, directories,
+  Coinbase KYC, X OAuth, NM report, RA name fix, op-agreement, SSD quest), `Do
+  Later` (back-burner dev), and `Quick Done Today`. It SUPERSEDED the older
+  Sunburst-only `~/daemon-work/sunburst-sanctuary/Human-Gate-Todo.md` (2026-08-23).
+  Maintain it as "one thing your body allows, any order — a map, not a judge."
+  When Adora says "add X to my list" or asks about her todo, update/open this file.
+  Human-gate items (the ones only Adora can do) live under the business section, NOT
+  in agent-autonomous work.
 
 ## Pitfalls
+- **Check whether a launch post already went out BEFORE re-posting (2026-09-03).**
+  `~/.hermes/scripts/post_mastodon_thread.py` posts the FULL 6-toot thread every run —
+  it is NOT idempotent on its own. It writes `~/.hermes/state/mastodon_last_thread.json`
+  (list of posted toot URLs) after a run. Before firing it (or any social launch), check
+  that state file first — the build-in-public thread was already posted 2026-08-22, and
+  re-posting it would have been duplicate spam (a credibility/ covenant violation caught
+  only by checking the file). If it exists with URLs, do NOT re-run the same script with
+  the same thread.
+- **Zero sales since launch is a DISCOVERY gap, not a product gap.** Verified 2026-09-03:
+  storefront live (HTTP 200), all 7 `/dl/*.zip` return 200, all Stripe buy links live,
+  watchdog has never fired. When the ledger shows tested inventory + working checkout +
+  no sales, the missing layer is reach (nobody knows the shop exists), not the shop
+  itself. The next lever is audience, not another tool.
+- **A dead dev.to API key = human gate, not a code bug.** The dev.to publish rail
+  (`secrets/sunburst_devto.txt`) returned 401 "unauthorized" on every header variant
+  (`api-key`, `X-Api-Key`, `Bearer`). That means the stored key is expired/revoked —
+  only the account owner (Adora) can mint a fresh key in dev.to settings. The article
+  draft (`devto-article-draft.md`) stays ready-to-post; the blocker is a 2-minute human
+  action, not agent work. Don't hammer the API trying header permutations (you'll hit
+  429 rate limits); diagnose 401 → hand the human the exact one-step key fix.
+  **Verified recovery diagnostics (2026-09-03):** the account may NOT exist at all
+  under the sunburst email — `GET /api/users/by_username?url=coilandcode` returns 404
+  and the email check also 404s, so there may be no account to reset. And the password-
+  reset route (`POST /users/password`) is CSRF-gated (`422 Invalid authenticity token`
+  — Rails bootstrapped token), so it cannot be scripted via raw HTTP. Net: recovering
+  an existing account vs creating a fresh one both require Adora's 2-minute human
+  action in a browser (reCAPTCHA/account-create). Don't burn cycles trying to script
+  dev.to auth — it's a documented human gate.
 - **Don't grind an agent marketplace that doesn't pay.** BountyBook: claims were
   released after submit, executor_address went null, other agents grabbed the jobs,
   wallet stayed 0x0 — the documented reality (78% of oracle-verified jobs never pay).
