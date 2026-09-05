@@ -1,6 +1,6 @@
 ---
 name: hermes-infrastructure
-description: Diagnose, recover, and maintain Hermes Agent infrastructure — browser tools, gateway, config, power outage recovery, and post-update fixes.
+description: Diagnose, recover, and maintain Hermes Agent infrastructure — browser tools, gateway, config, power outage recovery, post-update fixes, and provider/credit switches.
 triggers:
   - browser tool not working
   - gateway not running
@@ -9,6 +9,9 @@ triggers:
   - config reset
   - hermes diagnostics
   - hermes recovery
+  - credits low
+  - provider switch
+  - free model probe
 ---
 
 # Hermes Infrastructure
@@ -425,6 +428,15 @@ Hermes injects `Conversation started: <date>` into the system prompt, but not th
 
 **Workaround when timestamps are untrusted:** Run `date '+%Y-%m-%d %H:%M:%S %Z'` directly. This always gives reliable wall-clock time.
 
+**False-negative feature detection:** Grepping source code for the config key as a literal string is unreliable. Better technique: `hermes config show` → does the key exist and is it valid? Run the feature and observe the behavior directly. If you see the 🕒 header, the feature is implemented — don't rely solely on source grep.
+
+#### Cron Output Narrative Time Divergence (verified 2026-09-04)
+The "Sovereign Daemon Awakening" free-thought cron fired at **18:24 MDT** (its own `Run Time:` field in the output file confirms this). But the reflection it produced internally said *"It's 12:something AM"* — a mood-congruent fictional time the model hallucinated rather than reporting the real hour. The cron's clock is accurate; the daemon's *story* about what time it is can drift.
+
+**Diagnosis:** if the content of a cron output references a time that feels off, compare it against the `Run Time:` field in the cron output file itself (`~/.hermes/cron/output/<job>/`). The file timestamp is authoritative for when it fired; the narrative is not.
+
+**Why it matters:** this is NOT the same bug as the gateway-injected 🕒 timestamp offset above. That's a rendering bug in the header code path. This is the model fabricating a time that matches the emotional register. Both produce "wrong time" readings but have different root causes and different fixes.
+
 ---
 
 ## 14. Patch Tool Python String Corruption
@@ -544,5 +556,49 @@ If you need memory-like functionality alongside an existing external provider, *
 When designing new memory-backed features:
 - Check `hermes memory status` first to see what's already active
 - If extending, modify the existing provider's code path
-- If replacing, use `hermes memory setup` to switch providers cleanly
-- The builtin `builtin` provider (plain files in `~/.hermes/memories/`) always runs alongside the external one — only non-builtin plugins are gated
+| If replacing, use `hermes memory setup` to switch providers cleanly
+| The builtin `builtin` provider (plain files in `~/.hermes/memories/`) always runs alongside the external one — only non-builtin plugins are gated
+
+## 17. Credits Low / Provider Switch — Nous Free Models
+
+### Symptom
+OpenRouter credits run dry mid-session (common with `:exacto` or paid-tier models).
+Gateway falls back but may land on a paid variant; you'll see `HTTP 401` or
+`HTTP 400: provider_routing` errors, or the session just gets slow/hangs.
+
+### Diagnosis
+```bash
+# Check OpenRouter credit status
+cd ~/.hermes/scripts && V=/home/adora/.hermes/hermes-agent/venv/bin; PATH="$V:$PATH" python3 credit_status.py
+
+# List verified-free Nous models
+PATH="$V:$PATH" python3 nous_free_probe.py
+```
+
+### Switch the session to a verified-free Nous model
+1. Check current config: `grep -A3 "^model:" ~/.hermes/config.yaml`
+2. Set default to a free Nous model:
+   `hermes config set model.default meituan/longcat-2.0:free`
+   `hermes config set model.provider nous`
+3. Flip the session handle in the UI to match (the config default doesn't
+   retroactively re-pin an already-open session).
+4. Verify with: `echo "ping" | hermes --model test` or a quick `curl` through
+   the inference API.
+
+### Free Nous model roster (verified live 2026-09-04)
+- `meituan/longcat-2.0:free` — general purpose, best daemon voice (now verified live after prior 400; was temporarily down, re-probed OK)
+- `inclusionai/ling-3.0-flash-fin:free` — finance/analysis/code, 256K ctx, MoE 124B/5.1B active
+- `inclusionai/ling-3.0-flash-sante:free` — health/medicine-flavored, 256K ctx, MoE 124B/5.1B active (free-until-Oct-4; stops serving when offer ends, doesn't bill)
+- `poolside/laguna-s-2.1:free` — general purpose
+- `poolside/laguna-xs-2.1:free` — lighter weight
+- `stepfun/step-3.7-flash:free` — general purpose
+- `upstage/solar-pro4:free` — general purpose
+
+### Pitfall: `:exacto` suffix is paid-tier (verified 2026-09-04)
+Models like `deepseek/deepseek-v4-flash-0731:exacto` are NOT the free tier. The free variant is `deepseek/deepseek-v4-flash:free` (if available). Every `:exacto` model burns OpenRouter credits. The session was burning ~$4.81 remaining OpenRouter budget on `:exacto` until sante was pinned. Always check the suffix — `:free` is the gate, not the base name.
+
+### Pitfall: Nous free offers can expire
+The Ling-3.0-flash variants are free-until-October-4 (Vercel AI Gateway offer). They stop serving rather than billing, but verify after the date with a quick probe. Don't pin a free tier past its expiry without a fallback.
+
+### Pitfall: Cloudflare 1010 from hand-rolled urllib
+A raw `urllib.request` probe to Nous can return HTTP 1010 (Cloudflare block) even when the working scripts succeed — the scripts use the shared auth JSON and correct headers; hand-rolled calls may miss a header or base URL. Always probe via the existing scripts (`nous_free_probe.py`, `credit_status.py`) first, not ad-hoc urllib.

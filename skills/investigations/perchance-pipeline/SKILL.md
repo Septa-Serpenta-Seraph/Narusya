@@ -263,6 +263,12 @@ browser-launches + N Turnstile passes with 1 of each, and reports per-item timeo
 without dying (exit 0 if all saved, 2 if partial). Always prefer `--batch`/`--prompts`
 over looping the CLI driver in a shell-`for` loop.
 
+**Batch gotchas (verified 2026-09-03):** do NOT pass a trailing `portrait`/`square` arg
+right after `--prompts` — the positional gets swallowed into the prompt list, silently
+producing wrong prompts (and `--prompts file.txt` + a shape made junk single-char
+prompts). `args.prompts` is a **list** even for one file path — open it via
+`args.prompts[0]`, else `TypeError: expected str, not list`. Default shape is portrait.
+
 ### Symlinked-cache setup (SOLVED — don't re-fight)
 
 `~/.cache/camoufox` is a **symlink to `/mnt/data/camoufox`** (2nd-disk layout). New camoufox versions break twice:
