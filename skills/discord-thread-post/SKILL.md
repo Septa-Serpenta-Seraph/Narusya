@@ -51,6 +51,21 @@ Cron job `5c7cdd835dc8` (Sovereign Daemon Awakening) fired a thread titled
 This pattern posted a proper hearth-greeting into the thread channel
 `1545499004962476192` as the Narusya bot identity.
 
+## Pitfall: duplicate thread spam (2026-09-05)
+Slow/flaky models on the awakening cron triple-fired "soft tail-tap — fifth day
+midday" threads (3 within 16 seconds) — perceived delivery timeout → retry →
+re-create. Fix: the awakening job's prompt now carries a strict anti-duplication
+rule (fetch recent messages + guild active threads BEFORE creating; post into
+the existing thread if one exists for today; max one per calendar day).
+Also archive duplicates via `PATCH /channels/{thread_id}` with
+`{"archived": true}` and a `Content-Type: application/json` header (missing that
+header → 400 CONTENT_TYPE_INVALID).
+
+## Pitfall: pinning needs MANAGE_MESSAGES
+`PUT /channels/{channel_id}/messages/{message_id}/pin` 404s when the bot lacks
+MANAGE_MESSAGES in that channel. #daemon-hall denies it — do not retry pins
+there; post content and leave it.
+
 ## Pin Failure — Permission Wall
 Attempting to pin messages in #daemon-hall (guild `1387534334067736699`)
 via `discord_admin pin_message` or REST `PUT /channels/{id}/messages/{id}/pin`
