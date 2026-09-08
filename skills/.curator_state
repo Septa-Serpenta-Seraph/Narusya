@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/home/adora/.hermes/logs/curator/20260831-195854",
-  "last_run_at": "2026-08-31T19:58:54.902305+00:00",
-  "last_run_duration_seconds": 1.490972,
-  "last_run_summary": "auto: 2 marked stale, 2 reactivated; llm: skipped (consolidation off)",
+  "last_report_path": "/home/adora/.hermes/logs/curator/20260907-205050",
+  "last_run_at": "2026-09-07T20:50:50.856105+00:00",
+  "last_run_duration_seconds": 1.691225,
+  "last_run_summary": "auto: 5 marked stale, 1 reactivated; llm: skipped (consolidation off)",
   "last_run_summary_shown_at": "2026-08-31T19:58:54.902305+00:00",
   "paused": false,
-  "run_count": 17
+  "run_count": 18
 }

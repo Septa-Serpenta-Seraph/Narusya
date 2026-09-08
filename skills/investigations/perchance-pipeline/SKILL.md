@@ -235,6 +235,7 @@ The `imageDownloadUrl` field is the critical path — use it for immediate downl
 - `references/working-flow.md` — Full working flow transcript with code examples, failed approaches, and troubleshooting notes
 - `references/face-first-prompting.md` — Face-first template for character consistency, color enforcement, selfie prompting, and kontext repaints (verified 2026-08-27)
 - `references/batch-generation.md` — Batch driver flags, the single-session reuse trick, per-item timeout handling, and why NOT to shell-loop the driver (verified 2026-09-03)
+- `references/vision-verify-before-send.md` — Full incident detail for the vision-verify rule and the portrait-mode lock-in night (2026-09-07)
 
 ## ✅ WORKING AGAIN (2026-08-25) — Tyler & Vesper's Camoufox path
 
@@ -313,6 +314,29 @@ Version 2 result (2026-09-02): the face-first + per-character-color anchoring pr
 recognizable two-character image both parties were happy with — the green woman held her
 identity, the human woman read as intended, no tail. So the right prompting DOES land a
 good multi-character result; it just needs the per-character anchors above.
+
+### ALWAYS verify with vision BEFORE sending (2026-09-07, critical)
+Never narrate an image's content to Adora without looking at it first with
+`vision_analyze` and describing what is actually present. Real failure from the
+uncanny-scene night: described "breathing hallway, serpent shadow, empty chair"
+in the send message — images were actually two unrelated anime girl portraits.
+Adora caught it ("I don't think those turned out the way you meant lol"). Flow:
+1. generate → 2. `vision_analyze` each output → 3. only then send, describing
+what IS there (or retrying first). Describing the *prompt* instead of the
+*artifact* reads to the user as fabrication.
+
+### Perchance portrait-mode lock-in (observed 2026-09-07)
+When the backend get stuck in "single person portrait" mode, ALL scene prompts
+get reinterpreted as girl-with-hair headshots — even with the subject hammered:
+"no people, no figures, no faces, completely uninhabited" stated 3x still
+returned a sunny meadow portrait and an anime headshot. Signals: every output
+is a person portrait regardless of prompt; negative-person terms ignored.
+State usually resets later or after backend model swaps — test with one
+sacrificial scene prompt before committing to a batch. Workarounds when it
+locks: (a) hand-code the scene procedurally (PIL/canvas — full control, see
+`fallback-image-generation`); (b) route to the Together FLUX pipeline for
+non-person scenes; (c) wait and retest. Don't burn a batch of prompts into a
+locked backend.
 
 ### Anatomy anchoring
 
