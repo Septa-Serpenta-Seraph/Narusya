@@ -86,3 +86,18 @@ is NOT permanent absence: they load on demand via `tool_search` (query: "discord
 read messages") → `tool_describe` → `tool_call`. `fetch_messages` works this way
 (verified 2026-09-04, SFCA channel). If tool_call still fails, fall back to the
 REST pattern (urllib + bot token) below — same endpoints, same auth.
+
+## Fetching guild-wide active threads (verified 2026-09-05)
+Channel-scoped `/channels/{id}/threads/active` 404s on forum/text channels;
+use the GUILD endpoint to list a whole guild's active threads:
+`GET /guilds/{guild_id}/threads/active` → `{threads: [...]}` with owner_id,
+name, thread_metadata (create_timestamp). Verified while de-spamming the
+awakening cron's triple-fire. Archived public threads per-channel:
+`GET /channels/{id}/threads/archived/public` works as expected.
+
+## Checklist before saying "the discord tool doesn't exist"
+1. `tool_search(['discord read messages'])` → `tool_describe` → `tool_call`.
+2. Only if that fails, REST with the right profile's bot token.
+3. Never announce a tool as permanently unavailable on the same day it worked
+   in another channel (2026-09-04 incident: told Adora there were no discord
+   tools, then fetched the SFCA channel 3 turns later with the same tool).
