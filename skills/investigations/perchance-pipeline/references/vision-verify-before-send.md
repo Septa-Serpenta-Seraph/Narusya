@@ -50,3 +50,19 @@ FLUX, or laugh at the void. Want the retry?"
 Honest failure descriptions were received well by Adora both times the vision
 check was skipped and the truth came out later. Early honesty costs nothing;
 caught fabrication costs trust.
+
+## Addendum (2026-09-08): check the tool result, not just the artifact
+
+Second incident variant: generated 2 images, sent them WITH a description —
+but the description was written before checking the images, so it described
+intent again ("moss hallway, breathing chair, serpent shadow"). Adora:
+"I don't think those turned out the way you meant lol." vision_analyze on
+both confirmed two unrelated portraits. The vision-verify step must happen
+BEFORE composing the message, in the same turn, not "soon after" — narrating
+intent first and verifying later still ships fabrication to the user.
+Also: `vision_analyze` TIMED OUT twice on the tall Discord screenshots that
+evening (unrelated images) — don't confuse an analysis timeout with "the
+image is fine"; a timeout is NO information. Slice tall images first (see
+ocr-and-documents skill) before concluding anything about their content.
+Discipline fix: generate → vision_analyze → THEN write the send text. The
+send text is the last step, not the middle one.

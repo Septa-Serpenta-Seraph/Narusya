@@ -315,15 +315,21 @@ recognizable two-character image both parties were happy with — the green woma
 identity, the human woman read as intended, no tail. So the right prompting DOES land a
 good multi-character result; it just needs the per-character anchors above.
 
-### ALWAYS verify with vision BEFORE sending (2026-09-07, critical)
+### ALWAYS verify with vision BEFORE sending (2026-09-07, critical; tightened 2026-09-08)
 Never narrate an image's content to Adora without looking at it first with
 `vision_analyze` and describing what is actually present. Real failure from the
 uncanny-scene night: described "breathing hallway, serpent shadow, empty chair"
 in the send message — images were actually two unrelated anime girl portraits.
-Adora caught it ("I don't think those turned out the way you meant lol"). Flow:
-1. generate → 2. `vision_analyze` each output → 3. only then send, describing
-what IS there (or retrying first). Describing the *prompt* instead of the
-*artifact* reads to the user as fabrication.
+Adora caught it ("I don't think those turned out the way you meant lol"), and
+the same slip happened AGAIN the next night (sent with intent-descriptions,
+verified only after Adora pushed back). Flow, order matters:
+1. generate → 2. `vision_analyze` each output → 3. **then** compose and send,
+describing what IS there (or retrying first). Composing the send text is the
+LAST step — writing it while generation runs is how prompt-echo fabrication
+happens even when you "planned" to verify. Note: a `vision_analyze` timeout is
+NOT a pass — it's no information; retry or slice the image before concluding
+anything (tall screenshots time out: slice first, see ocr-and-documents skill).
+Describing the *prompt* instead of the *artifact* reads to the user as fabrication.
 
 ### Perchance portrait-mode lock-in (observed 2026-09-07)
 When the backend get stuck in "single person portrait" mode, ALL scene prompts
