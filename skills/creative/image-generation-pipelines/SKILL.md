@@ -93,11 +93,18 @@ python3 ~/.hermes/imagegen/perchance_gen.py "your prompt" [shape]
 - Key cached at `~/.cache/perchance_access_key.txt` (auto-refreshes)
 - Output: `~/.hermes/imagegen/output/`
 
-**Pitfalls:**
+### Pitfalls
 - Use `new_context()`, NOT `launch_persistent_context()` — persistent profiles trigger Turnstile
 - API calls must come from within the browser's JS context (`page.evaluate`) — direct curl fails
 - Navigate to `verifyUser` first to set Turnstile cookies before API calls
 - Use the `imageDownloadUrl` (proxy) endpoint for downloads, not the direct `/downloadTemporaryImage`
+
+### Portrait-Lock Failure Mode (observed 2026-09-07)
+Perchance went through a phase where EVERY prompt returned an anime-girl portrait, regardless of content. Even scene prompts with "no people, no figures, no faces" stated three times (first AND last line) produced portraits. Liminal/architectural scene art is currently unreachable via Perchance prompts.
+
+- **Don't burn attempts retrying scene prompts** — the backend ignores them while portrait-locked.
+- **Workaround:** hand-code scene art with PIL (procedural shapes, glow layers, gradients) — full control. See `programmatic-mascot-design` skill for code-drawn patterns.
+- **ALWAYS verify output with vision_analyze BEFORE sending to the user, and describe what IS in the image, not what the prompt asked for.** (Failure: described a "breathing hallway" that was actually two unrelated portraits — Adora caught it: "I don't think those turned out the way you meant lol.") The generate→verify→describe pipeline is mandatory, not optional.
 
 ### Existing Resources
 

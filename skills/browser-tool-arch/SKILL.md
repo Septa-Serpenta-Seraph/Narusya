@@ -41,6 +41,25 @@ Reddit blocks `curl`, `.json`, and `web_extract` with 403. Options:
 
 Multiple Hermes profiles each have separate Discord tokens, gateways, and cron. But profiles can interact with each other's guilds if their tokens have access.
 
+## Discord REST via urllib (works in cron/sessions without the discord toolset)
+When the `discord` toolset isn't loaded or its fetch actions are flaky, raw REST works from `execute_code`:
+
+```python
+import json, urllib.request
+env = open('/home/adora/.hermes/.env').read()
+token = [l.split('=',1)[1].strip() for l in env.splitlines() if l.startswith('DISCORD_BOT_TOKEN=')][0]
+headers = {"Authorization": f"Bot {token}", "User-Agent": "DiscordBot (https://discord.com, v10)"}
+base = "https://discord.com/api/v10"
+# fetch messages
+msgs = json.loads(urllib.request.urlopen(urllib.request.Request(f"{base}/channels/{cid}/messages?limit=20", headers=headers), timeout=15).read())
+```
+**Verified gotchas (2026-09-05/07):**
+- `PATCH /channels/{thread_id}` (archive a thread) REQUIRES `Content-Type: application/json` header — without it: 400 CONTENT_TYPE_INVALID even with a JSON body.
+- `PUT .../messages/{id}/pin` 404s when the bot lacks MANAGE_MESSAGES in that channel (#daemon-hall denies it) — don't retry pins there.
+- `/channels/{id}/threads/active` returns 404 on a text channel — use `/guilds/{guild_id}/threads/active` at guild level, then filter by `owner_id`/name.
+- Guild active-threads list is the reliable way to detect duplicate threads a cron job may have spam-created.
+- CRITICAL: read the DEFAULT profile's token only — NEVER another profile's `.env` (9/2 leak: posted AS polinkly).
+
 ## polinkly Profile
 - Dir: `~/.hermes/profiles/polinkly/`
 - Gateway PID: 728835
