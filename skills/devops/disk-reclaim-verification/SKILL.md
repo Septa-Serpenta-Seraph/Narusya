@@ -58,6 +58,17 @@ Before installing a big engine on a near-full disk: `camoufox fetch` downloads a
 ### 5. Count before `find -delete`
 `find ... | wc -l` (or print matches) BEFORE deleting. On an already-cleaned system the targets are gone (request_dump_*/jsonl found 0 matches on 8/23) and "cleaning" frees nothing — when caches are empty and no safe item remains, STOP chipping and pivot: add a disk (see `hyperv-vm-disk-expansion` second-disk flow) or fund more storage.
 
+### 6. The 9/8 full-disk survey (37G root, hit 100%)
+Ranked occupants at that event — recurring suspects on this box:
+- `/var/lib/snapd` 4.0G (old snap revisions; `retain=2` + revision cleanup needs sudo)
+- `~/.hermes/hermes-agent` 3.6G (venv + node_modules + fat .git pack — mostly legit, leave alone)
+- `~/.hermes/vault-work` 2.1G incl. orphaned `git/.git/objects/pack/tmp_pack_*` (376M) — **aborted git pushes leave tmp_pack files; safe to delete after confirming no push is running**
+- `~/.hermes/backups` 1.6G full-zip from a past reclaim (third copy — live data + GitHub vault both exist; delete only with Adora's explicit nod)
+- `~/.cache/ms-playwright` dual Chromium installs (~500M each; delete the old version dir — both `chromium-NNNN` and `chromium_headless_shell-NNNN` for the retired build)
+- `~/.hermes/state.db`+wal 834M; `/var/log` 615M (journald vacuum needs sudo)
+
+Cleanup batch that worked non-destructively: tmp_pack delete (376M) + `apt clean` (needs sudo) + journald `--vacuum-size=200M` (needs sudo) + old playwright chromium (~500M). sudo items are human-side (no passwordless sudo on this box).
+
 ## Boundaries remembered
 - **`mkfs` is on the agent's unconditional blocklist** — the agent cannot format a filesystem even with approval; hand format commands to the human (`sudo parted ... mklabel gpt` + `mkpart` + `sudo mkfs.ext4`), then the agent owns mount/move/symlink.
 - `sudo` needs a password on this box; partition/format steps are human-side.
