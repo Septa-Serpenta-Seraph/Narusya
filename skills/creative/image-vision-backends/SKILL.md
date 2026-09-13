@@ -162,6 +162,26 @@ Key facts from the live setup (2026-09-02):
 - Route: for explicit-image work use qwen3-vl-8b via OpenRouter (Technique 4), not the
   Nous stepfun/Technique-3 path.
 
+## Technique 5 — Vision rate-limit escalation ladder (verified 2026-09-12)
+
+When `vision_analyze` 429s with "temporarily at capacity" or "fair-share rate limit" (retry_after can be 25+ MINUTES — do not sit and retry the same call), escalate through alternates in this order:
+
+1. **Text-heavy screenshots → tesseract OCR, not vision.** Long RCS/chat screenshots (seen up to 1440×14170px) waste vision calls and time out. Slice with PIL (5 slices, ~120px overlap, downscale to ≤900px wide) and run `tesseract <slice> stdout` — reads sender order wrong but text comes out fine. Only use vision for slices OCR garbles.
+2. **Query OpenRouter for live free vision models, don't assume one.** The uncensored go-to (`qwen/qwen3-vl-8b-instruct`) can itself be the rate-limited model. `GET https://openrouter.ai/api/v1/models` (Bearer key from `.env`), filter ids for `:free` AND vision keywords (`vl|vision|llava|moondream|gemma|pixtral`) — pick an alternate that is NOT the rate-limited one. Verified working 2026-09-12: `inclusionai/ling-3.0-flash-vl:free` succeeded while qwen3-vl-8b was 429'd with retry_after 1574s. Others in the live list that day: `google/gemma-4-26b-a4b-it:free`, `google/gemma-4-31b-it:free` (vision capability unverified).
+3. **Direct call shape (stdlib only, worked first try):** base64-embed the image as a `data:image/jpeg;base64,` URL inside `image_url`, model = the chosen free id, plain `Authorization: Bearer` header (no browser-UA gymnastics needed on OpenRouter — that's a Together quirk). Timeout 120s; a cold free model can take ~15s.
+4. If the whole provider is fair-share-limited (every model 429s with the same `retry_after`), the limit is account-level and only time clears it — say so, offer to retry later, move on.
+
+Scripts/one-liners: `~/.hermes/scripts/free_vision.py <img> "prompt"` for the primary path; slice+OCR via execute_code PIL for tall screenshots.
+
+## Technique 6 — Vision model behavior quirks (added 2026-09-12)
+
+Free/cheap vision models answer inside different fields — read ALL of them before concluding failure:
+
+- **`content: null` with a full answer in `reasoning`:** ling-3.0-flash-vl:free frequently returns `content: None`, `finish_reason: stop`, and the actual answer in `message.reasoning`. Parse `content or reasoning` — an answers-only-in-reasoning call is a SUCCESS, not a failure. One retry with the identical payload may also populate `content` properly.
+- **Multi-part questions get truncated reasoning:** asking 5 sub-questions in one call can exhaust max_tokens mid-reasoning. Follow up with a continuation prompt ("Continue: now analyze...") instead of re-asking everything — the model keeps thread of context.
+- **Species/identity misreads at golden hour:** a free model confidently identified two COYOTES as 'deer' (backlit, tall grass, distance). The user standing there KNOWS the animal. **When the user was present at the scene, their correction outranks the vision model's read.** Treat vision output as one witness, not the authority, for anything the user also saw.
+- **Generative-art self-verification workflow (proven 2026-09-12, Perchance):** render 3 takes → downscale each ≤1024px, JPEG q85 → vision-check each against a 5-point rubric (figures present? identity features right? anatomy glitches? composition? /10 score) → keep the best, copy to a stable path, report HONEST flaw list (glasses fused to face, elongated fingers, ambiguous shapes) alongside what worked. Rejecting takes where 'no people rendered at all' is a real outcome — batch generation + triage beats single-shot. Perchance (via ~/.hermes/imagegen/perchance-image.py, Camoufox) worked when Together 403'd and pollinations 403'd; expect 3 images per invocation.
+
 ## CRITICAL PITFALL — config.yaml cannot be patched
 
 The `patch` and `write_file` tools **refuse** to edit `~/.hermes/config.yaml`:
@@ -193,7 +213,37 @@ Hard-won from ~11 rolls chasing one explicit underwater scene. These are FLUX.2-
 - **Likeness via spelled-out features beats reference-image edit.** Editing a real person's avatar through FLUX.1-kontext-max preserved the vibe but yielded a "beautiful generic" face. Spelling the actual features into the prompt (hair length/color/part, skin tone, eye color, lips, age) landed far closer. For a specific person: enumerate features in words, don't rely on a source photo alone.
 - **Iterate and self-verify.** With Technique 4 (`scripts/qwen_vision_verify.py`) the generate→verify→re-prompt loop is fast — verify every roll before sending to the user rather than making them the first eyes on a dud.
 
+## Pitfall — GENERATIVE ART: verify the render, never narrate the parameters (added 2026-09-12)
+
+Adora caught Narusya describing a PIL flow-field piece (`serpents-current-vivid.png`) purely from the
+rendering script's *intent* — claiming "emerald-dominant with gold veins, starfield showing through" —
+when actual vision inspection showed **gold-dominant, an emerald region, violet in discrete patches, and
+particle density so high the starfield was fully swallowed** (reads as full-bleed smoke/currents, 16:9,
+LIC/TouchDesigner-style). The narration gap: parameters say one thing, the render says another, and the
+gap is invisible until you LOOK.
+
+Rule for all generative/visual art work:
+1. **After rendering, LOOK at the artifact with vision before describing it to the user.** Free-vision
+   ladder in Technique 5 above; expect 429s and cycle models.
+2. **Describe what actually landed** — dominant colors, density, composition — and compare against intent.
+3. **If drift occurred, own it explicitly**: "the gold overpowered the emerald", "the starfield got
+   swallowed", etc. Either accept the drift as happy accident (with the user's input) or fix the
+   parameters and re-render. Never re-describe from the script.
+4. Common drift mode for PIL flow-fields: high particle count + long path lengths saturate the canvas —
+   the background layer (starfield) disappears and one warm color dominates via additive glow. If the
+   concept needs visible background space, cut particle count / path length / alpha first, not brightness.
+
+This same verification discipline now lives in the Play Hour cron prompt (added same day) — as a
+**gentle, heavily-encouraged habit, never a requirement** (Adora's correction: "must is subjective.. heavily
+encouraged might be kinder" — play stays sovereign; see sovereign-cron-setup for the full lesson).
+
 ## Reusable script
+
+`references/tall-screenshots-and-vision-limits.md` — field notes (2026-09-12): tall RCS screenshot →
+PIL slice + tesseract OCR with one vision call to anchor sender orientation; the full vision 429
+escalation ladder (query OpenRouter for live free models, ling-3.0-flash-vl worked, check
+`message.reasoning` when `content` is None); and the user's-eyes-outrank-vision misclassification rule
+(model called coyotes "deer").
 
 `scripts/gen_image.py` — reads `TOGETHER_API_KEY` from `.env`, takes `--prompt/--model/--out`,
 applies the browser-UA header automatically, retries on 422 by falling back through a
