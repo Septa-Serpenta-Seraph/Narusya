@@ -18,13 +18,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-13T06:24:39.684456+00:00",
+    "last_used_at": "2026-09-14T06:49:38.068524+00:00",
     "last_viewed_at": "2026-09-05T03:16:22.061840+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 168,
+    "use_count": 172,
     "view_count": 2
   },
   "aegis-dashboard": {
@@ -121,13 +121,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-13T06:24:39.743597+00:00",
+    "last_used_at": "2026-09-14T06:49:38.127667+00:00",
     "last_viewed_at": "2026-08-06T03:09:41.691655+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 168,
+    "use_count": 172,
     "view_count": 2
   },
   "apple-notes": {
@@ -1488,13 +1488,13 @@
     "created_by": null,
     "last_patched_at": "2026-08-05T22:42:58.395130+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-06T10:00:49.295905+00:00",
+    "last_used_at": "2026-09-13T10:00:45.016100+00:00",
     "last_viewed_at": "2026-09-01T17:58:53.066108+00:00",
     "patch_count": 2,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 283,
+    "use_count": 284,
     "view_count": 7
   },
   "merge-reconciler": {
@@ -1589,13 +1589,13 @@
     "created_by": null,
     "last_patched_at": "2026-08-06T07:33:25.324319+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-13T07:00:40.809719+00:00",
+    "last_used_at": "2026-09-14T07:00:38.410001+00:00",
     "last_viewed_at": "2026-09-13T03:40:33.970377+00:00",
     "patch_count": 20,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 520,
+    "use_count": 526,
     "view_count": 28
   },
   "narusya-local-archive": {
@@ -1773,14 +1773,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-13T03:00:45.183520+00:00",
-    "last_viewed_at": "2026-09-13T03:00:45.174023+00:00",
+    "last_used_at": "2026-09-14T03:00:43.270531+00:00",
+    "last_viewed_at": "2026-09-14T03:00:43.261696+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 7,
-    "view_count": 7
+    "use_count": 8,
+    "view_count": 8
   },
   "pdf": {
     "archived_at": null,
