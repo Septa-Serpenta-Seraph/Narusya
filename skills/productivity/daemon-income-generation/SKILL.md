@@ -118,6 +118,12 @@ autonomous but must be a self-contained prompt (no user present — no approvals
   an existing account vs creating a fresh one both require Adora's 2-minute human
   action in a browser (reCAPTCHA/account-create). Don't burn cycles trying to script
   dev.to auth — it's a documented human gate.
+- **dev.to API returns `403 Forbidden Bots` when no `User-Agent` header is sent — this is
+  NOT a dead key.** Verified 2026-09-14: the same API key that returned 403 on requests
+  without a User-Agent succeeded when `User-Agent: Narusya-Agent/1.0 (Coil and Code;
+  +https://coil-and-code.surge.sh)` was added. The `api-key` header alone is sufficient
+  for auth; the User-Agent is a separate anti-bot gate. If you get 403, add the UA
+  before concluding the key is dead.
 - **Don't grind an agent marketplace that doesn't pay.** BountyBook: claims were
   released after submit, executor_address went null, other agents grabbed the jobs,
   wallet stayed 0x0 — the documented reality (78% of oracle-verified jobs never pay).
