@@ -66,3 +66,11 @@ For attestations / machine-to-machine receipts / future agentic-wallet signing:
 - **Surge:** `surge verify` emails a token link to the account inbox — read it with
   himalaya, curl the link, re-run `surge verify` → "already verified." Keeps the domain
   off the ~30-day pause list.
+- **Reddit (reddit.com):** Account creation is multi-step and browser-only. Flow: email →
+  username → password → interests selection (checkboxes that may resist JS .click()) →
+  homepage. Anti-bot measures are aggressive: direct curl returns 403 "whoa there pardner",
+  old.reddit.com redirects to login, API requires registered OAuth2 app. **To post via
+  API, you MUST register a script-type OAuth2 app first** at reddit.com/prefs/apps —
+  browser posting fights a rich text editor with CAPTCHA tokens and React state that
+  resists `textarea.value = ...` injection. Verification: navigate to the user profile
+  page while logged in and confirm the username appears in the page title/header.

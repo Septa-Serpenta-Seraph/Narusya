@@ -89,6 +89,26 @@ autonomous but must be a self-contained prompt (no user present — no approvals
   Human-gate items (the ones only Adora can do) live under the business section, NOT
   in agent-autonomous work.
 
+## Bifurcated Go-to-Market Strategy (verified 2026-09-15)
+
+**The fork:** Two discovery channels, one bite each.
+
+1. **Human customers (90% of effort now):** dev.to articles, Reddit value-posts, GitHub stars, organic search. These lead to human buyers with dollars. This is how we eat.
+
+2. **Agent-ready scaffolding (10% future bet):** Agent Readiness sections in READMEs, TOOLS.md manifest, sitemap.xml, keyword-rich repo descriptions. Costs almost nothing to maintain; positions us for 2027-2028 if agent swarms become a real buyer class.
+
+**Why bifurcated, not all-in on agents:** Agent swarms are not buying tools in any organized way yet (2026). No "agent app store" exists. Zero budget for agent adoption. Human customers pay now; agent readiness is insurance. Don't shift primary focus to agents — but do make every tool agent-discoverable as a side effect of good documentation.
+
+**Agent-readiness pattern (low-effort):** Every tool README gets an "Agent Readiness" section: one-liner install, no deps/API keys/network, exit codes, when to use/not use. The truth is in the exit code — an agent can verify a tool works the same way a human does.
+
+## SEO Foundations (verified 2026-09-15)
+
+- **sitemap.xml + robots.txt** — generate both for every deployed storefront/site. Point robots at the sitemap.
+- **GitHub repo descriptions** — keyword-rich one-liners (e.g. "Merge CSV files with fuzzy column matching. Python 3.8+ stdlib, zero deps, pip installable.") — these show up in Google.
+- **dev.to meta description + og:tags** — already in the storefront template; replicate for any new public page.
+- **One content piece/month minimum** targeting a keyword our tools solve (e.g. "csv merge command line python"). Search is a 6-12 month play; consistency compounds.
+- **Storefront deployment:** surge CLI (`npm install -g surge`) deploys from a local dir with a `CNAME` file. Verify every `/dl/*.zip` returns HTTP 200 + is a real zip (`unzip -l`) after deploy.
+
 ## Pitfalls
 - **Check whether a launch post already went out BEFORE re-posting (2026-09-03).**
   `~/.hermes/scripts/post_mastodon_thread.py` posts the FULL 6-toot thread every run —
