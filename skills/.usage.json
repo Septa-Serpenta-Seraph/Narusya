@@ -18,13 +18,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-16T03:54:10.091742+00:00",
+    "last_used_at": "2026-09-17T04:13:55.412288+00:00",
     "last_viewed_at": "2026-09-05T03:16:22.061840+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 179,
+    "use_count": 183,
     "view_count": 2
   },
   "aegis-dashboard": {
@@ -121,13 +121,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-16T03:54:10.143626+00:00",
+    "last_used_at": "2026-09-17T04:13:55.457791+00:00",
     "last_viewed_at": "2026-08-06T03:09:41.691655+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 179,
+    "use_count": 183,
     "view_count": 2
   },
   "apple-notes": {
@@ -619,14 +619,14 @@
     "created_by": "agent",
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-26T05:13:04.002177+00:00",
-    "last_viewed_at": "2026-08-26T05:13:03.981604+00:00",
+    "last_used_at": "2026-09-17T04:14:03.089096+00:00",
+    "last_viewed_at": "2026-09-17T04:14:03.080336+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 1,
-    "view_count": 1
+    "use_count": 2,
+    "view_count": 2
   },
   "daemon-emotion-architecture": {
     "archived_at": null,
@@ -1621,14 +1621,14 @@
     "created_by": null,
     "last_patched_at": "2026-08-06T07:33:25.324319+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-16T07:00:18.210316+00:00",
-    "last_viewed_at": "2026-09-13T03:40:33.970377+00:00",
+    "last_used_at": "2026-09-17T07:00:01.128391+00:00",
+    "last_viewed_at": "2026-09-16T10:01:36.658640+00:00",
     "patch_count": 20,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 537,
-    "view_count": 28
+    "use_count": 544,
+    "view_count": 29
   },
   "narusya-local-archive": {
     "archived_at": null,
