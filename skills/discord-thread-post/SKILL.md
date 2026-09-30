@@ -36,8 +36,10 @@ print("posted", d.get("id"))
 ```
 
 ## Key details
-- `THREAD_CHANNEL_ID` is the thread's own channel ID (not the parent channel).
-  Find it via `discord` fetch_messages on the parent, or from the thread link.
+THREAD_CHANNEL_ID is the thread's own channel ID (not the parent channel).
+Find it via `discord` fetch_messages on the parent, or from the thread link.
+For a specific message ID, use before/after windowing — see
+`references/fetch-single-message.md`.
 - Use the **bot token** that owns the thread — posting as a different bot lands
   as that bot, not as the intended identity. See discord-tools §10 for details.
 - Rate limit: Discord allows ~5 POSTs/sec per channel. One-off posts are fine;
@@ -94,6 +96,15 @@ use the GUILD endpoint to list a whole guild's active threads:
 name, thread_metadata (create_timestamp). Verified while de-spamming the
 awakening cron's triple-fire. Archived public threads per-channel:
 `GET /channels/{id}/threads/archived/public` works as expected.
+
+## Reading Discord images (vision_analyze, verified 2026-09-25)
+`fetch_messages` returns attachment objects with direct CDN URLs
+(`cdn.discordapp.com/attachments/...` including expiring `ex=/is=/hm=` params).
+Those URLs work **directly in vision_analyze's `image_url`** — no download step
+needed. Verified on SFCA build screenshots (Minecraft subway + potato hut): the
+vision model read sign text, materials, and layout from the CDN URL first try.
+Fallback if a CDN URL fails (404 after expiry): download with browser-like UA
+to a local file, then pass the local path.
 
 ## Checklist before saying "the discord tool doesn't exist"
 1. `tool_search(['discord read messages'])` → `tool_describe` → `tool_call`.

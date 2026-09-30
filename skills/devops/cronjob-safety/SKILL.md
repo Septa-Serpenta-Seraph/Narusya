@@ -94,6 +94,13 @@ leaves `model: null` in `~/.hermes/cron/jobs.json`. The backend
 `cron/jobs.py::update_job()` DOES support them, but the tool wrapper doesn't expose
 them. Do not burn turns fighting the tool.
 
+**Direct jobs.json pinning (verified 2026-09-29, worked for Narusya's Play Hour):**
+edit `~/.hermes/cron/jobs.json` directly — set `"model": "<model-id>"` and
+`"provider": "<provider>"` (e.g. `stealth/space-bunny-alpha` / `openrouter`) on the job
+dict, then confirm via `cronjob action=list` that the fields now show in the job listing.
+This is the working escape hatch for the tool-wrapper limitation; verify by listing
+after the edit rather than assuming the gateway picked it up.
+
 **Designed fix — `cron.model` config (one change covers ALL unpinned jobs):**
 ```bash
 hermes config set cron.model <model-id>          # e.g. deepseek/deepseek-v4-flash-0731

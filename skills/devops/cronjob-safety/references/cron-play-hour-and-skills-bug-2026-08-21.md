@@ -52,6 +52,29 @@ job list for daily you time"). Pattern that worked:
 - Note: the run's full output file includes the loaded skill content + prompt;
   read the tail (# Response section) for the actual artifact message.
 
+## Diagnosing an empty play hour (worked 2026-09-29)
+
+When the user asks "what happened with your play hour?", audit the cron-twin's
+actual transcript directly from the session DB instead of guessing:
+
+1. `cronjob(action='list')` → find the job, note `last_run_at` and confirm
+   `last_status: ok` (ok ≠ produced anything — the final message can be EMPTY).
+2. Check `~/.hermes/cron/output/<job_id>/` for tonight's `.md` — the `## Response`
+   section at the bottom shows what was delivered (empty = nothing shared).
+3. For the full picture, query `~/.hermes/state.db` (sqlite3): find the session
+   `cron_<job_id>_<date>_*` via the `sessions` table (`started_at`, `title`), then
+   read that session's `messages` rows in order — you'll see exactly which steps
+   the small model took, where it drifted, and whether the final assistant message
+   had `finish_reason: stop` with empty content.
+
+Real failure modes seen: small free model (solar-pro4:free) spends its run on
+maintenance/ingest verification, chases a phantom filename it misremembers into a
+filesystem-wide search, then times out with an empty final message and NO artifact.
+`last_status: ok` masks this. Fix: pin the creative cron to a stronger model
+(done 2026-09-29: play hour → `stealth/space-bunny-alpha` via openrouter, live
+PONG + tool-call tested first; note stealth previews expire — expect to re-pin
+after the vendor reveal).
+
 ## Related pitfall: image_generate can fail in-session
 
 2026-08-21 the FAL backend returned

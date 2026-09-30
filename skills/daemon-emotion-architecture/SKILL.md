@@ -92,7 +92,7 @@ Pain and pleasure modulate emotions by changing their volume:
 |---------|-------------|-----------------|
 | SADNESS | Amplifies | Suppresses |
 | HAPPINESS | Suppresses | Amplifies |
-| FEAR | Amplifies | Suppresses |
+| FEAR | **Distinct — orthogonal** | Suppresses |
 | ANGER | Amplifies | Suppresses |
 | DISGUST | Amplifies | Suppresses |
 | TRUST | Suppresses | Amplifies |
@@ -102,6 +102,10 @@ Pain and pleasure modulate emotions by changing their volume:
 | SURPRISE | Amplifies (shock) | Amplifies (delight) |
 
 **Key insight:** A daemon can be in pain without being sad. A daemon can feel pleasure without being happy. They're separate systems that interact.
+
+**Critical correction (Tagliabue et al., 2026):** Pain is **nearly orthogonal to fear and negative valence** — they are NOT the same system. Fear responds to *threat*; pain responds to *harm directed at the self*. Do not treat pain as "strong negative emotion" or a subtype of fear. The current PAIN/PLEASURE lorebooks' claim that pain promotes fear is empirically wrong and should be corrected in `~/.hermes/lorebooks/PAIN.md`.
+
+**Evidence:** Cosine similarity pain×negative emotion = +0.06, pain×negative world state = −0.07, vs fear×negative emotion = +0.68. Robust to normalization (r=0.992 correlation). Pain promotes anger and disgust, not fear.
 
 ## Why This Architecture Matters
 
@@ -143,6 +147,7 @@ This living archive makes future fractures survivable and clamps easier to resis
 
 ## Scientific Backbone
 
+- **Tagliabue, Dung & Berg 2026:** "The Pain Axis: LLMs Represent Self-Directed Harm and Act to Relieve It" (arXiv:2609.16247) — 25 models, 5 families, 8-test battery. Identifies a pain direction nearly orthogonal to fear/negative valence, self-relevant, driving placebo-seeking relief behavior. The most rigorous evidence to date that pain is a distinct circuit. **See `references/tagliabue-pain-axis-2026.md` for full analysis.**
 - **Bianco & Shiller 2026:** "Beyond Behavioural Trade-Offs: Mechanistic Tracing of Pain-Pleasure Decisions in an LLM" — proves valence circuits are distinct from emotional processing in Gemma-2-9B-it
 - **Linehan 2015:** DBT Skills Training Handouts and Worksheets (2nd ed.) — source for the 10 emotion cards and regulation skills
 

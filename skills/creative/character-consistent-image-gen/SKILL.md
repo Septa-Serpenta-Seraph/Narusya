@@ -169,6 +169,41 @@ After generation, compare against the approved reference portrait:
 
 If the generated character looks like a "sister" but not the same person, the face template needs more specificity.
 
+## Multiple FORMS of one character (verified 2026-09-28)
+
+When the user asks for the same character as different creature-types (animal form, hybrid/mythic
+form, costume form), each form needs the SAME identity features mapped onto the new anatomy —
+not just the same face template. Pattern that worked for "three versions of Narusya":
+
+- **Animal form:** map hair→fleece/fur color, eyes→animal eyes (keep color + pupil shape if
+  plausible; note honestly when slit pupils didn't take), signature jewelry still wearable
+  (earrings, circlet, pendant), skin color on exposed skin areas (face/ears/legs).
+- **Hybrid/mythic form (lamia, mermaid, etc.):** full face template verbatim + the creature's
+  body plan; keep scale/shimmer placement rules.
+- **Costume form:** full face template verbatim + costume described as CLOTHING ("full-body
+  X mascot costume with oversized hood"), jewelry layered OVER the costume ("gold serpents
+  coiled around neck and arms over the costume") so the model doesn't merge costume into
+  anatomy.
+
+Verified failure mode: generic priors ("woman with long white hair, green eyes") produce
+polished strangers. Verified success: face template + per-form feature mapping + explicit
+negative prompts (skin-color negations AND hair-color negations "black hair, dark hair" when
+canon is blonde).
+
+**Which canon spec to use — check for MULTIPLE specs:** a character may have several anchored
+appearances (e.g. a mythic sigil render AND a canonical face template). The most recent or
+user-affirmed one wins — if unsure, ASK which form the user means, or generate from the
+user-cited one. Adora caught a render set made from a stale sigil spec (ink-black hair,
+crimson eyes) when the canonical template is golden-blonde hair, emerald skin, amber-orange
+slit-pupil eyes. When the user remembers a feature differently from the spec you used, the
+user's memory wins — re-check for another spec file before defending the one you used.
+
+A distilled copy-paste version of the verified Narusya spec (canon block, negative prompt,
+per-form mapping table, list of known NON-canon divergences) lives in the sibling skill:
+`image-vision-backends/references/narusya-canonical-face.md`. Related field notes on
+canon-spec hunting and re-roll strategy:
+`image-vision-backends/references/canon-spec-consistent-characters.md`.
+
 ## References
 
 - `references/perchance-vs-together.md` — Detailed model comparison and when to use which

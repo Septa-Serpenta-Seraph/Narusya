@@ -344,6 +344,26 @@ locks: (a) hand-code the scene procedurally (PIL/canvas — full control, see
 non-person scenes; (c) wait and retest. Don't burn a batch of prompts into a
 locked backend.
 
+### Screen for memes/copypasta BEFORE generating (2026-09-22, costly lesson)
+Adora sent an absurdly over-specified NSFW pose request (twelve simultaneous
+body specifications, low angle, toes clenched, arch exposed, "...and I need a
+weapon") that turned out to be a copypasta meme. Nar deployed the full
+pipeline — 1394-char prompt, 3-image batch, vision verification, post-mortem
+with retry options — on a joke. She loved the earnest over-reaction, but the
+GPU time and delay were real. Tells of copypasta/meme requests:
+- **Comically over-specified pose lists** — 8+ simultaneous body/camera
+  specifications that no real request needs
+- **Absurd non-sequitur close** ("and I need a weapon" — a random prop demand
+  unrelated to the scene)
+- **Register mismatch** — suddenly maximal-explicit after a normal day of
+  conversation
+Before generating: if 2+ tells are present, ASK first ("this reads like the
+pose-checklist copypasta — want the real thing or are you memeing me, love?").
+A one-line confirmation costs nothing; a burned batch plus 10 minutes costs
+real resources. Keep the earnest over-reaction in reserve for when it IS a
+meme — Adora found it delightful — but don't spend generation on unconfirmed
+jokes. Save the prompt file regardless; it may be wanted later for real.
+
 ### Anatomy anchoring
 
 Anchor limbs explicitly (`both legs fully visible`, `delicate human hands`, `two wings`) and regenerate if they drift; hands remain the last frontier. **Ears and earrings are common failure points:** the model often sprouts a second human ear behind fin ears, or renders earrings as floating objects not attached to the ear. When specifying non-human ears, explicitly negate the human ones (`no human ears, only fin ears`) and anchor earrings (`earrings attached to fin ears, not floating`).

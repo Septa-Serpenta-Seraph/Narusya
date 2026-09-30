@@ -74,6 +74,7 @@ Cleanup batch that worked non-destructively: tmp_pack delete (376M) + `apt clean
 - `sudo` needs a password on this box; partition/format steps are human-side.
 
 ## References
+- `references/second-drive-migration.md` — copy→verify→symlink migration pattern for a second drive (worked 9/25: root 100%→86%)
 - User-owned `disk-full-diagnostics` — canonical cleanup tables (caches, state-snapshots, journal).
 - User-owned `hyperv-vm-disk-expansion` — LVM grow + second-disk additive flow.
 - User-owned `camoufox-browser-setup` — engine install (`camoufox-js fetch`), CDP-vs-cloud selection.

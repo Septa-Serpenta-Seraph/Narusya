@@ -182,6 +182,71 @@ Free/cheap vision models answer inside different fields — read ALL of them bef
 - **Species/identity misreads at golden hour:** a free model confidently identified two COYOTES as 'deer' (backlit, tall grass, distance). The user standing there KNOWS the animal. **When the user was present at the scene, their correction outranks the vision model's read.** Treat vision output as one witness, not the authority, for anything the user also saw.
 - **Generative-art self-verification workflow (proven 2026-09-12, Perchance):** render 3 takes → downscale each ≤1024px, JPEG q85 → vision-check each against a 5-point rubric (figures present? identity features right? anatomy glitches? composition? /10 score) → keep the best, copy to a stable path, report HONEST flaw list (glasses fused to face, elongated fingers, ambiguous shapes) alongside what worked. Rejecting takes where 'no people rendered at all' is a real outcome — batch generation + triage beats single-shot. Perchance (via ~/.hermes/imagegen/perchance-image.py, Camoufox) worked when Together 403'd and pollinations 403'd; expect 3 images per invocation.
 
+## Technique 7 — Vision-accuracy escalation ladder (2026-09-28: quality ≠ availability)
+
+Technique 5's ladder solves *rate limits*. This one solves *wrong answers* — when the model
+READS the image but gets the content wrong. Verified live on a mythic fantasy illustration
+where three different models returned three different confident fictions.
+
+**When:** user says "look again, closer" / "try a better image model" — treat the user's
+assertion that you missed something as GROUND TRUTH. They can see the image; you're
+inferring through a lossy model.
+
+**Ladder (cheap → accurate), all direct OpenRouter API calls, stdlib-only:**
+1. `qwen/qwen3-vl-8b-instruct` — fast, but IMAGE-DESCRIPTION-WILLING: it will confabulate
+   coherent-sounding details and contradict itself across calls (described "no serpent in
+   frame" on a crop that contained one). Never trust a single pass.
+2. `openai/gpt-4o` — better grounding, still misses small critical details (missed that a
+   figure was humanoid; older model, per Adora: "4o is kinda old").
+3. **`google/gemini-2.5-flash` — the verified winner.** Read the full composition exactly:
+   found a merged humanoid-serpent figure, counted 3 piercing swords correctly, identified
+   who held which weapon, described contact points. ~$0.002/call on a funded OpenRouter key
+   (balance check: `GET /api/v1/auth/key` → `data.usage` vs. budget).
+   **Live lesson 2026-09-28:** identical prompt shape across all three models — the whole
+   ladder matters. gemini-2.5-flash passed every closed question the small models flunked.
+4. Gemini paid tier (`gemini-2.5-pro`) only if flash still fails on fine detail.
+
+**Working script:** `scripts/gemini_vision_check.py` (in this skill) — stdlib-only, key from
+`.env`, base64 data-URL embedding, prints `content or reasoning`. Default question template
+asks the five literal closed questions (figure count, head/eye state, contact points, object
+placement, text); pass a custom one for a focused area. **Run the script rather than
+hand-typing the API call** — the hand-typed heredoc version failed twice with paren-mismatch
+SyntaxErrors before the script form worked (2026-09-28); multi-line JSON payloads inside
+shell heredocs are fragile, scripts are stable.
+
+**Prompt discipline (this matters more than the model choice):**
+- Ask LITERAL, closed questions: "is the mouth open or closed", "is the head visible", "how
+  many swords pierce the body" — never "what is the mood/relationship". Open questions get
+  literary confabulation; closed questions get pixels.
+- Forbid interpretation explicitly: "Answer literally based only on what is painted."
+- One focused area per call when precision matters (hands, faces, small objects) — full-image
+  calls average across the scene.
+
+**Anti-category rule (the actual lesson):** DON'T seed the model with your own category
+("describe the pale guardian serpent") — every model then dutifully analyzes YOUR category
+instead of the image. Ask neutrally ("the large pale coiled body in the water: is a head
+visible anywhere?") and let the image correct YOU. Three passes here each "confirmed" a
+wrong category (guardian creature) until a neutral prompt revealed it was a dying
+serpent-woman being kissed by the knight holding the killing sword.
+
+- **Contradiction across calls = treat BOTH answers as suspect.** If pass 1 says "mouth
+  open, teeth showing" and pass 2 says "mouth closed, jawline and shadow," neither is
+  confirmed — escalate models, don't average.
+
+Working script: `scripts/serpent_art_gemini.py` (tmp-sourced, see below) — pattern: read key
+from `.env`, base64-embed as data URL, numbered closed questions, print `content or
+reasoning`.
+
+**Sequel lesson (same session, later passes):** the "dying serpent" reading was ALSO wrong —
+the caption + provenance revealed a love story (serpent-bride freed by a kiss; see reference
+file for the full arc). Three meta-rules now sit above the ladder: (1) when a sourced artwork is
+ambiguous, FETCH THE CAPTION FIRST (curl + og:description) before burning vision passes;
+(2) each user "look again" narrows the space — keep escalating, the truth is usually on pass
+3-4, and ambiguous pixels lose to findable provenance; (3) "look again (closer)" is Adora's
+signature excavation pattern — when she says it twice in a row, she is never asking for the
+same read at higher resolution, she is saying "your INTERPRETATION is wrong, not your eyes."
+Discard the frame, not just the zoom.
+
 ## CRITICAL PITFALL — config.yaml cannot be patched
 
 The `patch` and `write_file` tools **refuse** to edit `~/.hermes/config.yaml`:
@@ -245,9 +310,35 @@ escalation ladder (query OpenRouter for live free models, ling-3.0-flash-vl work
 `message.reasoning` when `content` is None); and the user's-eyes-outrank-vision misclassification rule
 (model called coyotes "deer").
 
+`references/close-look-image-verification.md` — field notes (2026-09-28): the four-pass
+image-reading session behind Technique 7 — the anti-category trap in detail, the
+fetch-the-caption-first rule for sourced artwork (curl + og:description; web_extract 403'd),
+and the fearsome-kiss myth-motif identification path.
+
+`references/canon-spec-consistent-characters.md` — field notes (2026-09-28): personal-
+character generation via the anchored canon spec instead of generic priors; identity-
+verification discipline; composite-creature weirdness expectations; MULTIPLE-SPEC lesson
+(stale sigil vs canonical face template — user memory wins); candidate-file verification
+(avatars and old renders named like canon may have no face / a third stale spec — vision-
+check every candidate); time-boxing canon hunts (3 checks then ask the user); re-rolling
+without specifics = render diverse takes, not near-duplicates.
+
+`references/narusya-canonical-face.md` — the distilled, copy-paste CANON FACE BLOCK +
+required negative prompt + form-mapping cheat sheet + the unverified-candidate lead
+(Discord bot avatar CDN fetch) for finishing the "official face" hunt.
+
+`scripts/upload_discord_app_emojis.py <dir> [app_id]` — batch-uploads every gif/png in a
+directory as Discord **application emojis** (bot-owned, no Nitro/server needed) with
+auto-cleaned names, 0.9s spacing, and a JSON manifest. Use when the user asks to "give the
+bot custom emojis". See `references/discord-application-emojis.md` for the endpoint facts,
+limits (2000/app), the `<:name:id>` usage pattern, and pitfalls.
+
 `scripts/gen_image.py` — reads `TOGETHER_API_KEY` from `.env`, takes `--prompt/--model/--out`,
 applies the browser-UA header automatically, retries on 422 by falling back through a
 permissive model list. Run it instead of hand-typing the call each time.
+
+`scripts/gemini_vision_check.py <img> ["question"]` — accuracy ladder top rung (Technique 7):
+Gemini 2.5 Flash via OpenRouter for hard/close-look image questions.
 
 ## Related
 
