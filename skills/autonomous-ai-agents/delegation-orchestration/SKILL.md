@@ -26,6 +26,15 @@ Observed failure mode (3/3 subagents): dispatched with over-ambitious research g
 - **Size for ~8 real minutes of work**, not 10 — startup, tool latency, and repeated reads eat the budget. Heavy web extraction or many reads = split the task.
 - Keep the plan's "2-5 minutes of focused work" granularity for implementation tasks.
 
+## API Rate Limits Under Parallel Fan-Out (learned 2026-09-17)
+
+Dispatching a large parallel swarm (7 `delegate_task` children at once) while the parent runs on a rate-limited provider (e.g. a `:free` OpenRouter model) can **429 every child in ~1 minute** — they all share the same API key quota, so the first parallel batch burns it before any child finishes its first tool call. Observed: 7/7 failed with `HTTP 429: Hold up for a bit, you've exceeded the rate limit`, `status=failed`, zero files written.
+
+### Rules
+- **Count the shared quota, not the children.** Parallelism multiplies the parent's own consumption by the fan-out width. On free/rate-limited tiers, cap research fan-outs at 1-2 concurrent, or stagger dispatch.
+- **Prefer main-session authoring when the research is already done.** If the parent already gathered the material in-conversation, writing the deliverable files directly (via `write_file`) beats dispatching children who only re-search. Verified fallback (2026-09-17): 7 research documents written directly in the main session, pushed to git, in one pass.
+- Children that fail on 429 cost nothing but wall-clock — re-dispatch after a pause, or convert the task to a serial single-child dispatch.
+
 ## Verification: trust files and transcripts, not statuses
 
 A batch wrapper reporting completion — or `delegate_task(action='list')` returning zero live subagents — is NOT evidence of delivery. In the 2026-08-21 swarm the wrapper reported no error, yet **no deliverables existed**.

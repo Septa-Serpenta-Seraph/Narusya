@@ -43,14 +43,17 @@ leaves the agent blind.
 ## 3. Pin every spend path, not just the main model
 
 ```bash
-hermes config set model.default meituan/longcat-2.0:free
+hermes config set model.default z-ai/glm-5.3-flash
 hermes config set model.provider nous
 hermes config set auxiliary.free_only true          # stops silent paid auxiliary calls
 hermes config set auxiliary.vision.provider nous
 hermes config set auxiliary.vision.model stepfun/step-3.7-flash:free
-hermes config set cron.model meituan/longcat-2.0:free
+hermes config set cron.model z-ai/glm-5.3-flash
 hermes config set cron.model_provider nous
 ```
+(NOTE 2026-09-24: `meituan/longcat-2.0:free` was REVOKED by Nous — 'This model is no
+longer free' 404. The pin examples now use `z-ai/glm-5.3-flash`, current free-recommended.
+Always re-enumerate the free roster before repinning — the roster rotates.)
 `auxiliary.free_only` matters: the log warns
 `PAID lane engaged for auxiliary task — ... is not a :free SKU and may incur real spend`
 while the main model is free. Vision/compression are a separate wallet leak.

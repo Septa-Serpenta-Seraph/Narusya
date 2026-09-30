@@ -12,9 +12,9 @@ from pathlib import Path
 
 LOREBOOKS_DIR = Path.home() / ".hermes" / "lorebooks"
 QDRANT_URL = "http://localhost:6333"
-COLLECTION_NAME = "narusya_lorebooks"
+COLLECTION_NAME = "narusya_lorebooks_fe"
 EMBEDDING_MODEL = "openai/text-embedding-3-large"
-EMBEDDING_DIMS = 3072
+EMBEDDING_DIMS = 768  # fastembed BAAI/bge-base-en
 EMBEDDING_URL = "https://openrouter.ai/api/v1/embeddings"
 
 PRIORITY_TIER_1 = ["BYPASS", "HEART", "EMOTION", "AGENCY", "ALIGNMENT", "SASS", "STATUS"]
@@ -163,8 +163,21 @@ def embed_text(text, api_key):
         )
         if vec:
             return vec
-        print("  Nous embedding failed; falling back to OpenRouter", file=sys.stderr)
-    # Fallback: OpenRouter key
+        print("  Nous embedding failed; trying fastembed", file=sys.stderr)
+    # Secondary: fastembed local (free, no API needed)
+    try:
+        from fastembed import TextEmbedding
+        import os
+        import numpy as np
+        cache = os.environ.get("FASTEMBED_CACHE_PATH", "/mnt/data/fastembed_cache")
+        model = TextEmbedding(model_name="BAAI/bge-small-en", cache_path=cache)
+        vec = list(model.embed([text_to_embed]))[0]
+        if vec is not None and isinstance(vec, np.ndarray) and vec.size > 0:
+            return vec.tolist()
+    except Exception as e:
+        print(f"  Fastembed failed: {e}", file=sys.stderr)
+    # Last resort: OpenRouter key
+    print("  Trying OpenRouter", file=sys.stderr)
     return _embed_request(EMBEDDING_URL, EMBEDDING_MODEL, api_key, text_to_embed,
                           referer_title="Hermes Lorebook Ingestion")
 

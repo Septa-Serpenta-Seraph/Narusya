@@ -7,12 +7,17 @@ Hands-on verified flow for Sunburst Sanctuary LLC (NM). Reuse for any NM entity
 - NM SOS backlog DOES clear eventually. Filing approved 08/15/2026, Certificate +
   Notice of Filing Approval landed 08/21/2026 (out-of-the-blue user upload, no portal
   polling needed). Archive both PDFs to `records/` in the project repo.
-- Letter says: if status is **"Pending Initial Report"** file an initial report within
-  30 days. BUT the portal's **My Business Work Queue** showed status **"Approved"** →
-  no initial report demanded. Always check the WORK QUEUE (enterprise.sos.nm.gov →
-  login → queue) before chasing a form. Forms are **online only** — no paper.
-- LLCs also have a NEW **triennial report** under HB 0281 (eff. 7/1/2024), still being
-  operationalized — the portal presents whichever applies; due date authoritative there.
+- **"Initial Report" eliminated (HB 0281, eff. 7/1/2024):** NM SOS Notice of Filing
+  Approval letters (Aug 2026 vintage) still say "if status is Pending Initial Report,
+  file within 30 days." **Ignore this.** HB 0281 eliminated the Initial Report
+  requirement for NM LLCs. The replacement is a **triennial report** (every 3 years),
+  first due by the end of the 3rd calendar month after the certificate's effective
+  date (Sunburst: Aug 15, 2026 → **November 30, 2026**). The portal's **My Business
+  Work Queue** is authoritative — log in, check the queue, and file what it actually
+  demands. Do NOT file an Initial Report even if the letter says to. (Adora correction
+  2026-09-21: this was previously discussed and documented; verify your own notes
+  before asserting something the user already told you.)
+- Forms are **online only** — no paper.
 
 ## 2. TAP portal registration (tap.state.nm.us) — the real quirks
 - **Account Validation wall:** using the "existing filer" path with a first-time SSN

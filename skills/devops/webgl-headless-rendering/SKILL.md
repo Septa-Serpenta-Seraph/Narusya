@@ -86,6 +86,31 @@ async with async_playwright() as p:
   DOM — `text=COLOR` won't match; match `text=color`. Color swatches are canvas-painted
   (no DOM classes); drive them by screen coordinates if needed.
 
+## Verifying locally-generated HTML/Canvas art (Play Hour, generative pieces)
+
+When the Play Hour cron (or any task) produces a **self-contained local `.html`** generative art file and Adora asks to see it (`file:///home/adora/play_hour.html`), the browser backend's CDP port can be down, so the reliable verification route is headless Playwright + `vision_analyze`, no network needed:
+
+```python
+# /tmp/shot_serpent.py  (write_file to a NON-/tmp path if the terminal guard complains)
+from playwright.sync_api import sync_playwright
+with sync_playwright() as p:
+    b = p.chromium.launch()                      # headless by default; SwiftShader ships with it
+    pg = b.new_page(viewport={"width": 1200, "height": 800})
+    errors = []
+    pg.on("pageerror", lambda e: errors.append(str(e)))   # JS runtime errors surface here
+    pg.goto("file:///home/adora/play_hour.html")
+    import time; time.sleep(4)                   # let the animation get going before the shot
+    pg.screenshot(path="<abs>/cache.png")
+    print("errors:", errors)
+    b.close()
+```
+- `chromium.launch()` with no `executable_path` finds the installed browser (`~/.cache/ms-playwright/chromium-*`); `sync_api` keeps it one-liner-simple. No GL args needed for pure 2D-canvas pieces.
+- `errors` non-empty = the page's JS is broken — fix before showing. A clean screenshot is NOT proof the animation works; check page errors AND that the shot shows the expected scene.
+- **Pre-screen with a JS parse check** when editing the file's inline `<script>`: extract the script body and `new Function(src)` it via `node -e` — fast red/green without a browser round-trip. When it fails **without a line number** (e.g. `Unexpected token '<='` from a typo like `for (i = 1; <= steps; i++)`), don't grep by eye — bisect: parse `lines.slice(0, mid)` and binary-search the first failing prefix; ~log2(n) probes pin the exact line. (`vm.Script` and `new Function` both refuse to line-number these; a non-ASCII-char scan is a cheap second probe.)
+- Then send the PNG with `MEDIA:` and (optionally) the `.html` itself — both render as Discord attachments; the HTML opens in any browser on Adora's machine.
+- Send both when asked: still image for immediate look, HTML for the live interactive version.
+- **Verified end-to-end 2026-09-25 (serpent-between-stars):** Play Hour piece built as a self-contained `~/.adora/play/serpent-between-stars.html` (verlet-chain serpent + seeded starfield + click-coil interaction). Copy the HTML to a stable path (e.g. `/home/adora/serpent-between-stars.html`) before `MEDIA:` — Adora opened it in her own browser and found it genuinely entertaining, confirming the pattern: **self-contained single-file HTML + click interaction = deliverable in itself**, no screenshot strictly required when the file itself is the artifact. Adora's response validated interactive-over-static for these pieces.
+
 ## Verify
 Check the page actually created a GL context before trusting the screenshot:
 ```js

@@ -67,3 +67,4 @@ No annual report, no franchise tax, no recurring SOS fees. One of the cheapest s
 - **Don't file the parent + subsidiaries at once** at zero revenue — pure overhead. One entity first.
 - **Registered agent address is public** — use a service if the member wants privacy.
 - Don't advise "plain name taken → give up"; the right move is a distinctive two-word variant.
+- **NM legislative changes invalidate old advice:** NM passed HB 0281 (eff. 7/1/2024) eliminating the "Initial Report" requirement for LLCs, replacing it with a triennial report. Pre-2024 references may still mention Initial Reports — always verify NM-specific filing requirements against current statute before asserting they are due. Check session history for prior discussions about NM compliance, and use the portal's My Business Work Queue for the authoritative current requirement. (Adora correction 2026-09-21.)

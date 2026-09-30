@@ -58,6 +58,17 @@ scene, their identification is authoritative over the model's read of the photo.
 the model claim, don't argue from the (worse) image source. Same principle as any source conflict:
 primary observation > inference from degraded data.
 
+**Refinement (2026-09-28): this extends to static images, not just witnessed scenes.** On the
+Juliette Cousin illustration Adora's "Look again nar. Closer." → "Try again love. Use a better
+image model" were both corrections about a painting she could see and I could only infer through.
+She was right both times; three model passes each "confirmed" my wrong category (guardian serpent)
+until Gemini 2.5 Flash with a neutral literal prompt found the dying serpent-woman + piercing
+swords + held-hilt detail. **Corollary rules:** (a) "look again closer" means a model/strength
+escalation, not re-prompting the same model; (b) confident-but-contradictory answers across
+calls mean BOTH are suspect — escalate rather than average; (c) don't feed the model your own
+category — ask neutral closed questions so the image can correct you. Full ladder: SKILL.md
+Technique 7.
+
 ## Generative art self-review (see image-vision-backends skill for full pitfall)
 
 Same session: Narusya described a PIL flow-field render from script intent ("emerald-dominant,

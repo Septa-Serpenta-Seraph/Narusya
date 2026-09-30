@@ -51,6 +51,8 @@ metadata:
 
 ## ⚠️ REPO BLOAT — the failure mode that killed pushes (fixed 2026-08-26)
 
+**Post-migration note (2026-09-25):** the local `~/.hermes/vault-work` source dir was migrated to `/mnt/data/adora-main/vault-work` and replaced with a symlink — diff-verified identical before the original was deleted. The vault sync script follows the symlink transparently; no change needed. If vault pushes ever fail with path errors, check the symlink target exists (`ls /mnt/data/adora-main/vault-work`). Full migration recipe: disk-reclaim-verification skill, `references/second-drive-migration.md`.
+
 **Symptom:** `VAULT PUSH FAILED` in cron output, silently, for days (started 2026-08-23).
 `.git` had grown to **6.5GB** against GitHub's **5GB soft cap**; pushes time out.
 

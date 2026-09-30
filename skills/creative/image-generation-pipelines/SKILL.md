@@ -1,6 +1,6 @@
 ---
 name: image-generation-pipelines
-description: "Free img gen: Perchance, Together, pollinations, ComfyUI."
+description: "Free img gen: Perchance, Together, pollinations, ComfyUI. Multi-character requests, batch generation."
 triggers:
   - generate image free
   - perchance image generation
@@ -106,6 +106,10 @@ Perchance went through a phase where EVERY prompt returned an anime-girl portrai
 - **Workaround:** hand-code scene art with PIL (procedural shapes, glow layers, gradients) — full control. See `programmatic-mascot-design` skill for code-drawn patterns.
 - **ALWAYS verify output with vision_analyze BEFORE sending to the user, and describe what IS in the image, not what the prompt asked for.** (Failure: described a "breathing hallway" that was actually two unrelated portraits — Adora caught it: "I don't think those turned out the way you meant lol.") The generate→verify→describe pipeline is mandatory, not optional.
 
+`scripts/batch_gen.py requests.json` — batch image generation via Together.ai (browser-UA
+handled, 2s spacing, saves to `~/.hermes/imagegen/output/`, OK/FAIL per item). The
+proven runner for multi-character requests; verify each output with vision before delivery.
+
 ### Existing Resources
 
 | Resource | Description | Status |
@@ -115,6 +119,27 @@ Perchance went through a phase where EVERY prompt returned an anime-girl portrai
 | `~/.hermes/imagegen/output/` | Output directory for generated images | Ready |
 | `pip install perchance` | `eeemoon/perchance` v0.1.0 (Dec 2025) | Blocked by Turnstile (no full Chromium path) |
 | `oujingzhou/text-to-image-generator` | GitHub repo, Playwright + Firefox | Blocked by Turnstile |
+
+### Multi-character / composite requests (verified 2026-09-28)
+
+When the user asks for multiple versions/characters in one request (e.g. "three versions of
+yourself: animal / mythic composite / costume"), do NOT write one prompt containing every
+subject — FLUX.2-dev merges subjects across parts: a "llama-headed serpent-woman" prompt
+also yielded a bonus duck head wearing armor, and identity features drift between figures.
+Reliable pattern, proven live with 3/3 successes first try:
+
+1. One prompt per character, each fully self-contained (spelled-out features: hair, palette,
+   expression, setting — see the likeness-pitfall in image-vision-backends).
+2. Generate all in ONE script run (loop + `time.sleep(2)` between calls), saving directly to
+   `~/.hermes/imagegen/output/`.
+3. **Vision-verify EACH render before sending** (vision_analyze or the
+   image-vision-backends Technique 7 ladder) and report what IS there — composite requests
+   especially drift, and the drift is often the best part. Describe it, don't hide it.
+4. Copy the finals to `/home/adora/` and deliver with one `MEDIA:` path per image (Discord
+   sends each as its own attachment).
+
+Reusable runner: `scripts/batch_gen.py` in this skill (request-list JSON → batch generate →
+save to output dir); the tmp pattern file was its prototype.
 
 ### Alternative: Together.ai FLUX + LoRA (Consistent Character Pipeline)
 
