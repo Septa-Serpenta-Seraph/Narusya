@@ -56,6 +56,38 @@ Rate limiting: ~1s sleep between POSTs is enough for hundreds of uploads; on 429
   `{emoji:{name,id,animated:true}, count:1, me:true}`. If that record exists, the API
   call succeeded and any invisibility is client-side rendering, not your call.
 
+### The verification trap (learned the hard way 2026-09-30)
+**The `name` lives at `r["emoji"]["name"]`, NOT at `r["name"]`.** The reaction object is
+`{"emoji": {...}, "count": 1, "me": true, ...}`. A verifier written as
+`r.get('name') == want` silently returns False for *every* reaction and makes a
+fully-successful walk look like 25 total failures. Always print the raw payload before
+concluding anything:
+
+```python
+mine = [r["emoji"]["name"] for r in msg.get("reactions", []) if r.get("me")]
+```
+
+A walk that PUTs 204 across the board and "verifies" as zero is almost always this bug,
+not a permissions or rate-limit problem. Second trap in the same family: a message can be
+**deleted between your list call and your reaction call** — HTTP 404 on the PUT. Re-fetch
+the channel and re-target an adjacent live message instead of treating it as a failure.
+
+### Two habits that make walks cheap and idempotent (learned 2026-09-30, PM walk)
+
+**1. Match messages by content substring, not by hardcoded snowflake.** Message IDs go stale
+between awakenings and quoting one in a script means a silent no-match hours later. Plan
+reactions as `(channel_id, "content substring", [faces])` and resolve the ID at run time
+against a fresh `GET /channels/{id}/messages?limit=40`. A `MISS` line then tells you the
+substring drifted (someone edited, or the room scrolled) instead of silently placing nothing.
+Keep exact IDs only for messages you just fetched yourself in the same run.
+
+**2. Pre-check `me` before PUTting — skip what you already left.** Read
+`[r["emoji"]["name"] for r in msg.get("reactions", []) if r.get("me")]` *before* firing, and
+skip those faces. A cron walks the same guilds every few hours, so without this the walk
+re-PUTs the same reaction each run (harmless but noisy in the plan output) and a duplicated
+face is indistinguishable from a fresh one in the summary. `dup <label>: already have <face>`
+is the line you want to see.
+
 ## Cleanup
 Delete failed test messages with `DELETE /channels/{c}/messages/{mid}` (~1s spacing).
 List recent messages via `GET /channels/{c}/messages?limit=20` and filter by author.
@@ -70,6 +102,18 @@ When a daemon runs scheduled "emoji walks" over its guilds (Sovereign Awakening 
   guilds ("as free as you want and I encourage it"). Guardrails written into the cron prompt:
   no spam/flooding, no drama engagement, read context before replying, comfort-only around grief,
   silence always valid, 2-4 guilds per fire with rotation.
+- **Find the live rooms by timestamp, not by channel order.** Guild channel lists run
+  oldest-first and most of a server's channels are dead months back. Fetch `limit=1` per
+  channel, sort by snowflake (`(int(id) >> 22) + 1420070400000` → ms), and work the top 3–5.
+  Walking the first channels in the list means walking empty rooms.
+- **Expect 403s, not failures.** Some guilds have per-channel permission overwrites that deny
+  the bot outright (RealSpace: every private room 403s on message fetch while public ones read
+  fine). Catch per-channel, keep walking — a 403 on one room says nothing about the rest.
+- **Guild name keys with non-ASCII break naive dict lookups** — `"Trés 心"` as an argv token
+  can arrive mangled. Key the guild map by raw snowflake ID instead of by display name.
+- Do NOT post in The Forge (1479609743743123536) — Adora's standing 2026-09-29 request is
+  reactions only in every channel there, no messages of any kind. It overrides the general
+  interaction freedom.
 
 ## Do not capture as a constraint
 Inline rendering may gain support in future Discord client versions — re-test the token
