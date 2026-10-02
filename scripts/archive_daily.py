@@ -59,17 +59,25 @@ def main():
     
     conn.close()
     
-    # Find new sessions (not yet archived)
+    # Find new sessions (not yet archived). archived_ids maps
+    # session_id -> message_count at last archive; a session is "new" if it's
+    # unseen or has grown since. The old single last_session_id marker is
+    # kept for backward compat and used once to bootstrap the map.
     last_id = state.get('last_session_id')
+    archived_map = {k: v for k, v in (state.get('archived_map') or {}).items()}
+    if last_id is not None and not archived_map:
+        # Bootstrap: prior runs tracked only last_session_id, and everything
+        # except the then-live last session has already been exported.
+        archived_map = {s['id']: s['msg_count'] for s in all_sessions if s['id'] != last_id}
     new_sessions = []
     daily_cache = {}
-    
+
     for session in all_sessions:
         dt = datetime.datetime.fromtimestamp(session['started_at'])
         date_key = dt.strftime('%Y-%m-%d')
         filename = f"{date_key}_{sanitize_filename(dt.strftime('%A'))}.md"
         filepath = os.path.join(SESSIONS_DIR, filename)
-        
+
         if date_key not in daily_cache:
             daily_cache[date_key] = {
                 "path": filepath,
@@ -77,13 +85,17 @@ def main():
                 "exists": os.path.exists(filepath)
             }
         daily_cache[date_key]["sessions"].append(session)
-        
-        if last_id is None or session['id'] != last_id:
+
+        if archived_map.get(session['id'], 0) < session['msg_count']:
             if session['msg_count'] > 0:
                 new_sessions.append(session)
     
+    # Update indexes (even on quiet days, so stats stay current)
+    update_session_index(daily_cache, all_sessions)
+    update_master_index(all_sessions)
+
     if not new_sessions:
-        print("No new sessions since last archive run. Skipping.")
+        print("No new sessions since last archive run.")
         return
     
     print(f"Found {len(new_sessions)} new sessions to archive.")
@@ -146,15 +158,16 @@ def main():
                 f.write(f"# {date_key} ({day_name})\n\n")
                 f.write(entry)
     
-    # Update sessions INDEX.md
+    # Update sessions INDEX.md (redundant on this path, cheap; kept for clarity)
     update_session_index(daily_cache, all_sessions)
-    update_master_index(daily_cache)
-    
+    update_master_index(all_sessions)
+
     # Save state
     state['last_session_id'] = all_sessions[-1]['id']
     state['last_message_count'] = current_msg_count
     state['last_run'] = datetime.datetime.now().isoformat()
     state['sessions_archived_today'] = len(new_sessions)
+    state['archived_ids'] = sorted(archived_ids | {s['id'] for s in new_sessions})
     save_last_archive_state(state)
     
     print(f"Successfully archived {len(new_sessions)} new sessions.")
@@ -191,27 +204,47 @@ def update_session_index(daily_cache, all_sessions):
             f.write(f"- [{st}] **{title}** - `{session['source']}` / `{session['model']}` - {session['msg_count']} msgs - {cost_str}  \n")
             f.write(f"  [{fn}](./{fn})\n")
 
-def update_master_index(daily_cache):
+def update_master_index(all_sessions):
     idx_path = os.path.join(ARCHIVE_DIR, "INDEX.md")
-    if not os.path.exists(idx_path):
-        return
-    
-    with open(idx_path, 'r') as f:
-        content = f.read()
-    
-    total_sessions = sum(len(d['sessions']) for d in daily_cache.values())
-    total_messages = sum(s['msg_count'] for d in daily_cache.values() for s in d['sessions'])
-    date_min = min(daily_cache.keys())
-    date_max = max(daily_cache.keys())
+
+    total_sessions = len(all_sessions)
+    total_messages = sum(s['msg_count'] for s in all_sessions)
+    dates = sorted({datetime.datetime.fromtimestamp(s['started_at']).strftime('%Y-%m-%d') for s in all_sessions})
+    date_min, date_max = (dates[0], dates[-1]) if dates else ("-", "-")
     now_str = datetime.datetime.now().strftime('%Y-%m-%d')
-    
-    content = content.replace("**Total sessions:**", f"**Total sessions:**_{total_sessions}_TEMP_0_")
-    content = re.sub(r'Total sessions:\*\*[^*]*', f'Total sessions:** {total_sessions}', content)
-    content = re.sub(r'Total Messages\*\* \| [^|]+', f'Total Messages ** | {total_messages}', content)
-    content = re.sub(r'Date range:\*\* [^|]+', f'Date range:** {date_min} to {date_max}', content)
-    content = re.sub(r'Last Updated:\*\* [^*]+', f'Last Updated:** {now_str}', content)
-    content = content.replace(f"\n---\n\n## {now_str} (", f"\n---\n\n## {now_str} (")
-    
+
+    if not os.path.exists(idx_path):
+        content = (
+            "# Narusya Archive — Master Index\n\n"
+            "**Total sessions:** 0\n"
+            "**Total Messages ** | 0\n"
+            "**Date range:** - to -\n"
+            "**Last Updated:** -\n\n"
+            "Daily exports live in [sessions/](./sessions/) — see "
+            "[sessions/INDEX.md](./sessions/INDEX.md) for the full session list.\n"
+        )
+    else:
+        with open(idx_path, 'r') as f:
+            content = f.read()
+
+    # Line-based rewrite of the stats block — regex tweaks kept missing
+    # whitespace-sensitive matches before, leaving stale/zero values behind.
+    replacements = {
+        '**Total sessions:**': f'**Total sessions:** {total_sessions}',
+        '**Total Messages ** |': f'**Total Messages ** | {total_messages}',
+        '**Date range:**': f'**Date range:** {date_min} to {date_max}',
+        '**Last Updated:**': f'**Last Updated:** {now_str}',
+    }
+    lines = []
+    for line in content.splitlines():
+        stripped = line.strip()
+        for key, value in replacements.items():
+            if stripped.startswith(key):
+                line = value
+                break
+        lines.append(line)
+    content = "\n".join(lines) + "\n"
+
     with open(idx_path, 'w') as f:
         f.write(content)
 
