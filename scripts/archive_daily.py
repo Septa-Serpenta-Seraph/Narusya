@@ -167,7 +167,9 @@ def main():
     state['last_message_count'] = current_msg_count
     state['last_run'] = datetime.datetime.now().isoformat()
     state['sessions_archived_today'] = len(new_sessions)
-    state['archived_ids'] = sorted(archived_ids | {s['id'] for s in new_sessions})
+    for s in new_sessions:
+        archived_map[s['id']] = s['msg_count']
+    state['archived_map'] = archived_map
     save_last_archive_state(state)
     
     print(f"Successfully archived {len(new_sessions)} new sessions.")
