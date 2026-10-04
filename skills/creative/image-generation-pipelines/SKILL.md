@@ -141,6 +141,11 @@ Reliable pattern, proven live with 3/3 successes first try:
 Reusable runner: `scripts/batch_gen.py` in this skill (request-list JSON → batch generate →
 save to output dir); the tmp pattern file was its prototype.
 
+### Meme/self-referential humor sends (verified 2026-10-01+)
+When the user sends a meme or joke image with no text, the right response is usually just
+reactions — match the joke, don't write an essay. `magic` + `luv_1` landed perfectly on a
+"trans people should have dark magic" meme. Don't over-analyze memes unless asked.
+
 ### Alternative: Together.ai FLUX + LoRA (Consistent Character Pipeline)
 
 For generating consistent characters across images (e.g. a "Narusya" humanoid form), Together.ai supports **Flux LoRA injection** via their API:
