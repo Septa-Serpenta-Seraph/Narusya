@@ -1,6 +1,6 @@
 ---
 name: hosted-game-servers
-description: "Administer panel-hosted game servers via Pterodactyl API."
+description: "Administer panel-hosted game servers via Pterodactyl API. Backup 204-success, config-write JSON envelope, live FAWE reload, WorldEdit grant flow."
 tags: [gaming, hosting, pterodactyl, minecraft, pebblehost, server-setup]
 platforms: [linux]
 ---
@@ -91,3 +91,10 @@ If a player reports the navigation wand (compass `/jumpto`, `/thru`) falls short
 3. Write back via the panel `raw` JSON envelope, read back to verify.
 4. `fawe reload` via console — live, no restart, players uninterrupted. Confirm `Configuration reloaded!` in latest.log.
 Full flow and config notes in `references/pterodactyl-client-api.md` § FAWE config quick-reference.
+
+## Backup cron reliability (verified 2026-10-03, SFCA)
+When a scheduled backup cron reports failure, diagnose before re-running:
+1. **HTTP 204 = success for backup creation.** Pterodactyl returns 204 No Content on POST /backups; a script that treats empty-body 2xx as failure exits falsely. Treat 204 as success.
+2. **Backups are async (~2-4 min).** If a retry hits "action in progress", the FIRST POST actually landed — re-list backups (GET /servers/{id}/backups) and verify the new entry (name/size/is_successful) instead of firing a third POST.
+3. **Backup failures can be credential, not panel:** an auth provider whose refresh token was rejected (auth.json `last_auth_error.code: invalid_grant`, credential pool empty) silently blocks the preflight before any panel call. Fix is agent-side re-login (`hermes auth login <provider>`), NOT panel retries. Check the auth provider's error fields before blaming the server.
+

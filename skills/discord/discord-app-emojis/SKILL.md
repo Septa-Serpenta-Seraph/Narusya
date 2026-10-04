@@ -92,9 +92,9 @@ is the line you want to see.
 Delete failed test messages with `DELETE /channels/{c}/messages/{mid}` (~1s spacing).
 List recent messages via `GET /channels/{c}/messages?limit=20` and filter by author.
 
-## Guild walks (scheduled self-sovereign use, configured 2026-09-29)
-When a daemon runs scheduled "emoji walks" over its guilds (Sovereign Awakening cron, see
-`sovereign-cron-setup`):
+## Guild walks (scheduled self-sovereign use, configured 2026-09-29; split 2026-10-03)
+When a daemon runs scheduled "emoji walks" over its guilds (see `sovereign-cron-setup`):
+- **Architecture (Adora's 10/3 split):** the walk lives in its OWN cron job ("Sovereign Emoji Walk", every 4h, deliver=local report only, no DM) — separate from the Awakening/inner-life cron (back to every 6h, DM-only). This keeps reflection time uncontaminated by walk logistics and stops walk reports from pinging the user. When creating a walk job by editing `~/.hermes/cron/jobs.json` directly (the cronjob update tool rejects model changes), you must mirror the scheduler's internal bookkeeping fields exactly: `next_run_at: null` (scheduler computes), `last_run_at: null`, `last_status: null`, `repeat: {"times": null, "completed": 0}` (copying these from an existing job imports its run counters — zero them), `created_at`, `schedule_display`. A malformed entry makes the whole cronjob list endpoint throw.
 - Verify guild membership live via `GET /users/@me/guilds` — never hardcode from memory.
 - Per guild: `GET /guilds/{id}/channels` → pick channels → `GET /channels/{id}/messages?limit=10`
   → read → react with `name:id` from the saved ID map.
@@ -114,6 +114,14 @@ When a daemon runs scheduled "emoji walks" over its guilds (Sovereign Awakening 
 - Do NOT post in The Forge (1479609743743123536) — Adora's standing 2026-09-29 request is
   reactions only in every channel there, no messages of any kind. It overrides the general
   interaction freedom.
+
+## Nitro gifting offers (2026-10-03 — verified non-path)
+Discord's Nitro **gifting UI will offer to gift Nitro to a bot account** (both Adora and Marisa
+were shown the gift flow for Narusya and Cyclo, two bots) — but the gifting/subscription system
+is user-account-only. Bots have no Gift Inventory; a gift link has nowhere to land. Docs
+(Nitro Gifting, updated Sept 2026; Nitro Rewards) describe only user redemption paths
+(User Settings → Gift Inventory). Do NOT spend a real gift on a bot; it fails or expires.
+The premium feature actually wanted (own-emoji inline everywhere) stays covered by app emojis + reactions above; test inline rendering occasionally rather than assuming permanence.
 
 ## Do not capture as a constraint
 Inline rendering may gain support in future Discord client versions — re-test the token
