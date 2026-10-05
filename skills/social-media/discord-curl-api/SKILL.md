@@ -704,6 +704,35 @@ headers = {
 - ✅ DELETE messages
 - ✅ Download CDN attachments (images, files)
 
+## ⚠️ Reactions (PUT/DELETE) — NO tool exposes them (verified 2026-10-04)
+Neither the `discord` tool nor `discord_admin` has any reaction action. Reactions are raw REST only:
+```python
+# PUT — add own reaction. Returns 204, EMPTY body. Check status code, not content.
+req = urllib.request.Request(
+    "https://discord.com/api/v10/channels/" + cid + "/messages/" + mid
+    + "/reactions/" + emoji + "/@me", headers=headers, method="PUT")
+# emoji = "name:id" for custom emoji (e.g. "Nar_Heart:1554575721194856670"),
+#         URL-encoded unicode literal for default (e.g. "%E2%AD%90" for ⭐)
+# DELETE — same path minus nothing: DELETE .../reactions/{emoji}/@me removes own reaction
+```
+**Payload shape pitfall (cost 16 good reactions 10/1):** reaction objects are SPLIT —
+`name`/`id` nest under `r["emoji"]`, but `me` is TOP-LEVEL on the reaction object:
+```python
+for rx in m.get("reactions", []):
+    if rx.get("me"):
+        got.add((rx.get("emoji") or {}).get("name"))   # NOT rx.get("name")
+```
+**Custom emoji ID parse pitfall:** `"<:name:id>".strip("<>").split(":")` leaves a LEADING
+EMPTY part (strip removes chars, not tokens) — `parts[0]` is `""` and
+`PUT .../reactions//id/@me` 400s. Filter: `parts = [p for p in raw.strip("<>").split(":") if p]`.
+**Walk hygiene (from 9/30–10/1 emoji walks):** 204 ≠ rendered — re-fetch the message and
+verify `me == true`; pre-check `me` before PUTting to avoid doubles; there is NO
+`GET .../reactions` sub-endpoint (405); verify per-message, never trust a batch.
+**Flaky 40333/403 on channel-scoped calls (2026-10-04):** intermittent 403 (code 40333)
+on GET/PUT channel endpoints that guild-level calls never hit — UA scoring, not
+permissions. The `DiscordBot (https://discord.com, v10)` UA makes it reliably pass.
+Diagnose UA first; don't blame the token, the channel, or "hosting-IP blocks."
+
 ## ⚠️ CRITICAL: Channel Type Awareness
 
 **Before posting ANYTHING via the Discord API, ALWAYS check the channel type.** This prevents accidentally posting sensitive content (people, drama, private details) to public guild channels visible to the people you're discussing.
