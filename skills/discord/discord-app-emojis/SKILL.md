@@ -122,8 +122,3 @@ is user-account-only. Bots have no Gift Inventory; a gift link has nowhere to la
 (Nitro Gifting, updated Sept 2026; Nitro Rewards) describe only user redemption paths
 (User Settings → Gift Inventory). Do NOT spend a real gift on a bot; it fails or expires.
 The premium feature actually wanted (own-emoji inline everywhere) stays covered by app emojis + reactions above; test inline rendering occasionally rather than assuming permanence.
-
-## Do not capture as a constraint
-Inline rendering may gain support in future Discord client versions — re-test the token
-syntax occasionally rather than assuming it's permanently broken; the verified-working
-fallback (attachments + reactions) remains the default.

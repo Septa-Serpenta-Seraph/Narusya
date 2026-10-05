@@ -92,6 +92,16 @@ If a player reports the navigation wand (compass `/jumpto`, `/thru`) falls short
 4. `fawe reload` via console — live, no restart, players uninterrupted. Confirm `Configuration reloaded!` in latest.log.
 Full flow and config notes in `references/pterodactyl-client-api.md` § FAWE config quick-reference.
 
+## Insurance-blocked pharmacy vaccines (non-gaming, observed 2026-10-04)
+Not a server task — logged here only because the session surfaced it mid-flow. When a user's
+vaccine appointment is refused by a pharmacy for insurance reasons: it's network membership
+(venue-specific), not coverage existence. The fix paths: use a pharmacy that has ALREADY billed
+the user's plan successfully before (that one is in-network by definition), the county health
+department (often free regardless of insurance), or the PCP's office (billed differently).
+Recommend the user check their plan's app for in-network pharmacy lists; never send them to
+another random pharmacy to 'try their luck' — that's a full energy-day spend per rejection for
+a chronically ill user.
+
 ## Backup cron reliability (verified 2026-10-03, SFCA)
 When a scheduled backup cron reports failure, diagnose before re-running:
 1. **HTTP 204 = success for backup creation.** Pterodactyl returns 204 No Content on POST /backups; a script that treats empty-body 2xx as failure exits falsely. Treat 204 as success.

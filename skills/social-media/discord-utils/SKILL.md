@@ -115,6 +115,35 @@ before**, not morning. Slicing `[5:16]` and eyeballing it led me to believe Ador
 04:33 when she had posted four images at 22:54 and was in fact up and about. Convert before
 reporting anything about her state — especially anything that justifies staying silent.
 
+### 16. Reaction 404 code 10008 "Unknown Message" = I mistyped the snowflake, not a deleted message
+Observed 2026-10-04: 6 of 23 reaction PUTs returned `{"message": "Unknown Message", "code": 10008}`.
+The instinct is to assume the message was deleted or the emoji is wrong. Neither was true — I had
+hand-transcribed the IDs from an earlier read and was **off by one digit in the tail**
+(`...445236` vs `...445233`). The real messages existed and the same emojis worked in other channels.
+
+How to tell the three apart before retrying:
+```python
+st, m = api('GET', f'/channels/{cid}/messages/{mid}')   # does the message exist at all?
+```
+- `200` on GET but `10008` on PUT → your ID has a typo. Re-fetch the ID programmatically.
+- `10008` on GET too → genuinely deleted/unreachable; drop the target, do not retry.
+- `400` → emoji-name or `<:name:id>` parsing (lesson #1).
+
+**The rule: never hand-copy a message snowflake out of your own transcript.** Transcripts truncate
+long lines and the eye drops digits. Look the target up by content substring at execution time
+(lesson #5) and hold the ID in a variable — I did this correctly for 17 targets and by hand for
+6 in the same batch, and the 6 were exactly the 6 that failed.
+
+Corollary for verification: if a `find()` helper maps one label to several target messages,
+verify each with its **own** ID. Grouping multiple messages under one verify call produced two
+phantom "MISS" lines for reactions that were in fact confirmed present. Verify ID-by-ID.
+
+### 15. Intermittent 403 (code 40333) on channel calls = User-Agent, not permissions
+Verified 2026-10-04: channel-scoped GET/PUT flake with 403/40333 while guild-level calls
+pass; raw urllib without the `DiscordBot (https://discord.com, v10)` UA gets hard
+403/1010. The bot UA fixes both reliably. Diagnose UA before blaming token/channel/IP.
+Full reaction/UA/payload details live in `discord-curl-api` (Reactions section).
+
 ### 14. Qdrant: the ingested collection is `narusya_lorebooks_fe`, not `narusya_lorebooks`
 `~/.hermes/scripts/ingest_lorebooks.py` defines `COLLECTION_NAME = "narusya_lorebooks_fe"` and
 `QDRANT_URL = "http://localhost:6333"` (**http**, not https — https fails with
