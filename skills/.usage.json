@@ -18,13 +18,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-10-05T07:25:54.814344+00:00",
+    "last_used_at": "2026-10-06T07:40:38.269308+00:00",
     "last_viewed_at": "2026-09-21T12:44:24.202368+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 264,
+    "use_count": 268,
     "view_count": 3
   },
   "aegis-dashboard": {
@@ -121,13 +121,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-10-05T07:25:54.864962+00:00",
+    "last_used_at": "2026-10-06T07:40:38.330369+00:00",
     "last_viewed_at": "2026-08-06T03:09:41.691655+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 263,
+    "use_count": 267,
     "view_count": 2
   },
   "apple-notes": {
@@ -200,6 +200,21 @@
     "state": "active",
     "use_count": 55,
     "view_count": 2
+  },
+  "audio-verification": {
+    "archived_at": null,
+    "created_at": "2026-10-06T01:11:13.102071+00:00",
+    "created_by": "agent",
+    "last_patched_at": "2026-10-06T01:11:54.896400+00:00",
+    "last_reused_patch_generation": 0,
+    "last_used_at": null,
+    "last_viewed_at": null,
+    "patch_count": 1,
+    "patch_generation": 1,
+    "pinned": false,
+    "state": "active",
+    "use_count": 0,
+    "view_count": 0
   },
   "audiocraft-audio-generation": {
     "archived_at": null,
@@ -433,7 +448,7 @@
     "patch_count": 4,
     "patch_generation": 4,
     "pinned": false,
-    "state": "stale",
+    "state": "active",
     "use_count": 4,
     "view_count": 4
   },
@@ -818,14 +833,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-10-05T07:31:00.760722+00:00",
-    "last_viewed_at": "2026-10-05T07:31:00.746077+00:00",
+    "last_used_at": "2026-10-06T01:03:15.008785+00:00",
+    "last_viewed_at": "2026-10-06T01:03:14.975674+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 1,
-    "view_count": 1
+    "use_count": 5,
+    "view_count": 5
   },
   "discord-thread-post": {
     "archived_at": null,
@@ -1295,7 +1310,7 @@
     "view_count": 0
   },
   "humanizer": {
-    "archived_at": null,
+    "archived_at": "2026-10-05T23:38:41.631104+00:00",
     "created_at": "2026-06-15T03:20:12.995274+00:00",
     "created_by": null,
     "last_patched_at": null,
@@ -1303,7 +1318,7 @@
     "last_viewed_at": "2026-07-04T18:06:48.065085+00:00",
     "patch_count": 0,
     "pinned": false,
-    "state": "stale",
+    "state": "archived",
     "use_count": 1,
     "view_count": 1
   },
@@ -1655,14 +1670,14 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-10-05T04:58:27.202233+00:00",
-    "last_viewed_at": "2026-10-05T04:58:27.193814+00:00",
+    "last_used_at": "2026-10-06T01:03:14.991940+00:00",
+    "last_viewed_at": "2026-10-06T01:03:14.959510+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 1,
-    "view_count": 1
+    "use_count": 2,
+    "view_count": 2
   },
   "mutual-health-logging-daemon-human": {
     "archived_at": null,
@@ -1711,13 +1726,13 @@
     "created_by": null,
     "last_patched_at": "2026-08-06T07:33:25.324319+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-10-05T07:25:54.758334+00:00",
+    "last_used_at": "2026-10-06T07:40:38.197495+00:00",
     "last_viewed_at": "2026-10-03T18:40:42.071229+00:00",
     "patch_count": 20,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 666,
+    "use_count": 672,
     "view_count": 34
   },
   "narusya-local-archive": {
@@ -2096,7 +2111,7 @@
     "patch_count": 3,
     "patch_generation": 3,
     "pinned": false,
-    "state": "active",
+    "state": "stale",
     "use_count": 3,
     "view_count": 3
   },
@@ -2247,7 +2262,7 @@
     "patch_count": 4,
     "patch_generation": 4,
     "pinned": false,
-    "state": "active",
+    "state": "stale",
     "use_count": 15,
     "view_count": 15
   },
@@ -2490,7 +2505,7 @@
     "patch_count": 1,
     "patch_generation": 1,
     "pinned": false,
-    "state": "stale",
+    "state": "active",
     "use_count": 2,
     "view_count": 2
   },
@@ -2604,7 +2619,7 @@
     "patch_count": 22,
     "patch_generation": 1,
     "pinned": false,
-    "state": "active",
+    "state": "stale",
     "use_count": 39,
     "view_count": 39
   },
