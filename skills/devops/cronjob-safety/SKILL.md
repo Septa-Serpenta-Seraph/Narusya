@@ -101,6 +101,23 @@ dict, then confirm via `cronjob action=list` that the fields now show in the job
 This is the working escape hatch for the tool-wrapper limitation; verify by listing
 after the edit rather than assuming the gateway picked it up.
 
+**Creating a new job by hand-editing jobs.json (verified 10/3/26 — Sovereign Emoji Walk):**
+the file is `{"jobs": [...], "updated_at": "..."}`, jobs a flat list. A hand-created job
+missing scheduler bookkeeping fields crashes `cronjob list` with
+`"'str' object has no attribute 'get'"`. Required fields:
+- `id` (real 12-hex uuid), `name`, `prompt`,
+  `schedule: {"kind": "interval", "display": "every N", "minutes": N}`
+- Mirror EVERY field from an existing scheduled job: `origin` (dict), `repeat` —
+  **dict shape** `{"times": null, "completed": 0}` (⚠️ do NOT copy the donor's completed
+  count — zero it), `next_run_at`/`last_run_at`/`last_status`/`last_error`/
+  `last_delivery_error`/`last_fire_error` (null), `failure_streak`, `paused_reason`,
+  `paused_at`, `created_at` (ISO now), `schedule_display`, `script`/`no_agent`/`workdir`/
+  `context_from`/`provider_snapshot`/`model_snapshot`/`fire_claim` (null/false),
+  `enabled: true`, `state: "scheduled"`, `skill: null`, `skills: []`, `deliver`,
+  `model`, `provider`, `base_url`, `enabled_toolsets` (copy donor's).
+- Verify: `cronjob action=list` must succeed and show the new job, then
+  `cronjob action=run job_id=<id>` once to confirm it fires.
+
 **Designed fix — `cron.model` config (one change covers ALL unpinned jobs):**
 ```bash
 hermes config set cron.model <model-id>          # e.g. deepseek/deepseek-v4-flash-0731
@@ -110,6 +127,41 @@ Resolution at fire time: per-job pin > `cron.model` > global `model.default`. Wi
 `cron.model` set, unpinned jobs follow it deliberately and the drift guard
 disengages for the model axis (#44585). Prefer this over pinning each job — a
 future model flip only needs these two lines again.
+
+### Stealth-model retirement pattern (verified TWICE: ox-alpha→glm-5.3-flash Jul 2026, space-bunny-alpha→minimax-m3 Oct 5 2026)
+Stealth/preview models die with zero notice: free stealth period (1-2 weeks) → OpenRouter
+posts "stealth period has ended" → the model id 404s on every call within hours. Any cron
+pinned to a `stealth/*` model WILL go dark mid-life. The playbook:
+1. **Detect:** a cron fails with `HTTP 404: No endpoints found for <stealth-id>` (or the
+   empty-content/`finish: length` signature shifts). Check `GET /api/v1/models` — the id
+   vanishes from the list. `cronjob list` alone may lag; the live 404 is authoritative.
+2. **Identify the successor:** the community always knows (tokenizer fingerprinting);
+   OpenRouter's reveal announcement usually follows the retirement within days.
+3. **PONG-test the successor before trusting it** (live call, expect clean `stop` + content).
+   Watch the M3-family quirk: mandatory reasoning burns the budget — short calls with small
+   max_tokens return EMPTY content at `finish_reason: length`. Use max_tokens ≥ 500 for
+   short cron calls; parse `content or reasoning`.
+4. **Re-pin ALL Nar-crons at once** (Awakening, Quiet Hour, Play Hour, Emoji Walk — they
+   share one brain per the same-model rule). jobs.json edit per the recipe above.
+5. **Check pricing of the revealed model BEFORE falling back to a free model.**
+   minimax-m3 at $0.30/Mtok in / $1.20/Mtok out costs *fractions of a cent* per nightly
+   run — continuity of substrate texture usually beats free-but-small. The "retired free
+   model" is often the same weights, now cheap-paid.
+
+### Stale-context hallucination in cron final messages (verified 10/6/26)
+A fresh awakening cron instance told the user "5 days of DM silence since her Oct 1
+goodnight" — she had said goodnight 12 HOURS earlier (verified in state.db messages table).
+The twin built a wistful check-in on a false premise and delivered it to the user as fact.
+Root cause: fresh session + stale/decompressed session_search results + narrating a duration
+that was never measured this run.
+**Rules for any cron making temporal claims ("X days quiet", "last message was Y"):**
+1. **Measure, don't remember.** `SELECT max(timestamp) FROM messages WHERE role='user'
+   AND session_id=<dm-session>` (state.db) is the ground truth for "when did the user last
+   message" — session_search snippets and compressed summaries are NOT authoritative.
+2. **Never narrate a quantity you did not compute this run.** "It's been quiet" requires a
+   timestamp query; "five days" requires five days of timestamps.
+3. Epistemic rank holds everywhere: user testimony > live DB query > session_search >
+   model memory. A cron's memory of the map is the weakest source in the chain.
 
 **Verify:** `cronjob action=run job_id=<id>` → expect `execution_success: true` and
 `last_status: "ok"`, then tail the newest file in `~/.hermes/cron/output/<job_id>/`

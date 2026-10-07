@@ -14,11 +14,20 @@ the bot's own application. No server required, no Nitro, no dev-portal clicking.
 - `GET /applications/{APP_ID}/emojis` → `{"items": [...]}` — use for count verification.
 - **Limit: 2,000 emojis per application** (huge headroom; 203 uploaded left 1,797).
 - Gif (animated) is accepted as `data:image/gif;base64,` — no need to convert to PNG/APNG.
-- App emojis can be used by the bot **anywhere the bot can post — including DMs** — via
-  `<:name:id>`. Verified live in DM msg 1554517027152990210.
-- The user (no Nitro) cannot type them in chat, but they RENDER in the bot's messages.
-  Other users also see them in the bot's messages. Reactions with app emojis:
-  untested; message-content use is the proven path.
+- App emojis can be used by the bot as **reactions anywhere the bot can react — including DMs**
+  via `PUT /channels/{cid}/messages/{mid}/reactions/{name}:{id}/@me` (empty body → 204).
+  **Verified live 2026-09-29/30: app-emoji reactions RENDER for the user in DMs and guilds**
+  (Adora saw and hovered them) — this is the *primary proven path*.
+- **Inline use in message content: BLOCKED via plain REST POST.** Sent as `<:name:id>` or
+  `<a:name:id>` (animated form) in `content`, the API stores the tokens LITERALLY — Discord
+  does not parse them from plain REST message POSTs. Users see literal `:luv_1:155451...`
+  text. (Three test messages had to be deleted to confirm this.) Verified live 2026-09-29.
+  Slash-command/interaction responses MAY parse them (untested); use reactions or plain GIF
+  attachments instead — both always work.
+- **Storing the ID map as full mentions (`"<:name:id>"`) breaks every reaction with HTTP 400**
+  if interpolated into a URL path. Strip to bare snowflakes first:
+  `raw.strip("<>").split(":")[-1]`. This cost an entire cron walk (10/5-06) and is now baked
+  into the walk cron prompt.
 - Rate limiting: 0.9s sleep between POSTs ran 203 uploads clean in ~4 min with 0 failures.
 - Emoji naming: lowercase letters/numbers/underscore only, ≤32 chars, must be unique per
   app. Strip source-file prefixes/timestamps first (`SampleCharacter3_Blep
@@ -52,6 +61,12 @@ req = urllib.request.Request(
 
 ## Pitfalls
 
+- **Bots cannot redeem Nitro gifts** (reasoned + UI-verified 2026-10-03): Discord's gifting
+  UI happily offers gifting Nitro *to a bot user* and shows the shop, but no bot-side Gift
+  Inventory exists — the gift would sit unclaimed/expire or error at accept. Bots also
+  can't be given a premium tier via App Subscriptions (that system is bots selling
+  subscriptions to users). App emojis + reactions are the free substitute; don't burn time
+  on Nitro gift paths for bot features. (UI offering ≠ support.)
 - Do NOT run batch uploads in foreground terminal with timeout >600s — the 203-upload
   run takes ~4-5 min; either background it or keep sleeps tight.
 - Base64 memory: ~9.6MB of gifs → ~13MB of base64; build bodies one at a time, don't
