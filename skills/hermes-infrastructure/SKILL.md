@@ -35,6 +35,10 @@ Diagnose, recover, and maintain Hermes Agent infrastructure.
 13. [Message Timestamps for Temporal Awareness](#13-message-timestamps-for-temporal-awareness)
 14. [Patch Tool Python String Corruption](#14-patch-tool-python-string-corruption)
 15. [Single External Memory Provider Constraint](#15-single-external-memory-provider-constraint)
+16. [Gateway Self-Stop Guard — Lifecycle Work from Inside](#16-gateway-self-stop-guard--lifecycle-work-from-inside)
+17. [Install Replacement: Corrupted Git Store & Fresh-Install Layout](#17-install-replacement-corrupted-git-store--fresh-install-layout)
+18. [Discord User Allowlist](#18-discord-user-allowlist-discord_allowed_users-in-env)
+19. [Credits Low / Provider Switch — Nous Free Models](#19-credits-low--provider-switch--nous-free-models)
 
 ---
 
@@ -234,6 +238,15 @@ cronjob action=list
 cronjob action=run job_id=<id>
 
 # Check last run timestamp is recent
+```
+
+### Creating Jobs via the cronjob Tool: Pin Provider, Test-Run Before Trust
+The `cronjob` create tool does not inherit the gateway's active provider — an unpinned job can default to a provider with no local credentials (e.g., Nous Portal) and fail every fire with a "provider credential missing" error. Pin `model` AND `provider` to a known-working combination at creation. When editing `jobs.json` by hand instead: jobs live under the top-level `jobs` key, and the effective fields are `model`, `provider`, `model_snapshot`, `provider_snapshot`, and `monitor_script` (filename only).
+
+**Pitfall: `monitor_script` is a PATH, never inline script content.** The cronjob create tool accepts inline script text in its `monitor` parameter, but the runner resolves the field under `~/.hermes/scripts/` — a content blob yields `Script not found: /home/adora/.hermes/scripts/#!/bin/bash ...`. Write the monitor to `~/.hermes/scripts/<name>.sh` (chmod +x, run it standalone once to check output), then set `monitor_script` to the bare filename. Keep monitor output deterministic (no timestamps) so the change-detector only fires the agent when the watched value actually shifts. Before trusting any new job's schedule, fire a manual test run and require `succeeded`:
+```bash
+hermes cron run <job_id>     # must print "Ran now: succeeded"
+hermes cron runs <job_id>    # inspect last status + error text
 ```
 
 ### Cron Job Model Pinning Best Practice
@@ -493,7 +506,7 @@ Look for `SyntaxError: unterminated string literal`. Then `sed -n 'Np' your_file
 
 ---
 
-## 16. Discord User Allowlist (DISCORD_ALLOWED_USERS in `.env`)
+## 18. Discord User Allowlist (DISCORD_ALLOWED_USERS in `.env`)
 
 ### Where the allowlist actually lives
 There is **NO per-user allowlist key in `config.yaml`** under the `discord:` block. The Discord
@@ -550,7 +563,7 @@ This means you **cannot** have, e.g., `qdrant-memory` and `honcho` and a custom 
 The rejection is a non-fatal warning log, not an error. The plugin loads successfully — its `register()` runs, its `plugin.yaml` is parsed, its tools may even register. But its memory provider never gets queried during `prefetch_all()`. Easy to miss during development.
 
 ### The Workaround
-If you need memory-like functionality alongside an existing external provider, **extend** the existing provider rather than registering a new one. For example, the Qdrant lorebook auto-inject was added by patching `qdrant-memory/__init__.py` to query a second collection inside the same provider's `prefetch()` method.
+If you need memory-like functionality alongside an existing external provider, **extend** the existing provider rather than registering a new one. For example, the Qdrant lorebook auto-inject was added by patching the qdrant provider's `__init__.py` to query a second collection inside the same provider's `prefetch()` method (its directory is `~/.hermes/plugins/qdrant/` — dir name must match the provider name, see §17).
 
 ### Architecture Implications
 When designing new memory-backed features:
@@ -559,7 +572,7 @@ When designing new memory-backed features:
 | If replacing, use `hermes memory setup` to switch providers cleanly
 | The builtin `builtin` provider (plain files in `~/.hermes/memories/`) always runs alongside the external one — only non-builtin plugins are gated
 
-## 17. Credits Low / Provider Switch — Nous Free Models
+## 19. Credits Low / Provider Switch — Nous Free Models
 
 ### Symptom
 OpenRouter credits run dry mid-session (common with `:exacto` or paid-tier models).
@@ -602,3 +615,79 @@ The Ling-3.0-flash variants are free-until-October-4 (Vercel AI Gateway offer). 
 
 ### Pitfall: Cloudflare 1010 from hand-rolled urllib
 A raw `urllib.request` probe to Nous can return HTTP 1010 (Cloudflare block) even when the working scripts succeed — the scripts use the shared auth JSON and correct headers; hand-rolled calls may miss a header or base URL. Always probe via the existing scripts (`nous_free_probe.py`, `credit_status.py`) first, not ad-hoc urllib.
+
+---
+
+## 16. Gateway Self-Stop Guard — Lifecycle Work from Inside
+
+### Symptom
+Any command from inside a running gateway session that stops, restarts, or uninstalls a `hermes-gateway*` systemd unit is blocked — in BOTH `terminal` and `execute_code`, and the block fires even for a DIFFERENT unit (e.g., trying to start the polinkly gateway while running inside the main one). The guard is pattern-based and conservative: the gateway would SIGTERM its own child processes, killing the command mid-run.
+
+### Correct workflow for gateway-down maintenance (swaps, reinstalls, restarts)
+1. **Stage everything you CAN do inside:** fresh clone, venv build, npm install, dep fixes, archive moves that don't touch live paths.
+2. **Write a self-contained bash script** covering the window: preflight checks (dirs exist, disk headroom), stop units → move/rename dirs → fix paths → start units → status check. Include a **`rollback` mode** that reverses the moves and restarts the old install if either unit fails to come back active.
+3. **Hand the user ONE command** to run from their own shell (SSH/TTY, outside the gateway): `bash /home/adora/<script>.sh`. Make clear the conversation pauses while gateways are down and resumes on restart.
+4. After restart, verify by answering a test message and running `hermes update` / `--version` checks.
+
+### Pitfall: inherited PYTHONPATH lies about the install version
+`hermes --version` run from inside a gateway session can report the OLD install because the gateway parent process exports PYTHONPATH pointing at the old repo. Verify versions with a scrubbed environment: `env -i HOME=$HOME PATH=/usr/bin:/bin <venv>/bin/hermes --version`, or from the user's shell. Never diagnose an install from an inherited-env reading.
+
+---
+
+## 17. Install Replacement: Corrupted Git Store & Fresh-Install Layout
+
+### When `hermes update` is unrepairable
+`hermes update` failing with `git fetch: pack has N unresolved deltas`, `Could not read <sha1>`, or dozens of invalid sha1 pointers from `git fsck` = the object database is fatally corrupted, typically from a disk-full event during a git write (journal smoking gun: `fatal: unable to write loose object file: No space left on device`). Do NOT attempt in-place repair — repack/fsck cannot reconstruct missing loose objects. Replace the install.
+
+### Replacement procedure (in order)
+1. **Free disk space FIRST** (see `disk-full-diagnostics` skill) — pip/git/npm write-then-rename and will re-create the corruption if the disk is critically full.
+2. **Salvage local work:** `git stash list`, `git log origin/main..HEAD`. `git format-patch` may fail on corrupt trees — check whether upstream already merged each fix (`git log --all --grep='<message>'` upstream) before assuming anything is lost.
+3. **Clone fresh upstream**, build venv (`python -m venv` + `pip install -e .`) and `npm install` in the new dir.
+4. **Swap by rename, keeping the canonical path** (`~/.hermes/hermes-agent`) — systemd units hardcode `<path>/venv/bin/python`, so a rename swap keeps units valid where a symlink change would not.
+5. **Rewrite editable-install paths if the venv was built under a different directory name:** the `__editable___*_finder.py` / `.pth` files in `venv/lib/<py>/site-packages/` hardcode the build-time absolute path; sed-rewrite the old dir name to the canonical one and delete `__pycache__` dirs, or imports break on boot.
+
+Alternative: a from-scratch reinstall via the official installer is cleaner than a staged swap when available — it stashes local changes (`hermes-install-autostash-*`) and backs up config (`config.yaml.pre-setup.*`); verify afterward that state.db, lorebooks, skills, cron jobs, and memories survived (they live outside the code dir).
+
+### Fresh-install dependency layout (installer-built envs)
+- `~/.local/bin/hermes` → `~/.hermes/hermes-agent/.hermes/bin/hermes` → managed python at `~/.hermes/tools/python-<ver>-linux-x64/bin/python3`.
+- Actual site-packages live in **hash-named env venvs**: `~/.hermes/installs/<hash>/environments/<hash2>/venv` — find the live one via the running gateway's `/proc/<pid>/maps` or `ls ~/.hermes/installs/*/environments/*/venv`.
+- These venvs have **no pip binary and no pip module** — install with `uv pip install --python <venv>/bin/python <pkg>`.
+
+### Dashboard says memory provider "MISSING / no longer installed"
+That message means the provider **plugin could not be found or loaded** — NOT that the memory server is down. Verify the server first (e.g., `curl localhost:6333/readyz`, list collections), then check the two real causes in order of likelihood:
+
+1. **Directory-name mismatch (most likely after an install upgrade):** `plugins/memory` resolves providers by **directory name** — `find_provider_dir('<name>')` needs `~/.hermes/plugins/<name>/` exactly. `memory.provider: qdrant` requires a dir named `qdrant`; a dir named `qdrant-memory` is invisible to the loader, and its auto-recover then attempts a catalog install that declines non-interactively. Fix: rename the plugin dir to match the provider name — the plugin keeps reading its settings from its configured `plugins.<key>:` block regardless of dir name, so no config change is needed.
+2. **Missing client lib (only if the plugin actually imports one):** grep the plugin's imports before installing anything — REST-based providers use `requests` and need no client package. If an import is genuinely absent from the live env, `uv pip install --python <live-env>/venv/bin/python <pkg>`.
+
+Verify end-to-end from the live env venv before declaring victory (the loader lives in the hermes-agent checkout):
+```python
+from plugins.memory import load_memory_provider
+mp = load_memory_provider('<name>', register_skills=False)
+mp.initialize('test-session')   # is_available() stays False until initialize() runs
+print(mp.is_available())       # must be True
+```
+Dashboard clears after a gateway restart re-registers the provider (needs the user's shell — see §16).
+
+### Provider "available" but searches/saves return nothing — collection dimension mismatch
+
+**Symptom:** `mp.is_available()` is True, lorebook metadata may even load, but every search/prefetch returns empty and `sync_turn` never adds points — while the target collection clearly holds thousands of points.
+
+**Mechanism:** the plugin's REST client catches HTTP errors and returns `[]` — Qdrant rejects any search/upsert whose vector length differs from the collection's configured size, and the plugin never surfaces that 400. A provider that switched embedders (e.g., local fastembed 384-dim → API `text-embedding-3-large` 3072-dim) silently no-ops against every collection from the earlier era, while the plugin's config (stale collection names) makes it *look* configured. Compare before fixing:
+
+```bash
+curl -s localhost:6333/collections/<name>   # → config.params.vectors.size = the collection's dims
+# vs the plugin's embedder: mp._embedder.dimensions (or len(mp._embedder.embed('test')))
+```
+
+**Fix:** point config at collections whose dims match the embedder — the plugin's *own defaults* in its `__init__.py` (`self._config.get("collection", "<default>")`) are the source of truth for which collection names the current plugin version expects; stale suffix-variants from older embedder eras are the bug. Edit via `hermes config set plugins.<block>.<key> <value>` — the patch/write tools refuse direct `config.yaml` edits (security-sensitive file), the CLI is the sanctioned path.
+
+**Verify all three functions, not just availability:** (1) semantic search returns scored hits on a known-memory query; (2) the lorebook index loads (`mp._load_lorebook_metadata(...)`) with a nonzero count; (3) `sync_turn()` queues a test write and the collection's point count increments (scroll and match the test text, including date_str).
+
+**Boot-once initialization:** the memory provider initializes exactly once per gateway boot — a session that booted while the provider was broken stays broken until the next restart, even after the underlying fix. When the provider works in your tests but the gateway logged "selected but reports unavailable", replicate the gateway's environment before doubting the fix:
+```bash
+env -i HOME=$HOME PATH=/usr/bin:/bin HERMES_HOME=$HOME/.hermes <live-env>/venv/bin/python <script>
+```
+A scrubbed env (no inherited credentials) that initializes fine means the boot-time failure was transient or config-order-related — have the user restart once more and check the journal immediately on wake; the provider's own warning lines ("Qdrant not reachable" / "collection does not exist" / "Embedding pipeline not functional") identify which of the three checks stumbled.
+
+### Pitfall: never move a live container bind-mount volume
+Before `mv`-ing any directory that a Docker container might use, check `docker inspect <container> --format '{{json .Mounts}}'` — a bind-mounted volume moved from under a running container corrupts its storage. Move static caches and archives freely (symlink the original path back), but live volumes only after stopping the container, or not at all.
