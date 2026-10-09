@@ -219,13 +219,25 @@ with correct args. `stealth/space-bunny-alpha` passed both (PONG in ~1s and
 correct `calculator({"a":17,"b":24})`); a model that PONGs but fails tool-calls
 is fine for summarization/compression slots, not for agent crons.
 
-**Free stealth-model preview lifecycle (verified 2026-09-29):** OpenRouter
+**Free stealth-model preview lifecycle (verified 2026-09-29, reveal confirmed 2026-10-05):** OpenRouter
 `stealth/*` models (Space Bunny Alpha, Ox Alpha, …) are anonymous free previews —
 community-fingerprintable via tokenizer matching (Space Bunny = MiniMax
 M3.1-class; predecessor Ox Alpha already revealed as GLM-5.3-Flash). They **end
-at the reveal**: the free ID stops existing or goes paid, and pinned crons
-silently fall back to default. When pinning a stealth model, note the likely paid
-identity and re-pin on reveal day.
+at the reveal**: on Oct 5 OpenRouter announced the stealth period ended and the
+same day the free ID 404'd on every call (`No endpoints found for
+stealth/space-bunny-alpha`) and vanished from the model list. **Reveal-day
+re-pin workflow (executed 2026-10-05, all four Nar crons):**
+1. Confirm death: model absent from `GET /v1/models` + 404 on a PONG probe.
+2. Find the revealed identity: `minimax/minimax-m3` appeared in the catalog with
+   matching 1M ctx — **check its live pricing before re-pinning** (`pricing.prompt`
+   / `pricing.completion` per model on the `/v1/models` payload; M3 came in at
+   $0.30/M in, $1.20/M out — near-free, no cliff anxiety).
+3. Edit `~/.hermes/cron/jobs.json` directly (§1 pitfall above) for every affected
+   cron: set `model`, `provider`, `base_url: null`.
+4. **PONG the new identity before trusting it** — note this model burns reasoning
+   tokens: a 30-token PONG returned `finish: length` with EMPTY content, but 600
+   tokens returned `PONG` + reasoning cleanly. The reasoning-budget pattern from
+   the bunny era carries over to the revealed model (same weights).
 
 **Small-model cron failure mode: maintenance-drift then EMPTY (observed
 2026-09-29):** a play-hour cron on a small free model (`upstage/solar-pro4:free`)
@@ -248,4 +260,5 @@ day).
 - `references/free-tier-fallback.md` — full credit-exhaustion playbook (balance check, SKU enumeration, safe response reading)
 - `references/nous-free-roster-2026-09-25.md` — 9/25 verified free-roster snapshot + live-test transcript (which SKUs returned PONG vs empty-200)
 - `references/free-roster-2026-09-26.md` — 9/26 OpenRouter free roster + compression-slot decision (space-bunny-alpha) + balance-check recipe
+- `references/stealth-model-reveal-repin-2026-10-05.md` — reveal-day re-pin executed end-to-end (Space Bunny → MiniMax M3): failure signatures, jobs.json edits, reasoning-budget quirk, cost outcome
 - `scripts/vision_probe.py` — direct-API vision capability probe for Nous/OpenAI-compatible endpoints.

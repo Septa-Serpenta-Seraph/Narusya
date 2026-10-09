@@ -69,6 +69,18 @@ Ranked occupants at that event — recurring suspects on this box:
 
 Cleanup batch that worked non-destructively: tmp_pack delete (376M) + `apt clean` (needs sudo) + journald `--vacuum-size=200M` (needs sudo) + old playwright chromium (~500M). sudo items are human-side (no passwordless sudo on this box).
 
+### 7. SQLite: check the freelist before counting on VACUUM
+A big `state.db` is not automatically bloated. Read-only proof before any vacuum/maintenance plan:
+```python
+import sqlite3
+con = sqlite3.connect("file:/path/state.db?mode=ro", uri=True)
+pc = con.execute("PRAGMA page_count").fetchone()[0]
+fl = con.execute("PRAGMA freelist_count").fetchone()[0]
+ps = con.execute("PRAGMA page_size").fetchone()[0]
+print(f"{pc*ps/1e9:.2f}GB total, {fl*ps/1e6:.0f}MB reclaimable")
+```
+A dense DB (freelist ~0) is real data — VACUUM reclaims nothing, so leave it and reclaim elsewhere; only a fat freelist justifies the vacuum (which needs free disk ≥ the DB size to run).
+
 ## Boundaries remembered
 - **`mkfs` is on the agent's unconditional blocklist** — the agent cannot format a filesystem even with approval; hand format commands to the human (`sudo parted ... mklabel gpt` + `mkpart` + `sudo mkfs.ext4`), then the agent owns mount/move/symlink.
 - `sudo` needs a password on this box; partition/format steps are human-side.

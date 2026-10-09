@@ -277,6 +277,12 @@ live-tested) → `google/gemini-2.5-flash` (grounded, handles explicit analysis 
 abliterated — HarmBench 30.8%→100%, needs local GPU) → `Molmo2` (fully open weights+data).
 No intermediary filter exists on the direct-OpenRouter path.
 
+**Two-engine clinical disagreement = report ranges (verified 10/3):** qwen said "no
+generalized erythema" while Gemini said "mild diffuse erythema" on the same lesion —
+when engines disagree on a graded finding, report the range and the center, never
+pick one as truth. This is the medical-photo version of the contradiction rule in
+Technique 7.
+
 ## Technique 9 — AI-composition collaboration pattern (verified 2026-10-04)
 
 For music/art where the user wants a specific *model* to be the author: **stealth
@@ -289,7 +295,11 @@ pattern is **compose-with-LLM → render-with-code**:
    `reasoning` as the answer (it contains the full composition), then chain a
    continuation call feeding the spec back in, and finally a third call with a strict
    OUTPUT FORMAT instruction ("ONLY two markdown tables, no prose") — that one returned
-   clean tables at `finish_reason: stop` on the first try.
+   clean tables at `finish_reason: stop` on the first try. **Reasoning-budget carryover
+   to the revealed model (MiniMax M3, verified 10/5):** a 30-token PONG returned
+   `finish: length` with EMPTY content; 600 tokens returned `PONG` cleanly — this model
+   class burns reasoning tokens on even trivial prompts, so short-token calls need a
+   raised max_tokens ceiling.
 3. Render the spec deterministically in Python (numpy additive synthesis: harmonic
    stacks, envelopes, feedback-comb hall, stereo width). The composer's musical judgment
    + the renderer's determinism = a real two-AI collaboration.

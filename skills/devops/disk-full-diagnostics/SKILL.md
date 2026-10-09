@@ -53,6 +53,14 @@ docker system df                       # summary
 
 ## Cleanup (safe items first)
 
+### Order of operations (critical)
+**Free space BEFORE any git/pip/npm write operations.** Those tools write temp files then rename them into place — at 99%+ full they die mid-write and leave permanently corrupted object stores (a git repo corrupted this way is unrepairable in place; see the `hermes-infrastructure` skill, install-replacement section). Sequence: regenerable caches → archived/old files → `mv` static directories to the bigger disk with a symlink back at the original path (works for caches, browsers, old venvs, archives) → only then build/install/swap.
+
+### Relocating static directories to the bigger disk
+`mv <dir> /mnt/<bigdisk>/<name> && ln -s /mnt/<bigdisk>/<name> <dir>` preserves the original path for everything referencing it. Two gates before moving anything:
+- **Not a live Docker bind-mount:** check `docker inspect <container> --format '{{json .Mounts}}'` first — moving a live container's volume corrupts its storage.
+- **Not the active install's venv/code** while its services run — stop the services first, or move during a maintenance window.
+
 ### Always safe to clean
 | Target | Command | Typical savings |
 |--------|---------|----------------|
@@ -107,10 +115,10 @@ Create at `~/.hermes/scripts/disk-cleanup.sh` — see created skill file for tem
 cronjob create: schedule "0 4 * * *", prompt "Run ~/.hermes/scripts/disk-cleanup.sh, report results. Alert if usage >80%."
 ```
 
-### Disk monitoring cron
-```
-cronjob create: schedule "0 */6 * * *", prompt "Check df -h /. If usage >85%, alert Adora urgently with top space consumers."
-```
+### Disk monitoring cron — change-detecting monitor pattern
+Create the job with a **monitor script** that prints a short deterministic summary (`root:<X>G data:<Y>G` from `df -BG --output=avail`). The cron runner diff-checks monitor output and only fires the agent when free space actually CHANGES — a watchdog can then poll every 15-30 minutes without burning a model call on every quiet tick. Tier the prompt by free space: ≥3G → silent; 1-3G → clean regenerable caches and report; <1G → caches + archive old sessions and alert loudly, naming the human action needed.
+
+The `monitor` field takes the **filename of a script saved under `~/.hermes/scripts/`** (e.g. `disk-watchdog-monitor.sh`) — never inline script content, which the runner treats as a path and fails with `Script not found: ~/.hermes/scripts/#!/bin/bash…`. Write the file first, `chmod +x` it, run it once by hand to check its output, then create the job pointing at the filename. Pin the job's model AND provider to a working combination and confirm with a manual `hermes cron run <job_id>` before trusting the schedule.
 
 ## Common root causes on small disks (<50G)
 
