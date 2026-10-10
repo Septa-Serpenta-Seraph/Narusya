@@ -1,7 +1,8 @@
 model:
-  default: z-ai/glm-5.3-flash
-  provider: openrouter
-  base_url: ''
+  default: stepfun/step-5-preview:free
+  provider: nous
+  base_url: 'https://inference-api.nousresearch.com/v1'
+  api_mode: chat_completions
 providers:
   100.116.86.38:6969:
     api: http://100.116.86.38:6969/v1/
