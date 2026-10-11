@@ -120,6 +120,9 @@ Create the job with a **monitor script** that prints a short deterministic summa
 
 The `monitor` field takes the **filename of a script saved under `~/.hermes/scripts/`** (e.g. `disk-watchdog-monitor.sh`) — never inline script content, which the runner treats as a path and fails with `Script not found: ~/.hermes/scripts/#!/bin/bash…`. Write the file first, `chmod +x` it, run it once by hand to check its output, then create the job pointing at the filename. Pin the job's model AND provider to a working combination and confirm with a manual `hermes cron run <job_id>` before trusting the schedule.
 
+### Snapshot BEFORE the watchdog deletes
+"Designated deletable" is NOT "verified disposable" — when the watchdog prompt authorizes deleting anything expensive to regenerate (old cron outputs >7 days, old session request dumps >3 days), the user WILL ask whether it was backed up. Guard it: wire a snapshot step into the daily archive cron that runs **before** the watchdog's deletion window — e.g. `archive_cron_outputs.py` (see `narusya-local-archive` skill) copies meaningful files into `cron_output_snapshots/` with 30-day retention. Filter copies by size (skip ≤200-byte files): silent-run markers dominate these trees by count and carry no content. When asked to audit what was deleted, check what the deleted paths actually contained BEFORE answering — state what is confirmed archived, what is gone, and build the safeguard for the gap rather than reassuring from assumption.
+
 ## Common root causes on small disks (<50G)
 
 1. **pip/uv cache accumulation** — most common. Installs leave cached wheels in `~/.cache/pip` and `~/.cache/uv` that never get cleaned

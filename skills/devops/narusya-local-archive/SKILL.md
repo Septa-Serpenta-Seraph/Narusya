@@ -1,26 +1,41 @@
 ---
 name: narusya-local-archive
-description: Persistent local backup system for Narusya's memory, lorebooks, session archives, and thematic indexes. Covers the full archive pipeline at ~/Desktop/Narusya-Archive/ including daily cron auto-sync.
+description: Persistent local backup system for Narusya's memory, lorebooks, session archives, and thematic indexes. Covers the full archive pipeline at /mnt/data/Narusya-Archive/ including daily cron auto-sync.
 category: devops
 ---
 
 # Narusya Local Archive System
 
-**Purpose:** Ensure all Narusya session data, lorebooks, thematic indexes, and configs are preserved in organized filesystem exports at `~/Desktop/Narusya-Archive/`, regardless of Qdrant sync status.
-
-## Trigger
-Use when the user asks to backup memory, archive sessions, or preserve conversation history. Also invoke proactively before system updates, after major incidents, or when Qdrant auto-sync is unreliable.
+**Purpose:** Ensure all Narusya session data, lorebooks, thematic indexes, and configs are preserved in organized filesystem exports, regardless of Qdrant sync status.
 
 ## Archive Structure
 
+**⚠️ LIVE ARCHIVE ROOT — VERIFY BEFORE WRITING ANY ARCHIVE SCRIPT:**
+
+The live archive tree is **`/mnt/data/Narusya-Archive/`** (the healthy 49G drive), NOT `~/Desktop/Narusya-Archive/` (a stale empty husk on the root drive). Any new archive script MUST resolve the root this way — pointing at the wrong tree silently strands the backup on the disk under space pressure:
+
+```python
+ARCHIVE_ROOT = os.path.expanduser("~/Desktop/Narusya-Archive")
+DATA_ARCHIVE = "/mnt/data/Narusya-Archive"
+if os.path.isdir(DATA_ARCHIVE):
+    ARCHIVE_ROOT = DATA_ARCHIVE
 ```
-~/Desktop/Narusya-Archive/
+
+## Trigger
+Use when the user asks to backup memory, archive sessions, or preserve conversation history. Also invoke proactively before system updates, after major incidents, when Qdrant auto-sync is unreliable, or when the disk watchdog is about to delete anything.
+
+```
+/mnt/data/Narusya-Archive/
 │
 ├── INDEX.md                    ← Master navigation for the whole archive
 │
 ├── sessions/                   ← All sessions exported as daily markdown
 │   ├── INDEX.md               ← Session list with times, models, costs
 │   └── YYYY-MM-DD_Day.md      ← Daily files with collapsible full conversations
+│
+├── cron_output_snapshots/     ← Snapshot of real cron outputs + old request dumps
+│   ├── .last_snapshot.json   ← Dedupe state (path → mtime:size signature)
+│   └── YYYY-MM-DD_HHMM/      ← Timestamped snapshots, 30-day retention
 │
 ├── intelligence/
 │   └── community-intelligence-index.md   ← Cultus/TEF/SFCA drama timeline
@@ -69,11 +84,16 @@ Built by semantic search of the Qdrant archive, correlated with session exports:
 ### 4. Daily Auto-Sync Cron
 **Job ID:** `nar-archive-daily` (287625add570)
 **Schedule:** `0 4 * * *` (daily at 4 AM UTC)
-**Script:** `~/.hermes/scripts/archive_daily.py`
-- Checks `state.db` for sessions not yet archived (tracked via `.last_archive_state.json`)
-- Exports new sessions as daily markdown files
-- Appends to existing daily files or creates new ones
-- Updates session INDEX.md and master INDEX.md
+**Scripts (BOTH run daily, in order):**
+1. `~/.hermes/scripts/archive_daily.py` — session export from state.db (see below)
+2. `~/.hermes/scripts/archive_cron_outputs.py` — snapshot cron outputs + old session request dumps into `cron_output_snapshots/` BEFORE the disk watchdog deletes them
+
+### Cron-Output Snapshot (archive_cron_outputs.py)
+The disk watchdog is authorized to delete old cron outputs (>7 days) and session request dumps (>3 days). "Designated deletable" is NOT "verified disposable" — snapshot before deletion:
+- Copies meaningful files only — **skip files ≤200 bytes** ("Status: silent" empty-run markers); they dominate the tree by count and cost nothing to regenerate
+- Dedupes via `.last_snapshot.json` (path → `mtime_ns:size` signature): unchanged files are skipped on subsequent runs, so daily snapshots stay ~84K
+- 30-day snapshot retention, well past the watchdog's 3-7 day deletion windows
+- Walks both `~/.hermes/cron/output/` (per-job subdirs) and `~/.hermes/sessions/` (`request_dump_cron_*` files)
 
 ## Manual Export (when cron can't be used)
 
@@ -81,7 +101,7 @@ Built by semantic search of the Qdrant archive, correlated with session exports:
 import sqlite3, datetime, os, json
 
 DB_PATH = "/home/adora/.hermes/state.db"
-ARCHIVE_DIR = "/home/adora/Desktop/Narusya-Archive"
+ARCHIVE_DIR = "/mnt/data/Narusya-Archive"
 SESSIONS_DIR = os.path.join(ARCHIVE_DIR, "sessions")
 MARKER = os.path.join(ARCHIVE_DIR, ".last_archive_state.json")
 
@@ -137,18 +157,12 @@ def export_new_sessions():
 export_new_sessions()
 ```
 
-## ⚠️ Current State (2026-06-26)
+## Current Configuration
 
-The archive is **partially built** following the June 14 session. What exists:
-- ✅ Directory structure at `~/Desktop/Narusya-Archive/` (sessions, intelligence, health, relationships, technical, qdrant-inventory, scripts, lorebooks-current, configs)
-- ✅ Pre-update config backup at `pre-update-backup-20260426_183432/`
-- ✅ Recovery script at `scripts/recover-from-update.sh`
-- ❌ **Session export NOT completed** — the June 14 session ended mid-export. The `sessions/` directory has no daily markdown files or INDEX.md.
-- ❌ **Thematic indexes NOT built** — health, relationships, intelligence, technical indexes are all empty.
-- ❌ **Master INDEX.md NOT created**
-- ✅ Daily cron job running (`nar-archive-daily` at 04:36 MDT) but likely only creating/updating the marker file since the session export logic is incomplete.
-
-**Next step to complete:** Run the full session export from `state.db` (249 sessions), then build thematic indexes from the exported data.
+- **Live root: `/mnt/data/Narusya-Archive/`** — the `~/Desktop/Narusya-Archive/` tree is a stale husk; confirm live paths with `du -sh` before writing any archive script.
+- Session export is complete and runs daily (`nar-archive-daily` → `archive_daily.py`), writing `sessions/YYYY-MM-DD_Day.md` plus the session and master INDEX.md.
+- The `cron_output_snapshots/` layer (wired into the same daily cron via `archive_cron_outputs.py`) backs up watchdog-deletable files before deletion — see component 4.
+- Thematic indexes (intelligence, health, relationships, technical) are built on request via semantic search of the Qdrant archive; do not assume they exist until verified.
 
 ## Recovery
 
@@ -211,8 +225,6 @@ If Qdrant is ever corrupted or lost:
 - `RELATIONSHIPS.md` (full version with personal details)
 - Any future lorebooks with private info
 
-### Pitfalls & Lessons Learned
-
 ### ⚠️ RELATIONSHIPS.md Public Exposure Incident (June 2025)
 **What happened:** The full private `RELATIONSHIPS.md` (containing Tyler, Ris/Marisa, Laser, polycule dynamics, personal betrayal details) was copied to `~/backup-repo/lorebooks/` and pushed to the **public** GitHub repo `Septa-Serpenta-Seraph/Narusya`. The commit was live for ~10 minutes before detection.
 
@@ -233,6 +245,18 @@ echo "YOUR_PAT_TOKEN" | gh auth login -h github.com --with-token
 gh auth setup-git
 ```
 *Note:* The automated cron job (`nar-github-backup-daily`) relies on this PAT method to ensure it never hangs waiting for user input.
+
+---
+
+## Pitfalls & Lessons Learned
+
+### ⚠️ Two Archive Trees — Point New Scripts at /mnt/data
+**What happened:** A new snapshot script was written with `ARCHIVE_ROOT = ~/Desktop/Narusya-Archive/` (the path the old skill documented) while the live session archive had been writing to `/mnt/data/Narusya-Archive/` for weeks. Result: new backups landed on the sick root drive (0 in the Desktop tree vs 1.4G on /mnt/data), defeating the two-drive protection. Discovered only by running `du -sh` on BOTH trees.
+
+**Rule:** Before writing ANY new archive script, `du -sh` both `~/Desktop/Narusya-Archive` and `/mnt/data/Narusya-Archive` and confirm which tree is live. Resolve the root with the isdir-fallback pattern shown under Archive Structure — never hardcode either path alone.
+
+### Watchdog-Deleted Files: "Designated Deletable" ≠ "Verified Disposable"
+**Rule:** When the disk watchdog's cleanup paths include anything that took work to produce (cron outputs, request dumps), a snapshot step must run BEFORE the watchdog's deletion pass — wire it into the same daily cron, ahead of the watchdog's own cleanup window. When the user asks "were those backed up?", audit honestly: state what is confirmed archived, what is gone, and build the safeguard for the gap rather than reassuring from assumption.
 
 ---
 

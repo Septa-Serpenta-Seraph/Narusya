@@ -209,6 +209,19 @@ def cmd_post(args):
         die(2, f"sent {len(names)} of {len(attachments)} attachments — discord refused some")
 
 
+def cmd_reply(args):
+    """POST a message threaded as a reply onto an existing message."""
+    payload = {
+        "content": args.text or "",
+        "message_reference": {"message_id": args.message},
+    }
+    path = f"/channels/{args.channel}/messages"
+    status, msg = _request("POST", path,
+                           body=json.dumps(payload).encode("utf-8"),
+                           ctype="application/json")
+    print(f"REPLIED {status} message {msg['id']} (threaded -> {args.message})")
+
+
 def cmd_react(args):
     """Add reactions. 204 = accepted; that is the only confirmation Discord gives."""
     for spec in args.emojis:
@@ -248,6 +261,12 @@ def main():
     r.add_argument("emojis", nargs="+",
                    help="custom face names (luv_2) or literal unicode (💛)")
     r.set_defaults(func=cmd_react)
+
+    t = sub.add_parser("reply", help="post a message threaded as a reply")
+    t.add_argument("channel")
+    t.add_argument("message", help="message id to thread onto")
+    t.add_argument("text")
+    t.set_defaults(func=cmd_reply)
 
     d = sub.add_parser("read", help="read recent messages")
     d.add_argument("channel")

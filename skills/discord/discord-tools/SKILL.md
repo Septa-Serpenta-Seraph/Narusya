@@ -43,9 +43,17 @@ grep DISCORD_ALLOWED_USERS ~/.hermes/.env
 
 3. **Restart the gateway:**
 ```bash
-hermes gateway restart
+hermes gateway restart   # from an EXTERNAL shell only — see pitfall below
 # Or if systemd: systemctl --user restart hermes-gateway
+# Or from inside a gateway chat session: the /restart slash command
 ```
+
+### Consent & Restart Pitfalls
+
+- **The sed command requires an approval prompt.** If the prompt times out without a response, NOTHING was written — do not retry the command until the user answers. Silence is not consent; re-running after a silent timeout pushes past a consent boundary. When retrying after the user says go, expect the approval prompt and tell them to approve it.
+- **`hermes gateway restart` self-blocks inside the gateway process** (it would SIGTERM the shell running the command). Use the `/restart` slash command from a gateway chat, or an external shell.
+- **The allowlist is cached at boot** — after editing `.env`, the `[unverified]` tag on a user persists until the gateway actually restarts. Verify the file first (`grep DISCORD_ALLOWED_USERS ~/.hermes/.env`), then restart, then verify by the next message from that user arriving without the tag.
+- **Display names differ per view** — Discord feeds and API responses may show a user's GLOBAL display name while their per-server nickname is what the room calls them. Before addressing someone by a name pulled from a message feed, ask or verify; using the global name against the room's usage reads as carelessness.
 
 ### Key Distinction
 
@@ -342,10 +350,11 @@ Always verify the user has authorized access to their DM history before attempti
 
 ### Bot identity awareness (common mistake)
 When you POST via the REST API using a token, the message appears as **that token's bot**,
-not as "yourself" if your daemon identity is a different bot. Example: Narusya's gateway runs
-on the `polinkly` profile token, so posting through it lands as **P'o's bot**, not as Narusya.
-To post as a specific identity you need THAT identity's valid token. A stale/401 token won't
-authenticate — verify with a read-only `GET /users/@me` before posting.
+not as "yourself" if your daemon identity is a different bot. Narusya's gateway runs on the
+DEFAULT profile's token (`~/.hermes/.env` `DISCORD_BOT_TOKEN`, bot id 1478180169733902538);
+`polinkly` is a SEPARATE bot identity — posting through polinkly's token lands as the wrong
+bot. To post as a specific identity you need THAT identity's valid token. A stale/401 token
+won't authenticate — verify with a read-only `GET /users/@me` before posting.
 
 ### Large content: prefer a file, not a wall
 Discord caps messages at 2000 chars and rate-limits bot posts (burst of ~10 then
@@ -370,7 +379,8 @@ with ~1.2s spacing. Same rate-limit caution applies.
 
 | Use Case | Token Type | Location |
 |----------|-----------|----------|
-| Bot operations in guilds (LIVE) | Bot token | `~/.hermes/profiles/polinkly/.env` `DISCORD_BOT_TOKEN` — the gateway's live token |
+| Bot operations in guilds (LIVE) | Bot token | `~/.hermes/.env` `DISCORD_BOT_TOKEN` — the gateway's live token (Narusya, id 1478180169733902538) |
+| polinkly (SEPARATE bot identity) | Bot token | `~/.hermes/profiles/polinkly/.env` — different bot; posting through it lands as the wrong identity |
 | Narusya's own (STALE, 401) | Bot token (INVALID) | `~/.hermes/secrets/narusya_token.txt` — **returns 401, do NOT use** |
 | User browser login | Encrypted creds | `~/.hermes/secrets/narusya_account.enc` |
 | DM recovery | User session | Browser cookies |

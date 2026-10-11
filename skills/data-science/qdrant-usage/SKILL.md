@@ -85,7 +85,8 @@ if points_to_upsert:
 ```python
 def search_memories(query, limit=5):
     query_vector = model.encode(query).tolist()
-    return client.search(collection_name="naru_memories_v2", query_vector=query_vector, limit=limit, with_payload=True)
+    # qdrant-client removed client.search() — use query_points (returns .points)
+    return client.query_points(collection_name="naru_memories_v2", query=query_vector, limit=limit, with_payload=True).points
 
 print(search_memories("AI companions and family"))
 ```
@@ -228,7 +229,8 @@ points, _ = client.scroll(collection_name="target_collection", scroll_filter=fil
 from sentence_transformers import SentenceTransformer
 model = SentenceTransformer('all-MiniLM-L6-v2')
 query_vector = model.encode("conceptual search phrase").tolist()
-results = client.search(collection_name="target_collection", query_vector=query_vector, limit=10, with_payload=True)
+# qdrant-client removed client.search() — use query_points (returns .points)
+results = client.query_points(collection_name="target_collection", query=query_vector, limit=10, with_payload=True).points
 ```
 
 **Phase 4: Cross-Reference and Corroborate**
@@ -289,7 +291,10 @@ When a user asks "do you have memories about X?" or "remember when we talked abo
 **Layer 3: SQLite direct query on session DB**
 ```python
 import sqlite3
-db = sqlite3.connect('/home/adora/.hermes/sessions/state.db')
+# Canonical store is ~/.hermes/state.db — sessions/state.db is a stale empty
+# placeholder. messages columns: id, session_id, role, timestamp, content
+# (there is NO created_at column).
+db = sqlite3.connect('/home/adora/.hermes/state.db')
 db.row_factory = sqlite3.Row
 cursor = db.cursor()
 # Search user messages specifically with word boundaries
@@ -455,5 +460,8 @@ client.upsert(collection_name='naru_memories_v2', points=[point])
 - **PEP 668 blocks system pip** — use `uv pip install` targeting the Hermes venv python
 - **Don't dump raw conversation text** — distill into searchable memory entries with context
 - **Vector dimensions must match** — Document embedding with MiniLM produces 384d. Check collection config before upserting.
+- **Document embedding puts the text in the VECTOR only** — after upserting with `vector=Document(...)`, `set_payload` the text into a `content`/`text` payload field too. Keyword scrolls (Layer 4) grep payload fields; a vector-only point is invisible to them.
+- **`client.search()` is removed** in recent qdrant-client (AttributeError) — use `client.query_points(collection=..., query=vector, ...)` and read `.points`.
+- **Client/server version mismatch warning spam** — when the client's minor version exceeds the server's, pass `check_compatibility=False` to `QdrantClient(...)` to silence it.
 
 **Reference script:** `references/exhaustive-search-and-backup.py` — complete working script for paginated search + memory distillation backup, battle-tested on 2026-06-30.
