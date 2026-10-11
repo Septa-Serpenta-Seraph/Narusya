@@ -115,11 +115,19 @@ for coll in ["intelligent_gould_narusya","naru_memories_v2","narusya_memory_back
 - Point counts in the thousands (e.g. 4142 in `intelligent_gould_narusya`) = writes ARE landing. A stale/empty count = real problem worth escalating.
 - This server is NOT reachable from the agent session's own write path (no embedder/creds in agent env); verification is read-only via the REST API above. Don't try to upsert from the agent — let the gateway's own pipeline do it.
 
-### Pitfalls
+### Auditing Memory Health — check the CONFIGURED collection before declaring memory broken
+When the user asks whether memory is intact (or after any scare), do NOT point-count an arbitrary collection and pronounce the system dead. The recall layer and the bulk archive are different collections:
+- **Recall collection** — what the plugin actually searches. Read it from config: `plugins.qdrant-memory.collection` in config.yaml (e.g. `intelligent_gould_narusya`, thousands of points).
+- **Bulk archive** — `session_messages_archive` (tens of thousands of points, 384-dim fastembed) — a separate export pipeline, NOT what recall queries.
+- **Operational side-collections** — `hermes_session_memories` and similar can hold dozens of points and mean nothing about memory health.
+
+Audit sequence: (1) grep config.yaml for the collection name; (2) load the provider live and read `mp._collection`; (3) run a functional recall for a known-recent exchange — the provider's recall entry point is `mp.prefetch(query, session_id=...)`, which returns the `<memory-context>` block; a hit on today's conversation proves the whole path end-to-end. Expected gap: very recent turns exist in state.db but may not be embedded into the recall collection yet — an empty search for today's events is a freshness gap, not data loss, and it self-heals on the next embedding pass. When reporting to the user, name which collection you checked and what it holds before drawing any conclusion.
 - **Connection Refused** → Docker container exited, restart it
 - **400 Bad Request** → Vector dimensions don't match collection config
 - **Empty Response** → Ensure `with_payload: True` in scroll request
 - **"loaded but no provider instance"** → Test directly with `load_memory_provider('qdrant')`
+- **`mp.search(...)` raises AttributeError on the provider object** — recall is `mp.prefetch(query, *, session_id="")`; `search()` lives on the internal `_client` and takes a collection name + precomputed vector. Test recall through `prefetch`, not `search`.
+- **Scroll params in the URL query string return 400** — pass `limit`/`with_payload` as a POST body to `/points/scroll`, never as `?limit=N&with_payload=true` query params.
 
 ---
 

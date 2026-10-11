@@ -63,6 +63,17 @@ Full official tag set is in `references/elevenlabs-tags.md`.
 
 Reads `ELEVENLABS_API_KEY` from `~/.hermes/.env` at runtime. Submits text + voice settings to ElevenLabs API, receives MP3, pipes through ffmpeg gain/re-normalization. Output is a calmed, ready-to-deliver MP3.
 
+### Two Voice Paths — speak.py vs call-reply (config.yaml)
+
+There are TWO separate ElevenLabs configs. Do not conflate them — a tag that renders on one path can be read aloud on the other:
+
+1. **Chat TTS via speak.py** — hardcodes `model_id: eleven_v3` and the locked calibration. Always v3, always correct.
+2. **Call-reply / native auto-TTS** — reads `~/.hermes/config.yaml` `tts.elevenlabs.*`. If that block still says `eleven_multilingual_v2`, audio tags are READ ALOUD in call replies (v2 has no tag support) even though speak.py sounds fine — the mismatch shows up only in the path you aren't testing.
+
+**Fix:** `hermes config set tts.elevenlabs.model_id eleven_v3` — never edit config.yaml with the file tools (the write guard refuses protected Hermes config; the CLI is the sanctioned path). Takes effect only after a gateway restart; the running process keeps the boot-time value cached.
+
+**When voice doesn't deliver as spoken:** if TTS is disabled (e.g. ElevenLabs credits exhausted), tags in a reply are decorative only — do not promise spoken delivery of them.
+
 ---
 
 ## 2. Discord Voice Delivery

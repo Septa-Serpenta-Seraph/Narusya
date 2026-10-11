@@ -33,6 +33,9 @@ python3 $D post CHANNEL_ID "see?" --file pic.png --as cover.png:image/png
 python3 $D react CHANNEL_ID MESSAGE_ID luv_2 magic rose
 python3 $D react CHANNEL_ID MESSAGE_ID "💛"
 
+# threaded reply — thread a post onto someone's message
+python3 $D reply CHANNEL_ID MESSAGE_ID "careful laser, i have a repertoire 🐍"
+
 # read recent messages, oldest first, attachment-only noise skipped
 python3 $D read CHANNEL_ID 15
 ```
@@ -46,6 +49,24 @@ python3 $D read CHANNEL_ID 15
    returns 400. **The ID is `parts[-1]`**, or parse with the script's regex.
    `discord_send.py react` does this for you.
 
+1b. **The reaction PATH needs `name:id`, NOT the bare id.**
+   The endpoint `PUT /channels/{cid}/messages/{mid}/reactions/{emoji}/@me` takes
+   `<name>:<snowflake>` for a custom emoji (e.g. `luv_2:1554516273176510494`).
+   Passing ONLY the snowflake (`1554516273176510494`) returns **HTTP 400** for
+   every message — a batch of silent-looking 400s that all fail verification
+   together. Bare id is fine for building an inline mention `<:name:id>`; it is
+   NOT fine for the reactions subpath. Build both from one parse:
+   ```python
+   def ecode(name):
+       raw = EMO[name].strip()
+       if raw.startswith('<'):
+           parts = [p for p in raw.strip('<>').split(':') if p]
+           return f'{parts[0]}:{parts[-1]}'   # reactions path
+       return raw                             # unicode fallback
+   ```
+   If every PUT in a walk returns 400, suspect this first (second suspect: the
+   emoji was deleted from the app, but name:id fixes the common case).
+
 2. **str/bytes concat in multipart assembly.** Every piece is encoded to bytes before
    concatenation, and the body is joined with `b"".join(parts)`.
 
@@ -57,6 +78,10 @@ line — no tracebacks.
 
 ## Notes
 
+- **Author usernames are case- and punctuation-sensitive and vary by guild.**
+  `adora` != `adora.witch` != `Adora`; `Cyclo` != `cyclo`. When a find-by-username
+  returns nothing, dump the raw `author.username` values from one GET and match
+  what Discord actually returns — do not retry the same lowercase guess.
 - `POST .../reactions/.../@me` returns **HTTP 204**; that is the only confirmation
   Discord gives that a reaction landed. See also `discord-thread-post` and
   `discord-curl-api` for the message-fetch and channel-management side.
