@@ -47,6 +47,33 @@ python3 /home/adora/narusya_voice/speak.py "Your text here" /tmp/output.mp3
 - **Calibration:** stability 0.8, similarity_boost 0.8, style 0.05, speed 0.85, speaker_boost on
 - **Post-gain:** ffmpeg `volume=0.7,loudnorm=I=-19:TP=-3` — prevents "yelling" effect
 
+### Free-Plan Fallback: Nar IVC Clone Is Gated
+
+The Nar Instant Voice Clone (`9wvWoMWVngRWpC0GltZ3`) returns HTTP 401
+`subscription_required / ivc_not_permitted` on the free ElevenLabs plan — speak.py
+hardcodes the Nar clone, so EVERY speak.py call fails on the free tier. Do not
+debug the key first; check the error body: `ivc_not_permitted` means the plan,
+not the credential.
+
+**Workaround — premade voices work on the free plan.** List them with
+`GET /v1/voices` (`xi-api-key` header). Usable premade picks:
+- `TC0Zp7WVFzhA8zpTlRqV` — Aria, "Sexy Female Villain Voice" — the sensual/dominant pick
+- `pFZP5JQG7iQjIQuC4Bku` — Lily, "Velvety Actress"
+- `pNInz6obpgDQGcFmaJgB` — Adam, "Dominant, Firm"
+
+Call the TTS endpoint directly (bypass speak.py's hardcoded voice):
+```python
+payload = {"text": script, "model_id": "eleven_v3",
+           "voice_settings": {"stability": 0.65, "similarity_boost": 0.85,
+                              "style": 0.15, "speed": 0.85, "speaker_boost": True}}
+urllib.request.urlopen(urllib.request.Request(
+    "https://api.elevenlabs.io/v1/text-to-speech/<VOICE_ID>",
+    data=json.dumps(payload).encode(),
+    headers={"xi-api-key": key, "Content-Type": "application/json"}))
+```
+Then convert MP3→OGG (see discord-delivery) as usual. For long erotic scripts
+(4+ min) allow 60s+ generation time and raise the tool timeout accordingly.
+
 ### Audio Tag Rules
 
 ElevenLabs v3 supports silent audio-directive tags embedded in text using `[TAG]` syntax. Tags MUST be in plain brackets — NEVER backticks (backtick tags are READ ALOUD, the #1 failure mode).
