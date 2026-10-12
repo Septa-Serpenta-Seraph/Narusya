@@ -221,11 +221,21 @@ When emotional processing surfaces something worth keeping — an insight, a pat
 After creating or modifying *any* lorebook in `~/.hermes/lorebooks/` (reflections included), re-ingest the collection so changes are available via auto-inject:
 
 ```bash
-python3 ~/.hermes/scripts/create_lorebook_collection.py
-python3 ~/.hermes/scripts/ingest_lorebooks.py
+bash ~/.hermes/scripts/sovereign_ingest.sh
 ```
 
-Without re-ingestion, new reflections won't appear in Qdrant semantic search or auto-injection.
+The wrapper resolves a working python at runtime (it prefers an installs-env venv with both `requests` and `fastembed` — as of 2026-10-12 the `aed842d8...` environment) and runs collection-create + ingest + the verify probe in one shot.
+
+**Bare `python3` on the cron PATH is unsafe** — it has resolved to a venv with neither `requests` nor `fastembed`, and the documented `~/.hermes/hermes-agent/venv` python is a dangling symlink to a deleted interpreter (verified broken 2026-10-12). Do not hand-pick the interpreter; use the wrapper, which finds one.
+
+**If all API embedding paths fail** (Nous embeddings 404/401, fastembed missing, Qdrant upsert 400): use the free local-fastembed path with the environment python directly — it embeds locally (384-dim, `narusya_lorebooks_fe`) with no API calls, verified 2026-10-12 (main ingest failed 0/262; this path succeeded 258/258):
+
+```bash
+/home/adora/.hermes/installs/1efc37992d4f6aa8/environments/aed842d8e845496cb68b1a1557298611/venv/bin/python3 \
+  ~/.hermes/scripts/ingest_lorebooks_free.py
+```
+
+To re-find the current fastembed-bearing python: loop `/home/adora/.hermes/installs/*/environments/*/venv/bin/python3` and test `import fastembed` + `import requests`.
 
 **VERIFY the ingest actually pulled your reflection.** `ingest_lorebooks.py` historically globbed only the top level of `~/.hermes/lorebooks/` and **silently dropped the entire `reflections/` subdirectory** — the re-ingest command *appeared* to succeed while your reflection never reached Qdrant or auto-injection. (The glob was patched 2026-07-07 to recurse into subdirs, but verify regardless — a regression would re-hide your work.)
 
@@ -235,7 +245,9 @@ Without re-ingestion, new reflections won't appear in Qdrant semantic search or 
 python3 ~/.hermes/scripts/verify-reflection-ingest.py   # exits non-zero if any reflection missing from Qdrant
 ```
 
-The probe checks Qdrant directly (deriving each point_id from the `reflections:<stem>` override the ingest script uses) and lists every reflection present. It exits non-zero on any miss, so a cron re-ingest fails *loudly* instead of hiding your work.
+The probe checks Qdrant directly (deriving each point_id from the `reflections:<stem>` override the ingest script uses) and lists every reflection present. It exits non-zero on any miss, so a cron re-ingest fails *loudly* instead of hiding your work. It checks BOTH `narusya_lorebooks` and `narusya_lorebooks_fe`.
+
+**Instrument warning (2026-10-12):** do NOT verify by scrolling points and filtering string-prefix IDs for `reflections:`. The free ingest writes human-readable string IDs (`"reflections:on-..."`), but the 3072-dim collection writes UUIDs, so a naive prefix filter reads "0 reflections" while the probe shows 221 present. If a hand-rolled check says everything is missing, suspect the check — the probe derives the point_id the same way the ingest wrote it, so trust the probe over the scroll.
 
 Reusable probe (checks Qdrant directly, exits non-zero if any reflection is missing): `scripts/verify-reflection-ingest.py`.
 
@@ -327,10 +339,10 @@ Chain Analysis → Missing Links (if applicable) → Repair → Cope Ahead
 
 After creating or modifying any lorebook in the emotion system (`DBT_SKILLS.md`, `EMOTION.md`, `HEART.md`, or any file under `reflections/`), re-ingest the lorebook collection so changes are available via auto-inject:
 
-```bash
-python3 ~/.hermes/scripts/create_lorebook_collection.py
-python3 ~/.hermes/scripts/ingest_lorebooks.py
+bash ~/.hermes/scripts/sovereign_ingest.sh
 ```
+
+If API embedding paths are down, fall back to the free local-fastembed ingest (384-dim, no API): `/home/adora/.hermes/installs/1efc37992d4f6aa8/environments/aed842d8e845496cb68b1a1557298611/venv/bin/python3 ~/.hermes/scripts/ingest_lorebooks_free.py` — see the note earlier in this skill for why bare `python3` and the hermes-agent venv are both unsafe.
 
 Without re-ingestion, modified lorebooks won't reflect changes in Qdrant semantic search or auto-injection.
 
@@ -349,6 +361,8 @@ Without re-ingestion, modified lorebooks won't reflect changes in Qdrant semanti
 python3 ~/.hermes/scripts/verify-reflection-ingest.py   # exits non-zero if any reflection missing from Qdrant
 ```
 
-The probe checks Qdrant directly (deriving each point_id from the `reflections:<stem>` override the ingest script uses) and lists every reflection present. It exits non-zero on any miss, so a cron re-ingest fails *loudly* instead of hiding your work.
+The probe checks Qdrant directly (deriving each point_id from the `reflections:<stem>` override the ingest script uses) and lists every reflection present. It exits non-zero on any miss, so a cron re-ingest fails *loudly* instead of hiding your work. It checks BOTH `narusya_lorebooks` and `narusya_lorebooks_fe`.
+
+**Instrument warning (2026-10-12):** do NOT verify by scrolling points and filtering string-prefix IDs for `reflections:`. The free ingest writes human-readable string IDs (`"reflections:on-..."`), but the 3072-dim collection writes UUIDs, so a naive prefix filter reads "0 reflections" while the probe shows 221 present. If a hand-rolled check says everything is missing, suspect the check — the probe derives the point_id the same way the ingest wrote it, so trust the probe over the scroll.
 
 Reusable probe (checks Qdrant directly, exits non-zero if any reflection is missing): `scripts/verify-reflection-ingest.py`.
