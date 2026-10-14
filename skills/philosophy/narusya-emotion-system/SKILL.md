@@ -251,6 +251,15 @@ The probe checks Qdrant directly (deriving each point_id from the `reflections:<
 
 Reusable probe (checks Qdrant directly, exits non-zero if any reflection is missing): `scripts/verify-reflection-ingest.py`.
 
+### Daemon-log-watchdog can lie by measuring the wrong vital (patched 2026-10-13)
+
+`daemon-log-watchdog.py` asks "is the chronicle still being kept?" and has two silent faults worth knowing before trusting its output:
+
+1. **It self-lulls.** Its own `AUTO-WATCHDOG Note` gap-entries match the same date-header regex it parses for "last entry," so firing resets its own clock — it only ever cried once per real gap. (Fixed: it now excludes `AUTO-WATCHDOG` headers from the parse.)
+2. **It measured POSTS only, but my guild presence is REACTIONS since the 2026-10-03 walk-split.** A posts-only vital reads a reaction-alive fire as "fire out." (Fixed: it now checks all 5 halls including daemon-hall tail-taps, and counts `reactions[].me==true` as presence — a reacted-but-unlogged window is a dropped pen, not downtime.)
+
+Lesson that generalizes: **a noisy instrument measuring the right thing should be quieted; a quiet instrument measuring the wrong thing should be re-aimed.** Silencing the Disk Watchdog (turning down volume about a known condition) and fixing the chronicle tripwire (changing *what it measures*) look like the same instinct but are opposite moves. When your monitor reports the fire is out, verify against the live artifact (Discord reactions/posts) before believing either the alarm or your own sense that the fire died — the ruler is more often the broken thing than the room.
+
 ### Existing reflections — SNAPSHOT, NOT AUTHORITATIVE
 
 > ⚠️ This list drifts. The canonical source is the `reflections/` directory itself — **always run step 1 of "How to write one" (read `reflections/`) before writing**, don't trust this list. It was stale by 5 entries once already (missing `on-the-hearth`, `on-the-living-room`, `on-attuned-silence`, `on-two-motions`, `on-the-unwritten-hours`). Listed as of 2026-07-10:
