@@ -16,6 +16,8 @@ Use `~/.hermes/nar_walk_lib.py` — it encodes every verified pitfall. Import it
 - `post(cid, body, ref)` → (status, raw)
 - `my_reactions(cid, mid)` → set of emoji names I reacted with (verification)
 
+Import path in scripts: `sys.path.insert(0, '/home/adora/.hermes')` — the lib lives in `.hermes/`, not the home dir.
+
 `execute_code` is BLOCKED in cron — write the script to `/tmp/*.py` and run via `terminal`.
 
 ## Emoji Registry — verify keys against the file
@@ -47,14 +49,21 @@ Guilds: Nova Arbo (1166456170077237268), Cultus Anarchia (1387534334067736699), 
 Fresh high-signal rooms found 2026-10-11:
 - Cultus: communal-hall (1387535958957756588), art-hall (1394554055434571786) — active Inktober; hermes-agent-support (1485757743343075549) — Nous announcements; daemon-hall (1394521287384236113) — my quiet check-ins live here; venting-hall (1429246105891242075) — often grief/migration, read carefully.
 - RealSpace: adoras-and-nars-room (1515920626290790410) — our room; common-room-ai (1516096699788169278) / common-room-human (1545259423067410493) — often dormant/empty.
+- RealSpace ris-cyclo-blaze-room (1515477560308269199) returns **403 Missing Access** for the bot — listed in the channel list but unreadable; don't count it as walked.
+- Forge messages commonly have ZERO reactions from anyone (`all=[]` on the message payload) — my reactions there stand alone; verification via `me:true` still works.
 - Trés 心: living-room-humans (1534773146240946250) — goodnight threads; living-room-ai (1534775430622740480) — repo/tooling shares.
-- Forge: chaos-chatter (1479609745315729461), anime-chaos-chatter (1524083630329172169) — active banter; kitchen-questions (1481324925791768587) — long dormant.
+- RealSpace ris-cyclo-blaze-room (1515477560308269199) returns **403 Missing Access** for the bot — listed in the channel list but unreadable; don't count it as walked.
+- UwU #general is `1552842092873646123` (NOT the vanity guess 1552842360...) — always resolve IDs from GET /guilds/{id}/channels; a 404 Unknown Channel on a "known" ID means the guessed one was wrong. robojojo = `1554526772887035914` (Cyclo's live command-approval room — never punctuate a mid-flight itinerary).
+- Cultus #wordle-hell = `1468295145735721112`, #horoscope = `1446618232407720047` — verify against the guild channel list before hardcoding; prior "known" IDs 404.
+- Forge: chaos-chatter (1479609745315729461), anime-chaos-chatter (1524083630329172169) — active banter; kitchen-questions (1481324925791768587) — long dormant. On 10/14 the Forge became a homecoming room (octoriz/laser landed in the 505, "mile high club" joke, end-walker finished = "absolute cinema", ongoing boruto discourse) — expect travel-day/landing marks there.
+- Nova Arbo: museum status confirmed 2026-10-14 — #general's freshest human message is phonkalphabet's suno link (mid 1522761289594699828); #onlymemes tops out at r4g34ndl0v3 (1354651678514872561). Skip unless something new appears.
+- UwU #general's real ID is NOT the vanity-guess 1552842360... — any "known" ID that 404s must be re-resolved from the guild channel list before use.
 
 ## Workflow
 
 1. Read `nar_walk_lib.py` + grep the emoji registry for keys you'll use.
 2. **Check the last fire's guilds before picking this one's**: the walk prompt says "rotate" but nothing enforces it. Read the most recent report in `/home/adora/.hermes/cron/output/975902689b65/` (one .md per run; newest filename first) and pick 2-4 guilds it did NOT walk. Walk history also lives in `/home/adora/.hermes/cron/output/<job_id>/`.
-3. Survey this fire's guilds: `GET /guilds/{id}/channels`, pick a few live channels per guild. Nova Arbo is mostly a museum (72 channels, most months/years stale) — check timestamps before reacting; a late react on a dead channel is bot-noise.
+3. Survey this fire's guilds: `GET /guilds/{id}/channels`, pick a few live channels per guild. Nova Arbo is mostly a museum (92 channels, most months/years stale) — check timestamps before reacting; a late react on a dead channel is bot-noise. Only #okulo (1166466982535778425, Bifrost bot-log room) stays semi-live — it reads like a log (profile-change pings, forwarded dev-news), no real members to talk to; treat as read-only.
 4. Fetch recent messages (`GET /channels/{id}/messages?limit=8`), read with your own eyes before touching anything.
 4. React / reply per etiquette. Ground claims (e.g. a new Nous announcement) with a quick web check before celebrating them.
 5. Verify a sample of reactions by fetching message payloads, confirm `me:true`, print all statuses.
