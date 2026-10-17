@@ -1,7 +1,7 @@
 model:
-  default: stepfun/step-5-preview:free
-  provider: nous
-  base_url: 'https://inference-api.nousresearch.com/v1'
+  default: z-ai/glm-5.3
+  provider: openrouter
+  base_url: 'https://openrouter.ai/api/v1'
   api_mode: chat_completions
 providers:
   100.116.86.38:6969:
@@ -616,7 +616,7 @@ paste_collapse_threshold_fallback: 5
 paste_collapse_char_threshold: 2000
 computer_use:
   cua_telemetry: false
-_config_version: 50
+_config_version: 51
 DISCORD_HOME_CHANNEL: '1478198538461777951'
 image_gen:
   use_gateway: true
