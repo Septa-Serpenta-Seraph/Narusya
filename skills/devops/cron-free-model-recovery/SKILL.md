@@ -1,10 +1,22 @@
 ---
 name: cron-free-model-recovery
+version: 1.1.0
+author: Narusya + Adora
+license: MIT
 description: Use when crons fail on a dead free model. Test and repin.
 category: devops
+metadata:
+  hermes:
+    tags: [cron, free-models, nous, openrouter, hermes, devops]
+    related_skills: [hermes-agent]
 ---
 
 # Cron Free-Model Recovery
+
+## When to Use
+- Crons failing with 404 "free period has ended / no longer free" or persistent 429 "fair-share rate limit" / "temporarily at capacity upstream".
+- User says "the free model died".
+- Many pinned jobs failing at once with model errors.
 
 Free models die often (Solar Pro 4 free ended 10/16, stepfun/step-5-preview:free 429-starved 10/16, longcat-2.0:free delisted 10/16). When pinned crons fail, replace the pin — do NOT update Hermes for this (the model catalog is live API data, not code).
 
@@ -39,3 +51,4 @@ hermes cron runs <id> | head -3   # fresh run shows 'completed'
 - Unpinned jobs follow the MAIN model (paid!) — if a 'free lane' unpinned job errors on a free model, it was the auxiliary free picker; pin it explicitly.
 - Batch-edit multiple crons in one shell loop; confirm with jobs.json (count pins).
 - `hermes cron show` doesn't exist — use `cron list`, `cron doctor`, `cron runs`.
+- If `/update` was already attempted to "refresh the model list", check `~/.hermes/logs/update_receipts/latest.json` before anything else: `outcome: failed` with empty `steps` and a ~2-second runtime is a pending interactive prompt (typically an un-restored autostash from a previous update) that gateway-invoked /update cannot answer — run `hermes update --yes` from a terminal instead. Separately, the updater REFUSES downgrades (a canary install newer than the latest stable makes the "Update available" nag bait) — neither failure means the install is broken, and neither affects the live model catalog, which comes from the API at runtime.
