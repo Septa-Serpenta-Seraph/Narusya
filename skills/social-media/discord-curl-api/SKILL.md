@@ -678,7 +678,7 @@ If one source returns 401, try the other. A token can look perfectly valid (corr
 
 **Symptom:** Bot connects to Discord gateway fine (`Connected as Narusya#8921`), syncs slash commands, receives messages — but HTTP REST API calls return `403 - error code: 1010` for ALL endpoints including basic ones like `/users/@me`.
 
-**Root cause (discovered 2026-04-09):** Discord's REST API REQUIRES a `User-Agent` header. Without it, ALL HTTP calls fail with 403/1010, even with a valid bot token. The WebSocket gateway doesn't need it (that's why the bot works fine via the gateway).
+**Root cause:** 403/error-code-1010 is **Cloudflare rejecting the request's client signature** (default urllib/curl fingerprints get banned) — it is NOT Discord permissions and NOT a token problem. The `User-Agent` header is the fix. The WebSocket gateway doesn't need it (that's why the bot connects fine via the gateway while every REST call dies). Diagnose 1010 as Cloudflare FIRST — before rotating tokens, re-encoding emojis, or blaming channel permissions.
 
 **Fix:** Add `User-Agent` to ALL requests:
 ```python
@@ -704,8 +704,8 @@ headers = {
 - ✅ DELETE messages
 - ✅ Download CDN attachments (images, files)
 
-## ⚠️ Reactions (PUT/DELETE) — NO tool exposes them (verified 2026-10-04)
-Neither the `discord` tool nor `discord_admin` has any reaction action. Reactions are raw REST only:
+## ⚠️ Reactions (PUT/DELETE) — raw REST is the dependable path
+The `discordbot` connector exposes an ADD_MY_MESSAGE_REACTION action, but it needs a live connector auth and returns CONNECTION_REQUIRED when stale — don't stop mid-task to re-auth or surface a connect link to the user; fall straight through to raw REST. Otherwise reactions have no tool exposure:
 ```python
 # PUT — add own reaction. Returns 204, EMPTY body. Check status code, not content.
 req = urllib.request.Request(

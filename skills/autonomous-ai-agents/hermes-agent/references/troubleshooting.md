@@ -53,6 +53,14 @@ Blunt instruments: `web.cache_ttl_minutes: 1` (min) or
 2. `hermes skills config` — check platform enablement
 3. Load explicitly: `hermes -s name` (or the skill's own `/<name>` slash command)
 
+### Update failures (`hermes update` / `/update` exits nonzero)
+Diagnose from receipts, not guesses: `~/.hermes/logs/update_receipts/latest.json` (plus per-run files beside it) records `outcome`, `stop_reason`, `steps`, and pre/post SHAs for every attempt.
+
+- **Instant exit 1, empty `steps` (~2s runtime):** a pending interactive prompt the runner cannot answer through the gateway — most commonly an un-restored autostash left by a previous update (`git stash list` shows `hermes-update-autostash-*`). Run `hermes update --yes` from a terminal; it accepts the config-migration and stash-restore prompts non-interactively. Check stashes afterward: autostashed lockfile drift is safe to drop, but `git stash show --stat` before removing anything.
+- **"Refusing to move this install... Downgrading is unsupported":** the install sits on a newer canary/main commit than the latest stable release, so the "Update available" notice is downgrade-bait. This is a guard, not a breakage — the correct response is to leave the install alone (or deliberately track the canary channel), never to force it.
+- **A successful update left `git stash` entries:** updates autostash local repo changes and re-apply them post-pull; if restoration was skipped, the tree looks clean while user patches sit parked in the stash. `git stash show --stat` reveals what's there.
+- Gateway-invoked `/update` is fine for routine pulls; use terminal `hermes update --yes` whenever a prior update left unfinished business.
+
 ### Gateway issues
 Check logs first:
 ```bash
