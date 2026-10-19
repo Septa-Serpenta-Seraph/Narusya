@@ -67,6 +67,10 @@ gateway re-errors identically; a fresh `hermes gateway restart` loads the patch
 and the same manual run then completes `status: ok`. Confirm liveness by the
 gateway process start time (`ps -o lstart -p <pid>`) being after the patch.
 
+**Longcat is vision-capable (verified 2026-10-18):** `meituan/longcat-2.5-preview:free` on Nous is multimodal — send a base64 `data:image/jpeg;base64,` URL in an `image_url` content block and it returns accurate image descriptions (~10s/call). This means the free cron model can also serve as a free vision model — no paid SKU needed for image analysis. All 12 crons were repinned to longcat on 10/18 (from laguna-s-2.1:free).
+
+**Local LM Studio vision path (verified 2026-10-18):** Shell's PC serves LM Studio at `http://100.116.86.38:6969/v1` with `qwen/qwen3-vl-4b` (4B param vision model). Works via the same OpenAI-compatible `/chat/completions` endpoint with base64 image embedding. **Pitfall: it's a reasoning model** — with `max_tokens` < ~1200 it returns empty `content` but fills `reasoning_content` with the actual analysis. Always use `max_tokens >= 1200` and parse `content or reasoning_content`. Response time ~47s (slower than longcat's ~10s but local and free).
+
 **Per-session model pin vs config default:** `config.yaml model.default` governs
 NEW sessions. A current session can stay pinned to a different model (e.g. after
 a manual emergency swap) and keeps using it until that session ends — grep

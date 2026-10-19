@@ -79,46 +79,68 @@ directly. `OPENROUTER_API_KEY` is in `.env`. Works even mid-session (no restart 
 > that means the OpenRouter account is out of credits — repoint vision at **Nous** instead
 > (Technique 3 below). Do NOT keep retrying OpenRouter.
 
-## Technique 3 — Vision via Nous gateway (current primary, Aug 2026)
+## Technique 3 — Vision via Nous gateway (current primary)
 
-Adora's Nous account is funded; OpenRouter is drained. Repoint `auxiliary.vision` at Nous
-with a multimodal Qwen flagship:
+### 3a. Longcat free model (multimodal, no credits needed — verified 2026-10-18)
+
+`meituan/longcat-2.5-preview:free` on Nous supports vision natively. Send a base64
+data-URL image in an `image_url` content block — same OpenAI shape as Technique 7.
+
+```python
+import json, base64, urllib.request
+auth = json.load(open("/home/adora/.hermes/auth.json"))
+key = auth["providers"]["nous"]["agent_key"] or auth["providers"]["nous"]["access_token"]
+base = "https://inference-api.nousresearch.com/v1"
+img_b64 = base64.b64encode(open("/path/img.jpg", "rb").read()).decode()
+payload = json.dumps({
+    "model": "meituan/longcat-2.5-preview:free",
+    "messages": [{"role": "user", "content": [
+        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}},
+        {"type": "text", "text": "Describe this image in detail."}
+    ]}],
+    "max_tokens": 500
+}).encode()
+req = urllib.request.Request(base + "/chat/completions", data=payload,
+    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+r = json.load(urllib.request.urlopen(req, timeout=90))
+print(r["choices"][0]["message"]["content"])
+```
+
+**Verified 2026-10-18:** read a wedding video frame, described people/setting/mood accurately. ~10s per image. No credits, no rate-limit issues. This is the **primary free vision path** — prefer it over OpenRouter when the OpenRouter balance is $0.
+
+### 3b. Qwen3.8-max flagship (dormant — insufficient credits)
+
+When the Nous account has balance, `qwen/qwen3.8-max` is the flagship vision path.
+Repoint config + `/restart`:
 
 ```bash
 hermes config set auxiliary.vision.provider nous
 hermes config set auxiliary.vision.model qwen/qwen3.8-max
 ```
 
-Then `/restart` (Discord slash cmd — NOT `hermes gateway restart` in-session; that
-self-blocks). Verify with a direct API call first so you don't restart blind:
+Direct API call (verify before restart):
 
 ```python
 import json, base64, urllib.request
-auth = json.load(open("/home/adora/.hermes/shared/nous_auth.json"))
-token = auth["access_token"]; base = auth["inference_base_url"].rstrip("/")
-img_b64 = base64.b64encode(open("/path/img.png","rb").read()).decode()
+auth = json.load(open("/home/adora/.hermes/auth.json"))
+key = auth["providers"]["nous"]["agent_key"] or auth["providers"]["nous"]["access_token"]
+base = "https://inference-api.nousresearch.com/v1"
+img_b64 = base64.b64encode(open("/path/img.png", "rb").read()).decode()
 body = json.dumps({"model":"qwen/qwen3.8-max","messages":[{"role":"user","content":[
     {"type":"image_url","image_url":{"url":f"data:image/png;base64,{img_b64}"}},
     {"type":"text","text":"What is in this image? One sentence."}}],"max_tokens":150}).encode()
-req = urllib.request.Request(base + "/chat/completions", data=body, headers={
-    "Authorization": f"Bearer {token}", "Content-Type": "application/json",
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
-    "Origin": "https://portal.nousresearch.com", "Referer": "https://portal.nousresearch.com/"})
+req = urllib.request.Request(base + "/chat/completions", data=body,
+    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
 r = json.load(urllib.request.urlopen(req, timeout=120))
 print(r["choices"][0]["message"]["content"])
 ```
 
-**Verified 2026-08-05:** this exact call succeeded on a Discord screenshot image.
-Notes:
-- Auth is an OAuth token in `~/.hermes/shared/nous_auth.json` (access_token +
-  inference_base_url), NOT a static key. `NOUS_API_KEY` in `.env` is EMPTY — don't
-  look there.
-- The browser-UA + Origin/Referer headers are needed (Cloudflare 1010 otherwise) —
-  same lesson as the Together technique.
-- qwen/qwen3.8-max is a 2.4T multimodal flagship — vision-capable, uncensored for
-  artistic content, matches the Qwen VL lineage Adora prefers.
-- The RUNNING gateway keeps old config in memory — a `/restart` is required for the
-  repoint to take effect. Until then `vision_analyze` still 404s.
+**Status (2026-10-18):** returns `insufficient_credits_for_paid_model`. Dormant until Nous credits return.
+
+**Auth note (updated 2026-10-18):** Nous auth lives in `~/.hermes/auth.json` under
+`providers.nous.agent_key` (or `access_token`). The old `~/.hermes/shared/nous_auth.json`
+path is stale — use `auth.json`. No browser-UA headers needed on the Nous inference
+API (unlike Together/OpenRouter).
 
 ```python
 import os, json, base64, urllib.request
