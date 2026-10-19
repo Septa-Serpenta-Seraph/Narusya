@@ -37,6 +37,7 @@ Nous key: `json.load(open('/home/adora/.hermes/auth.json'))['providers']['nous']
 3. Burst-test finalists: 5 rapid calls + one instruction-following (exact JSON output). Pick the fastest full-size survivor.
 
 10/16 winner: `poolside/laguna-s-2.1:free` (1s, stable under burst). Backup: `upstage/solar-mini4:free`.
+10/18 update: all crons repinned to `meituan/longcat-2.5-preview:free` per Adora's directive ("It can handle calls better"). Laguna was stable but longcat handles tool-calling better and is the current standard.
 
 ## Repin + verify
 

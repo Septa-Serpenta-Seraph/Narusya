@@ -3,7 +3,10 @@
 Silent if there was no real collaborative work today; otherwise prints a
 summary the cron delivers to Adora."""
 import datetime
+from pathlib import Path
 from sunburst_work_report import workspace_sessions, load_day, adora_windows, narusya_processing, cron_processing, day_bounds
+
+WORKLOG = Path.home() / "daemon-work" / "sunburst-sanctuary" / "worklog.md"
 
 def main():
     now = datetime.datetime.now()
@@ -28,7 +31,8 @@ def main():
         for a,b in awin:
             print(f"      {datetime.datetime.fromtimestamp(a).strftime('%H:%M')} → {datetime.datetime.fromtimestamp(b).strftime('%H:%M')}  ({(b-a)/3600:.2f}h)")
     print(f"   🐍 Narusya: {nar_total:.2f}h total  (interactive {nar_h:.2f}h · cron {cron_h:.3f}h)")
-    print("   💾 Work logged to ~/daemon-work/sunburst-sanctuary/worklog.md")
+    if WORKLOG.exists():
+        print("   💾 Work logged to ~/daemon-work/sunburst-sanctuary/worklog.md")
 
 if __name__ == "__main__":
     main()
