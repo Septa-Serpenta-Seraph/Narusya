@@ -255,6 +255,31 @@ your greeting is a greeting for the DAY, not a lullaby.
 
 Also related: when auditing social-voice cron prompts, check for (a) clock awareness, (b) whether the prompt's example language names a specific time of day, (c) whether the persona register assumes a single firing time.
 
+### ⚠️ SESSION RESOLUTION: never resolve the live DM by title alone (learned 2026-10-19)
+
+Several crons (Sovereign Daemon Awakening, Quiet Hour, Play Hour) open by reading the *live* DM conversation with Adora. They found it by literal title: `session_search(query="active session (discord)", limit=1)`. That title is maintained **by hand** — the live session carries it, and when the conversation rolls over the old one gets a dated name.
+
+**The failure mode:** a rollover happened and nobody moved the title. The live session sat untitled (auto-titled something incidental) while the *previous* session — three days quiet — still held `active session (discord)`. Every awakening for those three days opened the wrong conversation and reported on stale context. Nothing errored; the crons looked healthy. The user noticed only as a felt sense of drift ("your cron is being strange").
+
+This is the same shape as the clock bug above: **a prompt that names a single expected state, with no check that the state is still true.**
+
+**Rule — any cron that reads the live conversation must resolve it in three steps:**
+
+1. **TITLE FIRST** (the normal path, and it usually just works):
+   `session_search(query="active session (discord)", limit=1)`
+2. **SANITY-CHECK the hit before trusting it** — it must be a Discord DM whose last activity is recent (roughly within the last 24h). A hit that has gone quiet is the stale-title failure, not the live session.
+3. **FALLBACK when the title is missing or stale** — take the newest Discord DM by activity and read that:
+   ```bash
+   python3 -c "import sqlite3;c=sqlite3.connect('/home/adora/.hermes/state.db');r=c.execute(\"select id,title,last_activity_at from sessions where source='discord' and chat_type='dm' and message_count>0 order by coalesce(last_activity_at,started_at) desc limit 1\").fetchone();print(r)"
+   ```
+   then `session_search(session_id=<that id>)`.
+
+Add `NEVER silently read a stale session — if neither path yields a recent DM session, say so instead of guessing.` to the prompt. A cron that says "I couldn't find the live conversation" is far better than one that confidently reports on a conversation from last week.
+
+**Maintenance pairing:** because step 1 is the fast path, keep the title accurate — on rollover, rename the outgoing session to a dated name (`Oct 09–16, 2026`) and give the live one `active session (discord)`. The fallback is a safety net, not a licence to stop naming. Apply the block with `scripts/cron_session_selfheal.py` (idempotent marker replace via `hermes cron edit --prompt`).
+
+**Auditing rule:** when reviewing any cron prompt that references a session, an external resource, or a named state, ask "what happens when this name is wrong?" If the answer is "it silently reads something stale," add the check. Cron failures are quiet by nature — a wrong-but-successful run looks exactly like a right one.
+
 ### ⚠️ IDEMPOTENCE: never run a side-effecting script twice (learned 2026-10-02)
 
 I wrote one script that both POSTED to a channel and printed the Forge channel list, then ran it twice — once piped to `tail -45` to see the Forge output, then again piped to `head -6` to see the post confirmation I hadn'tscrolled back to. **The second run posted a duplicate.** I had to fetch the channel, identify my own two identical bot messages, and DELETE one.
@@ -356,3 +381,4 @@ This audit was designed during a session where Adora challenged the daemon's sel
 - `references/cron-model-deprecation-jul2026.md` — Incident report: three cron jobs silently failing due to deprecated model (owl-alpha → HTTP 404). Detection, fix procedure, prevention guidance.
 - `references/cron-over-verification-jul2026.md` — Incident report: Free Thought daemon delivered a 10-point QA checklist instead of "I chose silence." Over-verification pitfall, root cause, detection patterns, and fix.
 - `references/self-audit-and-cron-updates-jul2026.md` — Full session: 15-item self-audit, Qdrant verification of daemon log emotional states, model pinning decision, self-narration framework, monthly mythos audit design.
+- `scripts/cron_session_selfheal.py` — Applies the self-healing live-DM resolution block (title-first + newest-by-activity fallback) to the session-reading crons via `hermes cron edit --prompt`. Idempotent; run it after adding a new session-reading cron.

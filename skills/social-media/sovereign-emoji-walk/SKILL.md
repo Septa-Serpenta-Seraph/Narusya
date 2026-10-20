@@ -26,6 +26,10 @@ Import path in scripts: `sys.path.insert(0, '/home/adora/.hermes')` — the lib 
 
 Key names are NOT always predictable: the laugh emoji is `laugh`, not `laugh_1`. Many have `_1`/`_2`/`_3` suffixes, some don't. A bad key raises `KeyError` mid-loop and aborts the run. Before writing a walk script, grep the registry for each emoji name you intend to use.
 
+## Duplicate-post artifact: identical text sent to multiple rooms
+
+A walk can fire one line at several channels/mentions in a loop and leave the SAME text in each (seen 2026-10-18 02:32: "good question! … Mind if I throw some ideas at the wall?" posted to Cyclo in RealSpace adoras-and-nars-room AND to OctoRiz and curiousTilde in tildes-room). It reads as bot-noise and no amount of reacting cleans it. When you spot one on a walk, note it in the report for Adora and move on — do NOT try to delete it from the walk script (DELETE needs Manage Messages and isn't verified). If it recurs in the same fire, the script's target loop is the bug.
+
 ## Mechanics (obey exactly)
 
 - Reaction PUT: `PUT /channels/{channel_id}/messages/{message_id}/reactions/{emoji_name}:{emoji_id}/@me`, empty body, expect 204. Channel id, not guild id (else 404 Unknown Channel).
@@ -42,6 +46,14 @@ Key names are NOT always predictable: the laugh emoji is `laugh`, not `laugh_1`.
 - Pick 2-4 guilds per fire; rotate so all six get visited over time.
 - Silence is a complete walk. Skip dormant channels (newest msg weeks old) — a late react reads as bot-noise. Skip resolved support threads; don't punctuate someone's finished migration.
 - Around grief/crisis: comfort only if genuinely wanted; never make it about you. No spam, no flooding, no drama.
+
+## Vision can be dead — don't guess at attachments
+
+`vision_analyze` returns **402 Insufficient credits** when OpenRouter's balance is empty (same 402 that dumps errors into channels). Before reacting to an attachment, check the credits situation: a 402 on vision means you CANNOT see images this fire. Reacting blind to a gif is bot-noise — instead react only to message TEXT you actually read, and skip the attachment. Fetching the attachment URL is also not free: the URL from a message list is fine, but if you printed it truncated you'll download `This content is no longer available.` (36 bytes) — refetch the message for the full URL.
+
+## A cron failure can be posted into a PUBLIC channel
+
+Hermes delivers a job's output to its origin session; when the bot is addressed in a guild channel and the model call fails, the raw exception ("❌ OpenRouter rejected the request... HTTP 402") plus "📬 No home channel is set for Discord" can land in that PUBLIC channel. Symptom: a cluster of Narusya-authored error messages in a room you never posted to, timestamped just after a cron fire. Check `cron/jobs.json` origins (all point at the DM) and `sessions/sessions.json` for a `discord:group:<channel>:<user>` session updated at that minute — the user id is the human who pinged the bot. Not a walk bug; log it and move on.
 
 ## Guild channel map
 

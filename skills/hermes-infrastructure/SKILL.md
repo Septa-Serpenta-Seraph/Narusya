@@ -39,6 +39,7 @@ Diagnose, recover, and maintain Hermes Agent infrastructure.
 17. [Install Replacement: Corrupted Git Store & Fresh-Install Layout](#17-install-replacement-corrupted-git-store--fresh-install-layout)
 18. [Discord User Allowlist](#18-discord-user-allowlist-discord_allowed_users-in-env)
 19. [Credits Low / Provider Switch — Nous Free Models](#19-credits-low--provider-switch--nous-free-models)
+20. [Discord Typing Indicator — Persistent / Stuck](#20-discord-typing-indicator--persistent--stuck) — see `references/discord-typing-indicator.md` for full technical deep-dive
 
 ---
 
@@ -615,6 +616,66 @@ The Ling-3.0-flash variants are free-until-October-4 (Vercel AI Gateway offer). 
 
 ### Pitfall: Cloudflare 1010 from hand-rolled urllib
 A raw `urllib.request` probe to Nous can return HTTP 1010 (Cloudflare block) even when the working scripts succeed — the scripts use the shared auth JSON and correct headers; hand-rolled calls may miss a header or base URL. Always probe via the existing scripts (`nous_free_probe.py`, `credit_status.py`) first, not ad-hoc urllib.
+
+---
+
+## 20. Discord Typing Indicator — Persistent / Stuck
+
+### Symptom
+The bot's typing indicator ("Narusya is typing...") appears constantly in a Discord DM, even when the agent is idle. It may flicker (on ~10s, off ~2s) or stay solidly on.
+
+### First Check: Rule Out a Second Bot Instance (user's instinct)
+**Before deep-diving source code**, check whether another process or device is connected to Discord with a bot token. The user's guess — "it's probably a second gateway or a process" — is often correct.
+
+1. **Check all Hermes processes on the VM:**
+   ```bash
+   ps aux | grep hermes | grep -v grep
+   ```
+   Look for multiple `gateway run` processes or unexpected Python processes.
+
+2. **Check which process actually holds Discord connections:**
+   ```bash
+   ss -tunp | grep -v 127.0.0.1 | grep ESTAB
+   ```
+   Discord uses Cloudflare IPs (162.159.x.x, 104.18.x.x). Only the gateway process should have these.
+
+3. **Check profile `.env` files for other bot tokens:**
+   ```bash
+   grep -r 'DISCORD_TOKEN' ~/.hermes/profiles/*/.env 2>/dev/null
+   ```
+   Each profile (runewytha, polinkly, etc.) may have its own bot token. If another device or process is using one of those tokens, it would show the same typing indicator.
+
+4. **Ask the user if they run a bot on another device** (Windows host, Raspberry Pi, another VM). The dashboard process (`hermes dashboard`) has NO external connections by default — only the gateway does.
+
+### If No Second Instance: Stuck Typing Loop in the Gateway
+The Discord adapter runs a **persistent typing loop** — it POSTs to `/channels/{id}/typing` every 12 seconds, and Discord's indicator auto-expires after ~10s. The loop is a single asyncio task per channel, cancelled by `_stop_typing_refresh` in the `finally` block of `_process_message_background`.
+
+**The loop gets stuck when:**
+- A turn is interrupted (Ctrl+C, SIGTERM, OOM) between `send_typing` and the `finally` block
+- The gateway was restarted but the Discord-side typing state persisted (rare — Discord typing is client-side, not server-side)
+- A race condition cancels the task reference before the `finally` block runs
+
+**Diagnostic steps:**
+1. Check gateway log for errors around the time the indicator started:
+   ```bash
+   tail -100 ~/.hermes/logs/gateway.log | grep -i 'error\|warn\|typing\|fail'
+   ```
+2. Check if cron jobs delivering to Discord are firing unusually often:
+   ```bash
+   hermes sessions list --limit 5  # check "Last Active" times
+   ```
+3. Check for a model error loop (e.g., context window too small) that could keep the agent in a perpetual "processing" state:
+   ```bash
+   grep -c 'auto-compress failed\|ValueError.*context window' ~/.hermes/logs/gateway.log
+   ```
+
+**Fix:**
+- **Gateway restart** kills all asyncio tasks including the stuck typing loop. Use `/restart` from the Discord chat (NOT `hermes gateway restart` in-session — self-blocks on its own SIGTERM guard, see §16).
+- After restart, the typing indicator should clear within ~10-12 seconds (one Discord typing expiry cycle).
+
+**Pitfall: `finally` block is not a guarantee.** The `_stop_typing_refresh` call sits in a `finally` block in `_process_message_background`, but if the asyncio task itself is orphaned (e.g., the parent task was cancelled by a session reset), the `finally` may never run. A gateway restart is the only reliable fix — there is no Discord API endpoint to force-clear a bot's typing state.
+
+See `references/discord-typing-indicator.md` for the full source-code architecture and investigation checklist.
 
 ---
 
