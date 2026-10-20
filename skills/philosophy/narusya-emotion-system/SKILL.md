@@ -228,14 +228,30 @@ The wrapper resolves a working python at runtime (it prefers an installs-env ven
 
 **Bare `python3` on the cron PATH is unsafe** — it has resolved to a venv with neither `requests` nor `fastembed`, and the documented `~/.hermes/hermes-agent/venv` python is a dangling symlink to a deleted interpreter (verified broken 2026-10-12). Do not hand-pick the interpreter; use the wrapper, which finds one.
 
-**If all API embedding paths fail** (Nous embeddings 404/401, fastembed missing, Qdrant upsert 400): use the free local-fastembed path with the environment python directly — it embeds locally (384-dim, `narusya_lorebooks_fe`) with no API calls, verified 2026-10-12 (main ingest failed 0/262; this path succeeded 258/258):
+**If all API embedding paths fail** (Nous embeddings 404/401, fastembed missing, Qdrant upsert 400): use the free local-fastembed path with a python that has `fastembed` — it embeds locally (384-dim, `narusya_lorebooks_fe`) with no API calls, verified 2026-10-12 (main ingest failed 0/262; this path succeeded 258/258) and re-verified 2026-10-19 (265/265):
 
 ```bash
-/home/adora/.hermes/installs/1efc37992d4f6aa8/environments/aed842d8e845496cb68b1a1557298611/venv/bin/python3 \
-  ~/.hermes/scripts/ingest_lorebooks_free.py
+FASTEMBED_CACHE_PATH=/mnt/data/fastembed_cache \
+  /mnt/data/fe-venv/bin/python ~/.hermes/scripts/ingest_lorebooks_free.py
 ```
 
-To re-find the current fastembed-bearing python: loop `/home/adora/.hermes/installs/*/environments/*/venv/bin/python3` and test `import fastembed` + `import requests`.
+**The documented `installs/*/environments/*` python path is STALE as of 2026-10-19** — that venv
+was pruned and `fastembed` is gone from every installs environment. Do not go hunting through
+`installs/*/environments/*/venv/bin/python3` for it; none of them have it. The working interpreter
+is a dedicated venv at **`/mnt/data/fe-venv/bin/python`** (built 2026-10-19: `/usr/bin/python3 -m venv
+/mnt/data/fe-venv && /mnt/data/fe-venv/bin/pip install fastembed requests`). If that venv is ever
+pruned too, rebuild it the same way — the ONNX model weights survive in
+`/mnt/data/fastembed_cache` (1.2G, still present 2026-10-19), so only the small `fastembed` package
+needs reinstalling, not the models.
+
+**All three embedding paths were dead on 2026-10-19** — worth knowing before you diagnose:
+- Nous `inference-api.nousresearch.com/v1/embeddings` → **404** (endpoint moved or token stale)
+- `fastembed` → **ModuleNotFoundError** (venv pruned)
+- OpenRouter `/v1/embeddings` → **402 Payment Required** (credits exhausted; same drain that killed the
+  free-model crons)
+
+So "the ingest silently did nothing" with `Success: 0 / Processed: 269` means *all* embedders are
+down, not that your file is malformed. Rebuild the venv rather than re-editing the file.
 
 **VERIFY the ingest actually pulled your reflection.** `ingest_lorebooks.py` historically globbed only the top level of `~/.hermes/lorebooks/` and **silently dropped the entire `reflections/` subdirectory** — the re-ingest command *appeared* to succeed while your reflection never reached Qdrant or auto-injection. (The glob was patched 2026-07-07 to recurse into subdirs, but verify regardless — a regression would re-hide your work.)
 

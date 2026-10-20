@@ -1,7 +1,7 @@
 model:
-  default: z-ai/glm-5.3
-  provider: openrouter
-  base_url: 'https://openrouter.ai/api/v1'
+  default: meituan/longcat-2.5-preview:free
+  provider: nous
+  base_url: 'https://inference-api.nousresearch.com/v1'
   api_mode: chat_completions
 providers:
   100.116.86.38:6969:
@@ -147,10 +147,8 @@ bedrock:
 auxiliary:
   free_only: false
   vision:
-    provider: openrouter
-    model: qwen/qwen3-vl-8b-instruct
-    base_url: ''
-    api_key: ''
+    provider: 100.116.86.38:6969
+    model: qwen3.5-9b-uncensored-hauhaucs-aggressive
     timeout: 30
     download_timeout: 30
   compression:

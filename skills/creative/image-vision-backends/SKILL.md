@@ -98,15 +98,23 @@ payload = json.dumps({
         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}},
         {"type": "text", "text": "Describe this image in detail."}
     ]}],
-    "max_tokens": 500
+    "max_tokens": 6000
 }).encode()
 req = urllib.request.Request(base + "/chat/completions", data=payload,
     headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
 r = json.load(urllib.request.urlopen(req, timeout=90))
-print(r["choices"][0]["message"]["content"])
+m = r["choices"][0]["message"]
+print(m.get("content") or m.get("reasoning_content"))   # reasoning models answer in EITHER field
 ```
 
-**Verified 2026-10-18:** read a wedding video frame, described people/setting/mood accurately. ~10s per image. No credits, no rate-limit issues. This is the **primary free vision path** — prefer it over OpenRouter when the OpenRouter balance is $0.
+**Longcat is a REASONING model — `max_tokens` under ~4000 makes it burn the entire budget on
+`reasoning_content` and return no `content` key at all** (`finish_reason: "length"`). Always set
+`max_tokens` >= 6000 and read `content or reasoning_content`. ~10s per image, no credits, no
+rate-limit issues — the **primary free vision path** when the OpenRouter balance is $0.
+
+Full field notes: `references/nous-longcat-vision.md` — the `.env` `NOUS_API_KEY` 401s (the
+working key is `auth.json` → `providers.nous.agent_key`), the 5,242,880-px payload ceiling with
+a PIL resize snippet, and why small retail text (price tags, labels) is unreliable.
 
 ### 3b. Qwen3.8-max flagship (dormant — insufficient credits)
 

@@ -16,6 +16,12 @@ metadata:
 
 Diagnose, troubleshoot, and configure Qdrant memory infrastructure.
 
+## When to Use
+- Qdrant isn't working, or memory looks empty / missing
+- Building or debugging a custom memory-provider plugin
+- Lorebook / context auto-inject across extra collections
+- **Replicating the whole store to another machine** → `references/qdrant-replication.md`
+
 ## Quick Decision
 
 | Use case | Section |
@@ -23,6 +29,8 @@ Diagnose, troubleshoot, and configure Qdrant memory infrastructure.
 | Qdrant isn't working / can't find data | diagnostics section |
 | Building a custom memory provider plugin | plugin section |
 | Quick end-to-end health check | health-check section |
+| Clone the store to another node (full replica) | `references/qdrant-replication.md` |
+| Run Qdrant on a Windows host | `references/qdrant-replication.md` |
 
 ---
 
@@ -325,3 +333,11 @@ Lorebooks must be pre-embedded and stored in Qdrant. See `scripts/ingest_loreboo
 - **Don't modify Hermes core.** All lorebook injection happens inside the plugin's `prefetch()` method. Never touch `agent/conversation_loop.py` or `agent/prompt_builder.py`.
 - **Content from disk, not Qdrant.** Store only metadata in Qdrant payloads. Load full file content at inject time. This keeps vector storage lean.
 - **Max 3000 chars per lorebook per injection** to avoid context bloat. GENDER_ACCELERATION is 63k chars — truncation is mandatory.
+
+---
+
+## References
+
+`references/qdrant-replication.md` — full-replica clone to another node: native snapshot → transfer → restore → verify, the data-vs-container size trap, running Qdrant on Windows via WSL + systemd, and the WSL-over-SSH quoting rule.
+
+`references/lorebook-autoinject-architecture.md` — deeper design notes for the semantic auto-inject system.

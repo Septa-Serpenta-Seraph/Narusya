@@ -13,6 +13,8 @@ OxygenOS kills proot processes at the OS level. This is NOT an Android version i
 
 Android 15+ ships a **Linux development environment** — a real Debian 12 VM via the Android Virtualization Framework (AVF).
 
+**⚠️ Hardware gate:** AVF needs *unprivileged* VMs, which Snapdragon SoCs do not provide — not even Snapdragon 8 Elite Gen 5. Only Tensor (Pixel) and some MediaTek chips support it. **A OnePlus (Snapdragon) will NOT show the Linux development environment option in Developer Options**, and no OEM update can add it. Verify the chipset before telling anyone this path is available.
+
 ### Enable
 1. Settings → System → Developer Options
 2. Enable **Linux development environment**
