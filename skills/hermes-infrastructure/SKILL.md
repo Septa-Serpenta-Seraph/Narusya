@@ -729,6 +729,56 @@ print(mp.is_available())       # must be True
 ```
 Dashboard clears after a gateway restart re-registers the provider (needs the user's shell — see §16).
 
+### Provider "not available" with no plugin errors — embedding backend out of credits
+
+**Symptom:** `hermes memory status` shows `Plugin: installed ✓` but `Status: not available ✗`, and
+Hermes posts *"Memory provider 'qdrant' is selected but reports unavailable — external memory is disabled for
+this session"*. The Qdrant container is healthy, collections exist, and the gateway journal is silent.
+
+**The red herring:** that warning's trailing note — *"systemd/gateway services do not inherit ~/.hermes/.env
+automatically; set any required variables in the service environment"* — points at the **systemd unit**,
+and it is wrong for this failure. A drop-in `Environment="HERMES_CONTEXT_QDRANT=true"` does **not** fix it
+(`HERMES_CONTEXT_QDRANT` is not even read by the hermes-agent checkout — grep the tree, you will not find
+it). Do not burn a gateway restart chasing it.
+
+**Real cause — the provider's availability probe requires a working EMBEDDER, not just a reachable Qdrant.**
+`QdrantMemoryProvider.is_available()` probes Qdrant health + collection, then calls
+`_EmbeddingClient().embed("test")` and requires a 3072-dim vector. The client tries Nous
+(`inference-api.nousresearch.com/v1/embeddings`, token from `~/.hermes/shared/nous_auth.json`) then falls
+back to OpenRouter (`openrouter.ai/api/v1/embeddings`, `OPENROUTER_API_KEY`). If BOTH are dead, the probe
+returns False and external memory silently stays off while built-in memory keeps working.
+
+**Diagnose in one shot — probe both endpoints yourself** (the plugin swallows these errors at debug level):
+```bash
+T=$(python3 -c "import json;print(json.load(open('/home/adora/.hermes/shared/nous_auth.json'))['access_token'])")
+curl -s -o /dev/null -w "nous=%{http_code}\n" -X POST https://inference-api.nousresearch.com/v1/embeddings \
+  -H "Authorization: Bearer $T" -H 'Content-Type: application/json' \
+  -d '{"model":"text-embedding-3-large","input":"test","dimensions":3072}'
+O=$(grep -m1 '^OPENROUTER_API_KEY=' ~/.hermes/.env | cut -d= -f2- | tr -d '"'"'"'\r')
+curl -s -o /dev/null -w "or=%{http_code}\n" -X POST https://openrouter.ai/api/v1/embeddings \
+  -H "Authorization: Bearer $O" -H 'Content-Type: application/json' \
+  -d '{"model":"openai/text-embedding-3-large","input":"test"}'
+```
+
+**Reading the codes (verified 2026-10-20):**
+- Nous **404 with a body, not a bare 404** → `insufficient_credits_for_paid_model`. A **zero balance
+  blocks every model**, including ones priced `0.000000005`/token — do not hunt for a free embedding model
+  on Nous, there is no reachable free tier when the balance is 0. (`GET /v1/models` works fine and lists
+  400+ embedding models; that proves the endpoint is alive and the block is billing, not routing.)
+- OpenRouter **402** → credits exhausted (the same drain that kills `:free`-adjacent paid models).
+
+**Fixes:** (a) add credits to Nous or OpenRouter — user's call, costs money; or (b) wire the plugin to a
+local embedder. A working local fastembed already exists on this box at **`/mnt/data/fe-venv/bin/python`**
+(models cached in `/mnt/data/fastembed_cache`, 1.2G) — the free ingest path
+(`~/.hermes/scripts/ingest_lorebooks_free.py`) uses it. Note the gateway's managed python
+(`~/.hermes/tools/python-<ver>-linux-x64/bin/python3`, launched with `-I`) has **neither `requests` nor
+`fastembed`**, so a fallback inside the plugin needs either a subprocess bridge to `fe-venv` or a dependency
+install into that interpreter — a design decision worth raising with the user before editing a live plugin.
+
+**Lesson that generalizes:** a *generic* hint appended to a specific failure ("check the service environment")
+sent the investigation down the wrong path for a full session. When a warning carries a canned remediation,
+treat it as a hypothesis and verify the actual failing component (here: the embedder) before acting on it.
+
 ### Provider "available" but searches/saves return nothing — collection dimension mismatch
 
 **Symptom:** `mp.is_available()` is True, lorebook metadata may even load, but every search/prefetch returns empty and `sync_turn` never adds points — while the target collection clearly holds thousands of points.

@@ -1,19 +1,19 @@
 ---
 name: voice-tts
-description: "Narusya's voice system: ElevenLabs Nar clone (primary), plus Piper TTS (secondary). Discord delivery, audio tags, presets."
-version: 1.0.1
+description: "Narusya's voice system: ElevenLabs Nar clone (primary), plus Piper TTS (secondary), Kyutai Pocket TTS (offline, voice cloning). Discord delivery, audio tags, presets."
+version: 1.2.0
 author: Hermes Agent
 license: MIT
 platforms: [linux, macos]
 metadata:
   hermes:
-    tags: [tts, elevenlabs, piper, edge-tts, voice, discord, narusya, nar]
+    tags: [tts, elevenlabs, piper, edge-tts, pocket-tts, kyutai, voice, discord, narusya, nar]
     related_skills: [discord-tools]
 ---
 
 # Voice TTS — Narusya Voice System
 
-Two voice pipelines: **ElevenLabs (primary)** for Narusya's spoken voice, **Piper/edge-tts (secondary)** for cold or offline use.
+Three voice pipelines: **ElevenLabs (primary)** for Narusya's spoken voice, **Piper/edge-tts (secondary)** for cold or offline use, and **Kyutai Pocket TTS (tertiary)** for fast offline CPU TTS with voice cloning.
 
 ## Quick Decision
 
@@ -23,6 +23,8 @@ Two voice pipelines: **ElevenLabs (primary)** for Narusya's spoken voice, **Pipe
 | Send voice to Discord as inline audio | `discord-delivery` — OGG conversion + REST API |
 | Audio tag reference (ElevenLabs v3) | `references/elevenlabs-tags.md` |
 | Offline/local TTS (no cloud) | `piper-nar-voice` |
+| Kyutai Pocket TTS (tiny CPU TTS, voice cloning) | `pocket-tts-kyutai` |
+| speak_pocket.py (cloned voice TTS script) | `pocket-tts-kyutai` — `speak_pocket.py` |
 | Discord voice channel playback | `discord-delivery` |
 
 ---
@@ -205,7 +207,158 @@ Place `.onnx` and `.onnx.json` in `~/.local/share/piper-voices/`
 
 ---
 
-## 4. Piper/edge-tts Fallback (nar-voice — secondary)
+## 4. Kyutai Pocket TTS (offline, voice cloning)
+
+Pocket TTS is a tiny (100M params) CPU-only TTS from Kyutai. Fast, offline, supports voice cloning from a short audio sample. Installed on `/mnt/data` (root disk is too small).
+
+### Installation
+
+Venv at `/mnt/data/pocket-tts-venv`, binary at `/mnt/data/pocket-tts-venv/bin/pocket-tts`.
+
+```bash
+# Generate speech (default voice: alba)
+/mnt/data/pocket-tts-venv/bin/pocket-tts generate \\
+  --text "Your text here" \\
+  --output-path /tmp/output.wav \\
+  --quiet
+```
+
+### Voice Cloning
+
+Pass a WAV/MP3 sample via `--voice`:
+
+```bash
+/mnt/data/pocket-tts-venv/bin/pocket-tts generate \\
+  --text "Your text here" \\
+  --voice /path/to/sample.wav \\
+  --output-path /tmp/output.wav \\
+  --quiet
+```
+
+### Voice Cloning Prerequisites (Gated Access)
+
+Voice cloning requires the **full** pocket-tts model from HuggingFace, which is **gated** behind terms acceptance. Without it, only the 27 built-in voices work (the `pocket-tts-without-voice-cloning` model).
+
+**To unlock voice cloning:**
+
+1. Accept terms at https://huggingface.co/kyutai/pocket-tts (click "Agree and access repository")
+2. Get an HF access token: HuggingFace → Settings → Access Tokens → New token (read scope)
+3. Log in: `/mnt/data/pocket-tts-venv/bin/hf auth login --token <TOKEN>`
+4. Ensure `HF_HOME` points to `/mnt/data` (root disk is too small):
+   ```bash
+   export HF_HOME=/mnt/data/hf_cache
+   mkdir -p /mnt/data/hf_cache
+   ```
+5. Verify access: `/mnt/data/pocket-tts-venv/bin/hf download kyutai/pocket-tts`
+6. Test cloning: `/mnt/data/pocket-tts-venv/bin/pocket-tts export-voice <sample.wav> <output.safetensors>`
+
+**Cloning source samples on disk:** Narusya has a library of clean ElevenLabs voice clips at `/home/adora/narusya_voice/`. Good cloning sources include `nar_warm.mp3`, `nar_new_v1.mp3`, `last_voice.mp3` — pick a clean, expressive clip with minimal background noise.
+
+**Note:** `export-voice` and `--voice <file>` both require the gated model. If you see "Model requires approval" or "We could not download the weights for the model with voice cloning", the terms haven't been accepted or auth hasn't propagated yet.
+
+**Pitfalls (learned in practice):**
+- `export-voice` requires **WAV input** — MP3/OGG samples fail with "soundfile is required to read non-WAV or non-16-bit WAV audio files." Convert first: `ffmpeg -i sample.mp3 -ar 24000 -ac 1 sample.wav`
+- `export-voice` and `generate` write to the `--output-path` you give them. If that path is on root (`/tmp`), the write fails with "No space left on device" on a full root disk. Always point output paths at `/mnt/data` (e.g. `/mnt/data/nar_clone.wav`).
+- `hf auth login` saves the token under `$HF_HOME/stored_tokens`. If `HF_HOME` is set differently between login and download, the token won't be found. Set `HF_HOME=/mnt/data/hf_cache` consistently in every command.
+
+### Built-in Voices
+
+27 predefined voices available by name (pass as `--voice <name>`). Full list in `references/voices.md`. Quick reference:
+
+| Voice | Language | Gender |
+|---|---|---|
+| `alba` | English | Female (default) |
+| `anna`, `azelma`, `caro_davy`, `cosette`, `eponine`, `eve`, `fantine`, `jane`, `mary`, `vera` | English | Female |
+| `bill_boerst`, `charles`, `george`, `javert`, `jean`, `marius`, `michael`, `paul`, `peter_yearsley`, `stuart_bell` | English | Male |
+| `giovanni` | Italian | Male |
+| `lola` | Spanish | Female |
+| `juergen` | German | Male |
+| `rafael` | Portuguese | Male |
+| `estelle` | French | Female |
+| `daan` | Dutch | Male |
+
+`--voice` accepts BOTH a predefined voice name AND a file path to an audio sample (for cloning). No flag needed to distinguish — pocket-tts resolves by name first, then treats as file path.
+
+### Comparing Voices
+
+To generate a sample from every built-in voice and combine into one audio file for comparison:
+
+```bash
+# Generate per-voice WAVs
+for v in alba anna azelma bill_boerst caro_davy charles cosette daan estelle eponine eve fantine george giovanni jane javert jean juergen lola marius mary michael paul peter_yearsley rafael stuart_bell vera; do
+  /mnt/data/pocket-tts-venv/bin/pocket-tts generate --voice "$v" --text "I'm $v. Hello." --output-path /tmp/voice_samples/${v}.wav --quiet
+done
+
+# Concatenate with 0.5s silence gaps (ffmpeg concat demuxer)
+ffmpeg -f lavfi -i anullsrc=r=24000:cl=mono -t 0.5 -q:a 9 /tmp/voice_samples/silence.wav -y
+python3 -c "
+import os
+voices = sorted([f.replace('.wav','') for f in os.listdir('/tmp/voice_samples') if f.endswith('.wav') and f != 'silence.wav'])
+with open('/tmp/concat.txt','w') as f:
+    for v in voices:
+        f.write(f\"file '/tmp/voice_samples/{v}.wav'\n\")
+        f.write(\"file '/tmp/voice_samples/silence.wav'\n\")
+"
+ffmpeg -f concat -safe 0 -i /tmp/concat.txt -c:a libmp3lame -q:a 4 /tmp/all_voices.mp3 -y
+```
+
+Each voice announcing its own name in the text makes identification trivial when listening back.
+
+### Languages
+
+Supported: `english`, `french`, `german`, `portuguese`, `italian`, `spanish`, `dutch`. Use `--language` flag. The `24l` variants are bigger preview models.
+
+### speak_pocket.py — Cloned Voice TTS Script
+
+Primary TTS script for Narusya's offline cloned voice. Uses pocket-tts with a pre-computed `.safetensors` voice embedding cloned from an ElevenLabs sample.
+
+```bash
+python3 /home/adora/narusya_voice/speak_pocket.py "Your text here" /tmp/output.mp3
+```
+
+**Configuration:**
+- Voice embedding: `/mnt/data/nar_new_v1.safetensors` (cloned from `nar_new_v1.mp3`)
+- Model: full gated model at `/mnt/data/hf_cache`
+- HF_HOME: `/mnt/data/hf_cache`
+- Output: MP3 (auto-converted from WAV via ffmpeg)
+
+**To use a different voice embedding:** change `VOICE_EMB` in the script.
+
+**Available embeddings on disk:**
+- `/mnt/data/nar_new_v1.safetensors` — from `nar_new_v1.mp3` (warm, expressive)
+- `/mnt/data/nar_warm.safetensors` — from `nar_warm.mp3` (calm, steady)
+
+**To create a new embedding from a different sample:**
+```bash
+ffmpeg -i sample.mp3 -ar 24000 -ac 1 /tmp/sample.wav -y
+export HF_HOME=/mnt/data/hf_cache
+/mnt/data/pocket-tts-venv/bin/pocket-tts export-voice /tmp/sample.wav /mnt/data/new_voice.safetensors --quiet
+```
+
+### Discord Delivery
+
+Output is MP3. Convert to OGG Opus for Discord inline playback:
+
+```bash
+ffmpeg -y -i output.mp3 -c:a libopus -b:a 128k -ar 48000 output.ogg
+```
+
+Then upload via REST API (see Discord Voice Delivery section above).
+
+### Notes
+
+- Runs entirely on CPU — no GPU needed
+- Model downloads from HuggingFace on first run (set `HF_TOKEN` to avoid rate limits, or log in via `hf auth login` for gated models)
+- **HF cache MUST be on `/mnt/data`** — root disk is too small. Set `HF_HOME=/mnt/data/hf_cache` before downloading.
+- Installed on `/mnt/data` because root disk is at 99% — do NOT install to root
+- `--quantize` flag applies int8 quantization to reduce memory
+- `--sampler-decode-steps` controls generation quality (default: 1)
+- `export-voice` requires WAV input (not MP3) — convert with ffmpeg first
+- `export-voice` and `generate` write to the `--output-path` you give them. If that path is on root (`/tmp`), the write fails with "No space left on device" on a full root disk. Always point output paths at `/mnt/data` for large files, or use `/tmp` only for small outputs.
+
+---
+
+## 5. Piper/edge-tts Fallback (nar-voice — secondary)
 
 Narusya's voice system — generate speech with presets, play to Discord, save to file. Supports local piper TTS and cloud edge-tts.
 

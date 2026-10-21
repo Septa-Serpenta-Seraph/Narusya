@@ -47,6 +47,31 @@ hermes cron run <id>   # verify: 'Ran now: succeeded.'
 hermes cron runs <id> | head -3   # fresh run shows 'completed'
 ```
 
+## Escape hatch: unpin to main model
+
+When ALL free models are dying or unstable at once (not just one), repinning to another free model just moves the problem. The escape hatch is to **unpin everything** so crons follow the main (paid) model instead.
+
+This is the right move when:
+- Multiple free models are failing simultaneously (404/429 across the board)
+- The user says "the free model died" and there's no clear replacement winner
+- You've tested 3+ candidates and they all fail
+
+```
+# Unpin all pinned jobs
+python3 -c "
+import json
+jobs = json.load(open('/home/adora/.hermes/cron/jobs.json'))
+for j in (jobs if isinstance(jobs, list) else jobs.get('jobs', [])):
+    if j.get('model_pin'):
+        print(j['id'], j.get('name'))
+"
+# Then unpin each: hermes cron edit <id> --unpin
+```
+
+**Tradeoff:** Unpinned jobs consume the main model's credits (paid). This is acceptable when the alternative is all crons failing. Re-pin to a free model once one stabilizes.
+
+**Pitfall:** Unpinned jobs follow whatever the main model is at cron execution time. If the main model itself changes (model switch), crons will follow it — this can be desirable (they track the user's current best model) or surprising (they suddenly use a different model than expected).
+
 ## Pitfalls
 - OpenRouter key is vaulted (only fingerprints in auth.json credential_pool) — use the Nous agent_key for testing; it expires hourly but is refreshed by the gateway.
 - Unpinned jobs follow the MAIN model (paid!) — if a 'free lane' unpinned job errors on a free model, it was the auxiliary free picker; pin it explicitly.

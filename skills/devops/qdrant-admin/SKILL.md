@@ -171,6 +171,14 @@ plugins:
 3. OpenRouter API (`openai/text-embedding-3-large`)
 4. Text search fallback
 
+> The chain above is a *generic* plugin sketch, not the installed provider's
+> actual path — the live qdrant provider embeds via Nous OAuth then OpenRouter,
+> and requires a 3072-dim vector to report available. When those APIs are out of
+> credits no entry in this list helps: the provider reports unavailable and the
+> warning's "check the service environment" note is a red herring. See the
+> `qdrant-local-embeddings` skill for switching the provider to free on-device
+> fastembed and migrating the existing collection to the matching dimension.
+
 ### Prefetch Guardrails (Required)
 - Timestamps in every result line (`[YYYY-MM-DD]` prefix)
 - Recency weighting (blend similarity + time decay)

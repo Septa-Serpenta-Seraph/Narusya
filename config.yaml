@@ -1,5 +1,5 @@
 model:
-  default: meituan/longcat-2.5-preview:free
+  default: reflection/beam-1.0-501b-a23b:free
   provider: nous
   base_url: 'https://inference-api.nousresearch.com/v1'
   api_mode: chat_completions
@@ -497,13 +497,16 @@ plugins:
   enabled:
     - qdrant
   qdrant-memory:
-    collection: intelligent_gould_narusya
-    lorebook_collection: narusya_lorebooks
+    collection: intelligent_gould_narusya_local
+    lorebook_collection: narusya_lorebooks_fe
     lorebook_max_per_turn: 3
     max_age_days: 90
     prefetch_limit: 5
     qdrant_url: http://localhost:6333
     recency_weight: 0.3
+    embedding_backend: local_fastembed
+    local_embed_python: /mnt/data/fe-venv/bin/python
+    local_embed_script: /home/adora/.hermes/scripts/embed_fastembed_local.py
   disabled:
     - spotify
 hooks_auto_accept: false
@@ -517,7 +520,7 @@ security:
   acked_advisories: []
   allow_lazy_installs: true
 cron:
-  model: upstage/solar-pro4:free
+  model: reflection/beam-1.0-501b-a23b:free
   model_provider: nous
   provider: ''
   chronos:

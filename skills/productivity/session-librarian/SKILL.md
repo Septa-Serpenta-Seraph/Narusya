@@ -113,6 +113,56 @@ the displaced one takes the date (`Oct 09, 2026` — today's date, not the
 session's ID date, which can predate the rename by weeks). Re-run
 `hermes sessions list` afterward to confirm both titles landed.
 
+**The title does NOT auto-migrate.** Neither `/new`/`/reset`, a compression
+split (session hygiene hitting the hard message limit), nor a gateway restart
+carries `active session (discord)` to the new session — the old one keeps it
+and the new one sits untitled or auto-titled. So every rollover needs this
+pair done by hand (or by a self-heal script), otherwise crons resolve to a
+stale conversation. If a heal is overdue, resolve the live session by
+newest-by-activity (see sovereign-cron-setup → SESSION RESOLUTION) rather
+than trusting the title alone.
+
+### When the target title is already taken
+
+`hermes sessions rename` refuses a title another session owns:
+`Error: Title '...' is already in use by session <id>`. Two sessions can
+legitimately want the same date title — a day with two DMs opened, or a rename
+that follows an earlier one that already claimed the date. Do a three-step swap
+through a throwaway name; never overwrite and never leave a session untitled:
+
+```bash
+hermes sessions rename <displaced_id> "temp-swap-target"        # free the title
+hermes sessions rename <incoming_id>  "active session (discord)"
+hermes sessions rename <displaced_id> "Oct 20, 2026 (2)"         # date + suffix
+```
+
+When the incumbent already holds the plain date, give the displaced session the
+date with a ` (2)` suffix rather than reusing the same string — titles are the
+identity `/resume <title>` resolves, so they must stay unique. Confirm with
+`hermes sessions list` and tell the user which suffix you had to add.
+
+### Self-heal automation (durable fix for repeated drift)
+
+When the user is fixing this by hand more than ~once a week, install a
+self-heal instead of repeating the manual swap:
+
+- Script: `~/.hermes/scripts/heal_active_session.py` — finds the newest DM
+  session (by `last_activity_at`, must have messages) and the session holding
+  `active session (discord)`; if they differ, does the three-step swap through
+  `SessionDB.set_session_title` (conflict-aware, idempotent). Uses direct
+  sqlite for reads and `SessionDB` for writes; `db_path` must be a `Path`,
+  not a string.
+- Schedule via **system crontab** (not Hermes cron) every 30 min:
+  `*/30 * * * * PYTHONPATH=<hermes install workspace> python3 ~/.hermes/scripts/heal_active_session.py >> ~/.hermes/logs/heal_active_session.log 2>&1`
+  System crontab costs no LLM tokens per run — prefer it for lightweight
+  non-conversational maintenance tasks. Hermes cron is for agent turns.
+- The script needs `PYTHONPATH` pointing at the hermes install workspace
+  (`…/environments/…/workspace/`) so `hermes_state` imports.
+- Cron prompts that read the live DM should still use the newest-by-activity
+  fallback (sovereign-cron-setup → SESSION RESOLUTION) as a safety net even
+  when the title is fresh — the heal is a safety net, not a licence to stop
+  naming.
+
 ## Parallel Workstreams
 
 For "one session per ticket, investigate each, report back": do NOT try to

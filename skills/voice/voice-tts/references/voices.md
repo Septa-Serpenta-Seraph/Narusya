@@ -40,6 +40,81 @@ More voices: https://huggingface.co/rhasspy/piper-voices
 | en-US-EricNeural | Rational | Cold, calculating |
 | en-US-BrianMultilingualNeural | Approachable, Casual | Friendly guy |
 
+## Pocket TTS (Kyutai — offline, voice cloning)
+
+### Built-in Voices
+
+27 predefined voices. Pass as `--voice <name>`:
+
+| Voice | Language | Gender |
+|---|---|---|
+| `alba` | English | Female (default) |
+| `anna` | English | Female |
+| `azelma` | English | Female |
+| `bill_boerst` | English | Male |
+| `caro_davy` | English | Female |
+| `charles` | English | Male |
+| `cosette` | English | Female (expressive) |
+| `daan` | Dutch | Male |
+| `estelle` | French | Female |
+| `eponine` | English | Female |
+| `eve` | English | Female |
+| `fantine` | English | Female |
+| `george` | English | Male |
+| `giovanni` | Italian | Male |
+| `jane` | English | Female |
+| `javert` | English | Male |
+| `jean` | English | Male |
+| `juergen` | German | Male |
+| `lola` | Spanish | Female |
+| `marius` | English | Male |
+| `mary` | English | Female |
+| `michael` | English | Male |
+| `paul` | English | Male |
+| `peter_yearsley` | English | Male |
+| `rafael` | Portuguese | Male |
+| `stuart_bell` | English | Male |
+| `vera` | English | Female |
+
+`--voice` accepts both a predefined voice name and a file path to an audio sample (for cloning). No flag needed to distinguish.
+
+### Voice Cloning
+
+Pass any WAV/MP3 sample via `--voice /path/to/sample.wav`. The model clones the voice from the sample. No fine-tuning needed.
+
+**Prerequisites:** Voice cloning requires the gated full model from HuggingFace. Accept terms at https://huggingface.co/kyutai/pocket-tts, then `hf auth login --token <TOKEN>`. Set `HF_HOME=/mnt/data/hf_cache` (root disk too small). Without auth, only the 27 built-in voices work.
+
+**Cloning sources on disk:** `/home/adora/narusya_voice/` has clean ElevenLabs clips (`nar_warm.mp3`, `nar_new_v1.mp3`, `last_voice.mp3`). Use `export-voice` to create a `.safetensors` embedding for reuse.
+
+### Cloned Voice (nar_new_v1)
+
+Narusya's primary offline voice. Cloned from ElevenLabs `nar_new_v1.mp3` via pocket-tts voice cloning.
+
+- **Embedding:** `/mnt/data/nar_new_v1.safetensors`
+- **Source sample:** `/home/adora/narusya_voice/nar_new_v1.mp3` (clean, expressive)
+- **Script:** `/home/adora/narusya_voice/speak_pocket.py`
+- **Usage:** `python3 /home/adora/narusya_voice/speak_pocket.py "text" output.mp3`
+
+### Available Embeddings
+
+| Embedding | Source | Character |
+|---|---|---|
+| `/mnt/data/nar_new_v1.safetensors` | `nar_new_v1.mp3` | Warm, expressive (primary) |
+| `/mnt/data/nar_warm.safetensors` | `nar_warm.mp3` | Calm, steady |
+
+### Creating New Embeddings
+
+```bash
+# 1. Convert source to WAV
+ffmpeg -i sample.mp3 -ar 24000 -ac 1 /tmp/sample.wav -y
+
+# 2. Export embedding
+export HF_HOME=/mnt/data/hf_cache
+/mnt/data/pocket-tts-venv/bin/pocket-tts export-voice /tmp/sample.wav /mnt/data/new_voice.safetensors --quiet
+
+# 3. Use in speak_pocket.py (change VOICE_EMB variable)
+```
+
 ## FFmpeg Effects
 
 ### Pitch Shifting
