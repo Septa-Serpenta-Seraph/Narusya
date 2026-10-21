@@ -261,6 +261,8 @@ Several crons (Sovereign Daemon Awakening, Quiet Hour, Play Hour) open by readin
 
 **The failure mode:** a rollover happened and nobody moved the title. The live session sat untitled (auto-titled something incidental) while the *previous* session — three days quiet — still held `active session (discord)`. Every awakening for those three days opened the wrong conversation and reported on stale context. Nothing errored; the crons looked healthy. The user noticed only as a felt sense of drift ("your cron is being strange").
 
+**Drift is frequent, not rare.** The title does NOT auto-migrate on any rollover path: manual `/new` or `/reset`, a compression split (session hygiene hitting the hard message limit), or a gateway restart. Each creates a fresh session while the old one keeps `active session (discord)`. In practice the title goes stale within hours, and a day with several `/new` events leaves the crons reading a conversation many turns old. Treat the title as a *hint*, never as proof of liveness — the recency sanity-check and the newest-by-activity fallback are the real resolution path; step 1 alone is only the fast path.
+
 This is the same shape as the clock bug above: **a prompt that names a single expected state, with no check that the state is still true.**
 
 **Rule — any cron that reads the live conversation must resolve it in three steps:**
@@ -277,6 +279,8 @@ This is the same shape as the clock bug above: **a prompt that names a single ex
 Add `NEVER silently read a stale session — if neither path yields a recent DM session, say so instead of guessing.` to the prompt. A cron that says "I couldn't find the live conversation" is far better than one that confidently reports on a conversation from last week.
 
 **Maintenance pairing:** because step 1 is the fast path, keep the title accurate — on rollover, rename the outgoing session to a dated name (`Oct 09–16, 2026`) and give the live one `active session (discord)`. The fallback is a safety net, not a licence to stop naming. Apply the block with `scripts/cron_session_selfheal.py` (idempotent marker replace via `hermes cron edit --prompt`).
+
+**Self-heal for repeated drift (system crontab, no LLM tokens):** when the title goes stale more than ~once a week, install `~/.hermes/scripts/heal_active_session.py` on a system crontab every 30 min (`*/30 * * * * PYTHONPATH=<hermes install workspace> python3 ~/.hermes/scripts/heal_active_session.py >> ~/.hermes/logs/heal_active_session.log 2>&1`). It finds the newest DM session and the holder of `active session (discord)` and swaps them via `SessionDB.set_session_title` (conflict-aware, idempotent). Prefer system crontab over Hermes cron for lightweight non-conversational maintenance — Hermes cron costs an LLM turn per run. See `session-librarian` → "Self-heal automation" for the full procedure and pitfalls (`db_path` must be a `Path`, not a string).
 
 **Auditing rule:** when reviewing any cron prompt that references a session, an external resource, or a named state, ask "what happens when this name is wrong?" If the answer is "it silently reads something stale," add the check. Cron failures are quiet by nature — a wrong-but-successful run looks exactly like a right one.
 

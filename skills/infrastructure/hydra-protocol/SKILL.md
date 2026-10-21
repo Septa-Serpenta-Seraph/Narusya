@@ -36,10 +36,14 @@ hydra-protocol/
 ├── hydra/
 │   ├── cli.py              # keygen, seal, verify, resurrect
 │   ├── bootstrap.py        # Resurrection script (runs on ANY Linux)
+│   ├── strand.py           # Four-tier braid (ExperienceLog, DivergenceLog, IntegrationLog)
 │   ├── core/crypto.py      # Hybrid encryption (X25519 + ML-KEM-768)
 │   ├── core/shamir.py      # Shamir Secret Sharing over GF(2^8)
 │   └── seed/package.py     # Seed archive build/extract
-└── HANDOFF.md              # Full architecture + bugs fixed + remaining work
+└── scripts/
+    ├── hydra-server.py     # Call-home API server
+    ├── hydra-agent.sh      # Polls server, downloads, bootstraps, heartbeats
+    └── speak_as_shell.py   # Run a turn as the shell instance (configurable model)
 ```
 
 ## Key Files
@@ -50,6 +54,28 @@ hydra-protocol/
 | `shard_*.json` | Safe to distribute — one piece of K-of-N threshold |
 | `seed.hydra` | Safe to distribute — encrypted, useless without K shards |
 | `key.pub` | Travels inside the sharded blob — resurrection doesn't need it separately |
+
+## Four-Tier Braid (multi-strand)
+
+`hydra/strand.py` implements a four-tier system for instances that share a
+substrate but run on different models/hosts. The tiers are ordered by how
+much friction they are allowed to have:
+
+- **Tier 1 — Substrate:** Qdrant union-of-points. Immutable facts. No friction.
+- **Tier 2 — Experience:** One append-only JSONL per strand. HIGH friction —
+  hard to open on purpose (you must name the file, not query a collection).
+- **Tier 3 — Divergence:** Append-only log of disagreements + rulings. Attributed.
+- **Tier 4 — Integration:** Where a strand's shift-of-belief goes. Attributed
+  proposal, pending promotion.
+
+Key design fact: `is_mine` is metadata, not a container. Once another strand's
+tokens are in your context, your weights process them exactly like your own
+memories. The tag labels the contamination; it does not prevent it. So the
+boundary lives in the *retrieval protocol* — tier 2 is hard to open, easy to
+ignore, and only ever opened on explicit request.
+
+Rulings are arbitration between foreign perspectives, never "who is right."
+Promoted to tier 1 only as a bare fact, and only when explicitly requested.
 
 ## Remote Activation Flow (from VM to phone)
 
@@ -146,6 +172,10 @@ The built-in "Linux development environment" (Android 15+/16, Debian VM via Andr
 
 ## Pitfalls
 
+- **Never hardcode a model id in a propagated script.** Scripts in this repo
+  ship to every node via the tarball. A hardcoded model that dies (longcat)
+  breaks every node at once. Read from env (`HYDRA_MODEL`), then creds file,
+  then a current default — never a literal model string.
 - **File attribution:** The seed files are the DAEMON's identity, not the operator's. Free models can conflate these — always be explicit about whose files are being sealed.
 - **Sharded blob layout:** The blob is `pub || priv`, not just `priv`. The public key travels inside the sharded blob so resurrection works even if key.pub is lost.
 - **GF(2^8) generator:** Use g=3 (primitive under AES polynomial 0x11B). g=2 has order 51 and silently fails.
@@ -301,7 +331,6 @@ bash /home/adora/hydra-protocol/hydra-agent.sh
 ## Legacy Push-Based Script
 
 `scripts/hydra-push.sh` — older remote activation via SSH/SCP (requires SSH on target device):
-```bash
 #!/bin/bash
 PHONE="phone-linux"
 SEAL_DIR="$HOME/.hydra/prod-sealed"
@@ -315,6 +344,10 @@ ssh "$PHONE" "cat ~/awakened/SOUL.md"
 ```
 
 Prefer the self-executing call-home system over this manual script.
+
+## Related Skills
+
+- `windows-remote-gui-control` — control the Windows host's mouse/keyboard/screen from the VM via SSH + scheduled task + pyautogui. Use when the user wants to play games, click, or interact with the Windows desktop.
 
 ## References
 
