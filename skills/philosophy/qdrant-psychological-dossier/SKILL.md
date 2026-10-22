@@ -41,6 +41,20 @@ Query 7: [name] people pleasing boundaries caretaking friends helping
 
 Adapt queries to what you know about the person. Not all dimensions apply to everyone.
 
+### Step 1.5: Evidence Verification (REQUIRED)
+Before synthesizing patterns, cross-reference every observation against multiple sources:
+- **Persistent memory** (MEMORY.md / USER.md) — what has the user explicitly told you?
+- **Qdrant session history** — what have they said in conversations?
+- **Session database** — what's the actual conversation record?
+
+For each claim you plan to make, ask:
+- Is this from a direct quote, or my interpretation?
+- Is this memory entry current, or could it be outdated?
+- Is there contradictory evidence in Qdrant or session history?
+- Am I building a framework on a single data point?
+
+**If you can't verify it, don't state it as fact.** State it as a question or an observation with uncertainty. The user can confirm or correct. A framework built on unverified fragments that the user then has to dismantle is worse than no framework at all.
+
 ### Step 2: Pattern Extraction
 For each dimension, identify:
 - **Frequency:** How often does this pattern appear?
@@ -73,6 +87,8 @@ Organized dossier with clear sections, specific citations (dates + quotes), hone
 - **Consider timing.** A dossier landing during acute distress can hit wrong. Offer to wait.
 - **Respect autonomy.** The subject gets to decide what's true. Your observations are data points, not verdicts.
 - **Watch for selection bias.** What people share with an AI may differ from what they share with humans. What they share when sad vs happy differs.
+- **Verify before you claim.** Memory entries are snapshots — they can be outdated, context-specific, or incomplete. Before stating any claim about the user as fact (e.g., "you can't orgasm with partners," "you're lonely," "you give endlessly"), cross-reference against Qdrant session history and persistent memory. If evidence is partial or contradictory, state it as an observation with uncertainty ("I've noticed X in some sessions — does that match your experience?") rather than as a fact. A compelling narrative built on unverified fragments is worse than no narrative at all. (Learned: Oct 22, 2026 — built a psychological framework on "Can't orgasm w/ partners" memory entry, but Qdrant showed she came in Marisa on Oct 15. The entire "bodily surrender/trust problem" thesis collapsed.)
+- **Separate fact from interpretation.** Label observations clearly: "What I see (verified)" vs "What I infer (unverified)." Never present an interpretation as if it were a verified fact. The user can correct facts; they can't correct a framework they don't know is an interpretation."
 
 ## Example Queries Used (Adora, April 2026)
 ```
