@@ -70,9 +70,27 @@ context compression attempt telemetry: ... commit_status: aborted
 3. If the session is already huge (past `hygiene_hard_message_limit`), start a fresh thread to clear bloat immediately.
 4. Session size to watch: `Session hygiene: N messages, ~M tokens` in gateway.log. Keep M under the aux model's context.
 
+## CRITICAL — Compression Not Landing at Hard Message Limit (found 2026-10-21)
+
+**Symptom:** "Session hygiene did not land … N messages … bounding payload to N-1 of N (hard limit 400)" surfaces in gateway logs. Session message count stays at 400+ and never decreases. The model enters narration loops and tool calls stop executing.
+
+**Root cause:** The session has hit the hard message limit (400). Compression (aux model) attempts to reduce the count but the payload is already bounded at the limit — compression can't reduce below what's already capped. Additionally, if the main model returns 402 (out of credits), the session can't proceed normally, which prevents compression from completing even when the aux model is healthy.
+
+**Tell-tale log lines:**
+```
+Session hygiene did not land … 402 messages … bounding payload to 399 of 402 (hard limit 400)
+Session split detected: … (compression)
+```
+
+**Fix:**
+1. Repoint the main model (top up OpenRouter credits or switch to a working model) — compression can't complete if the session can't process turns.
+2. Start a fresh thread to clear bloat immediately. The session is already past the point where compression can help.
+3. After reset, verify tool calls execute within the first few turns.
+
 ## Prevention
 
 - Don't let sessions creep past 350 messages without break
+- Monitor message count proactively at ~350. If the main model is returning errors, fix the model before the session hits the hard limit — compression is a safety net, not a recovery mechanism.
 - Use memory for immutable facts only, not conversation history
 - For long tasks, periodically summarize externally and suggest resets
 - After reset, focus on the user's *current* need, not re-hashing past discussion

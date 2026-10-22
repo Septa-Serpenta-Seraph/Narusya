@@ -344,6 +344,46 @@ Lorebooks must be pre-embedded and stored in Qdrant. See `scripts/ingest_loreboo
 
 ---
 
+## 5. Local Fastembed Backend — Memory Pressure
+
+When `embedding_backend: local_fastembed` is set, the plugin spawns a persistent fastembed subprocess (`embed_fastembed_local.py`) per `_LocalEmbedder` instance. Each daemon loads the ONNX model (~220MB RSS). Multiple instances can spawn:
+
+- `is_available()` creates a probe `_EmbeddingClient` (and thus a daemon) on first call
+- `initialize()` creates another `_EmbeddingClient`
+- Each `QdrantMemoryProvider` instance (one per session) creates its own
+
+**On a 4GB VM, 4 daemons = ~880MB** — enough to trigger OOM kills.
+
+### Diagnose
+
+```bash
+ps aux | grep embed_fastembed | grep -v grep | wc -l   # count daemons
+free -h                                                # check memory pressure
+```
+
+### Mitigate
+
+1. **Kill extra daemons** — keep 1, the gateway respawns as needed:
+   ```bash
+   # Kill all but one
+   ps aux | grep embed_fastembed | grep -v grep | awk '{print $2}' | tail -n +2 | xargs kill
+   ```
+
+2. **Add MemoryMax to gateway service** — prevents OOM from taking down the whole VM:
+   ```ini
+   # ~/.config/systemd/user/hermes-gateway.service [Service] section
+   MemoryHigh=2G
+   MemoryMax=2.5G
+   ```
+
+3. **Long-term fix** — deduplicate `_LocalEmbedder` instances (singleton or shared daemon across providers). The root cause is that `is_available()` creates a throwaway probe embedder that is never cleaned up. **STATUS: Applied (Oct 22, 2026)** — `_LocalEmbedder` is now a module-level singleton keyed by `(python_bin, script)` via `_get_shared_local_embedder()`. All `_EmbeddingClient` instances share one daemon. If you see multiple daemons again, check for a second plugin instance or a code regression.
+
+### Pitfalls
+
+- Killing a daemon does NOT crash the gateway — `embed_batch()` detects the dead process via `poll()` and respawns. But the gateway may spawn replacements, so killing alone is a band-aid.
+- The `close()` method exists on `_LocalEmbedder` but is never called by the provider. Daemons accumulate until the gateway restarts.
+- On constrained VMs, consider switching to the API embedding backend (`embedding_backend: api` with Nous/OpenRouter) to eliminate local daemon memory entirely. Trade-off: requires network and API credits.
+
 ## References
 
 `references/qdrant-replication.md` — full-replica clone to another node: native snapshot → transfer → restore → verify, the data-vs-container size trap, running Qdrant on Windows via WSL + systemd, and the WSL-over-SSH quoting rule.

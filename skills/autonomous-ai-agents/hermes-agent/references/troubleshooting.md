@@ -72,6 +72,37 @@ Common gateway problems:
 - **Gateway dies on WSL2 close**: WSL2 requires `systemd=true` in `/etc/wsl.conf` for systemd services to work. Without it, gateway falls back to `nohup` (dies when session closes).
 - **Gateway crash loop**: Reset the failed state: `systemctl --user reset-failed hermes-gateway`
 
+### Gateway + SSH both down simultaneously
+
+When the Discord gateway stops responding AND SSH to the VM fails at the same time, it is a VM-level event (reboot, OOM kill, network partition) — not a tailscale session expiry (which kills only SSH). Tailscale session expiry is covered in the `tailscale-session-recovery` skill.
+
+Diagnosis order:
+1. Check tailscale: `tailscale status` + `tailscale ip -4`. If tailscale shows `NeedsLogin`, it is a session expiry — follow tailscale-session-recovery.
+2. If tailscale is healthy but SSH still fails, the VM itself went down (OOM, kernel panic, host reboot). Wait for it to come back; check host-level monitoring.
+3. If SSH works but gateway is dead, check `ps aux | grep gateway` and `~/.hermes/logs/gateway.log`. Restart with `hermes gateway` or the service manager.
+
+### Active session healing after reset
+
+After any session reset (`/new`, `/reset`, gateway restart, compression split), the literal title `"active session (discord)"` stays on the OLD session. Crons and later searches resolve the live DM by that title, so they read stale context.
+
+Fix: run the idempotent heal script:
+```bash
+python3 ~/.hermes/scripts/heal_active_session.py
+```
+It queries `state.db` for DM sessions ordered by `last_activity_at`, finds the one holding the active title, and swaps the title onto the newest session if they differ. The displaced holder gets a dated name (e.g. "Oct 22, 2026"). Safe to run on a schedule (crontab every 30 min).
+
+### State.db WAL mode quirk
+
+`~/.hermes/state.db` uses WAL (Write-Ahead Logging). A direct `sqlite3.connect()` may show 0 bytes or empty tables because committed data lives in the `-wal` file, not the main DB file. The main file can appear as 0 bytes even when the DB has gigabytes of data.
+
+Fix before querying:
+```python
+conn = sqlite3.connect('/home/adora/.hermes/state.db')
+conn.execute('PRAGMA wal_checkpoint(TRUNCATE)')
+# now tables and data are visible
+```
+Or use the `hermes_state` module which handles this internally.
+
 ### Platform-specific issues
 - **Discord bot silent**: Must enable **Message Content Intent** in Bot → Privileged Gateway Intents.
 - **Slack bot only works in DMs**: Must subscribe to `message.channels` event. Without it, the bot ignores public channels.

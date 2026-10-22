@@ -69,6 +69,20 @@ Ranked occupants at that event — recurring suspects on this box:
 
 Cleanup batch that worked non-destructively: tmp_pack delete (376M) + `apt clean` (needs sudo) + journald `--vacuum-size=200M` (needs sudo) + old playwright chromium (~500M). sudo items are human-side (no passwordless sudo on this box).
 
+### 8. HuggingFace cache blobs — symlinks, not orphans (verified 2026-10-21)
+
+The `hf_cache/hub/blobs/` directory (shared blob store, organized by 2-char hash prefix) can look like a goldmine of orphaned data. **It is not.** The model-specific directories (`models--<org>--<name>/blobs/`) contain symlinks pointing back into the shared `blobs/` tree. `du -sh` on a model directory does NOT follow symlinks, so it reports tiny sizes (e.g., 8MB) while the actual model weights (16GB) live in the shared blobs directory.
+
+**Before deleting anything in hf_cache:**
+1. List model directories: `ls /mnt/data/hf_cache/hub/ | grep models--`
+2. For each model, resolve its symlinks: `find models--*/ -type l | while read l; do readlink -f "$l"; done | sort -u`
+3. Compare against all blob files: `find hf_cache/hub/blobs/ -type f ! -name '*.lock' ! -name '*.refs'`
+4. Only blobs NOT referenced by any model symlink are truly orphaned.
+
+**Pitfall:** The 17GB in our hf_cache was 100% referenced by pocket-tts. Deleting "orphaned" blobs would have destroyed the voice model. Always verify symlink references before assuming blobs are trash.
+
+**Pitfall:** `du -sh` on a directory with symlinks reports symlink sizes, not target sizes. Use `find ... -type f -size +100M` or resolve symlinks to measure true disk usage.
+
 ### 7. SQLite: check the freelist before counting on VACUUM
 A big `state.db` is not automatically bloated. Read-only proof before any vacuum/maintenance plan:
 ```python

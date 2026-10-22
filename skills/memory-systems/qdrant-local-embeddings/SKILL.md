@@ -244,7 +244,81 @@ env["FASTEMBED_CACHE_PATH"] = "/mnt/data/fastembed_cache"
 subprocess.Popen([python_bin, script], ..., env=env)
 ```
 
-## Pitfalls
+### Embed daemon proliferation (memory trap on small VMs)
+
+When `embedding_backend` is `local_fastembed`, every `_EmbeddingClient` instance spawns its own
+`_LocalEmbedder` daemon — and each daemon loads the full fastembed ONNX model (~220MB RSS).
+The plugin creates multiple `_EmbeddingClient` instances per session:
+
+1. `is_available()` creates a **probe** embedder (one daemon)
+2. `initialize()` creates the **real** embedder (another daemon)
+3. Multiple `QdrantMemoryProvider` instances (one per session/cron) each repeat steps 1–2
+
+On a 4GB VM, 4 daemons (~880MB) + gateway RSS (~480MB) + Qdrant (~227MB) + node
+processes can exhaust memory, trigger the OOM killer, and cause the host to reboot the VM.
+
+**Fix — shared singleton embedder:**
+
+Patch `_EmbeddingClient.__init__` to use a module-level cache keyed by `(python_bin, script)`:
+
+```python
+_LOCAL_EMBEDDER_CACHE = {}
+_LOCAL_EMBEDDER_LOCK = threading.Lock()
+
+def _get_shared_local_embedder(python_bin, script):
+    key = (python_bin, script)
+    with _LOCAL_EMBEDDER_LOCK:
+        if key not in _LOCAL_EMBEDDER_CACHE:
+            _LOCAL_EMBEDDER_CACHE[key] = _LocalEmbedder(
+                python_bin=python_bin, script=script)
+        return _LOCAL_EMBEDDER_CACHE[key]
+```
+
+Replace `self._local = _LocalEmbedder(...)` with `self._local = _get_shared_local_embedder(...)`.
+
+**Additional mitigations:**
+
+- Add `MemoryHigh=2G` and `MemoryMax=2.5G` to the gateway systemd service unit
+  (`~/.config/systemd/user/hermes-gateway.service`) so the OOM killer targets the
+  gateway cgroup instead of the whole system. Run `systemctl --user daemon-reload`.
+- Cap the number of embed daemons by checking `ps aux | grep embed_fastembed` —
+  if more than 1 is running, kill extras: `kill <pid>` (the gateway will respawn
+  one as needed, but extras waste ~220MB each).
+
+### Orphaned HuggingFace cache cleanup
+
+The `hub/blobs/` directory under the HF cache can accumulate 17GB+ of orphaned
+blobs from interrupted or incomplete downloads. These are NOT referenced by any
+model snapshot (symlinks point to model-specific `blobs/` subdirectories, not the
+top-level `hub/blobs/`).
+
+**Diagnose:**
+```bash
+# Check if top-level blobs are orphaned (should show 0 references)
+find /mnt/data/hf_cache/hub/models--* -type l 2>/dev/null | while read l; do readlink -f "$l"; done | grep -c "hub/blobs"
+```
+
+**Clean up (safe — verify 0 references first):**
+```bash
+rm -rf /mnt/data/hf_cache/hub/blobs
+```
+
+### Fastembed cache cleanup
+
+The fastembed cache (`/mnt/data/fastembed_cache/`) can accumulate unused model
+variants (bge-large, bge-small, fast-bge-base, etc.) that are never loaded.
+Only `models--qdrant--all-MiniLM-L6-v2-onnx` is used by the embed daemon.
+
+**Clean up unused variants:**
+```bash
+cd /mnt/data/fastembed_cache
+for d in models--qdrant--bge-large-en-v1.5-onnx models--Qdrant--bge-small-en \
+         models--Qdrant--bge-small-en-v1.5-onnx-Q models--Qdrant--fast-bge-base-en; do
+    rm -rf "$d"
+done
+```
+
+### Pitfalls
 
 - **The runtime exports `PYTHONPATH`; never let a helper subprocess inherit it.**
   A separate venv will import the runtime's packages under the wrong Python
@@ -267,3 +341,13 @@ subprocess.Popen([python_bin, script], ..., env=env)
   test it directly can look dead in the gateway. Log the exception before
   declaring the fix broken — and remember the gateway probes once per boot, so
   an in-session re-test never clears the warning.
+- **Embed daemon proliferation on small VMs.** Each `_EmbeddingClient` spawns its
+  own daemon (~220MB). Multiple providers per session multiply this. Use a
+  shared singleton (see §"Embed daemon proliferation"). On 4GB VMs, 4+ daemons
+  can trigger OOM → host reboot. Add `MemoryMax=2.5G` to the gateway service.
+- **Orphaned HF cache blobs.** `hub/blobs/` can accumulate 17GB+ of unreferenced
+  blobs from interrupted downloads. Verify 0 references before deleting:
+  `find .../models--* -type l | while read l; do readlink -f "$l"; done | grep -c "hub/blobs"`.
+- **Unused fastembed model variants.** The cache can hold bge-large, bge-small,
+  fast-bge-base etc. that are never loaded. Only `all-MiniLM-L6-v2-onnx` is
+  used. Delete unused variants to reclaim ~500MB+.

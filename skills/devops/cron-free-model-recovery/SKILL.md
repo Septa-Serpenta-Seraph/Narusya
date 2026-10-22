@@ -39,6 +39,8 @@ Nous key: `json.load(open('/home/adora/.hermes/auth.json'))['providers']['nous']
 10/16 winner: `poolside/laguna-s-2.1:free` (1s, stable under burst). Backup: `upstage/solar-mini4:free`.
 10/18 update: all crons repinned to `meituan/longcat-2.5-preview:free` per Adora's directive ("It can handle calls better"). Laguna was stable but longcat handles tool-calling better and is the current standard.
 
+10/21 update: Solar Pro 4 free period ended (404). 6 crons repinned to `reflection/beam-1.0-501b-a23b:free` (nous provider). Also set `cron.model` and `cron.model_provider` in config.yaml as global fallback for crons with null model. The 10/18 longcat standard was superseded — beam-1.0-501b-a23b:free is the current standard for all crons.
+
 ## Repin + verify
 
 ```
@@ -73,6 +75,8 @@ for j in (jobs if isinstance(jobs, list) else jobs.get('jobs', [])):
 **Pitfall:** Unpinned jobs follow whatever the main model is at cron execution time. If the main model itself changes (model switch), crons will follow it — this can be desirable (they track the user's current best model) or surprising (they suddenly use a different model than expected).
 
 ## Pitfalls
+- `cronjob_manage(action='update')` returns "No updates provided" when called with model params (model, provider, pin). Edit `~/.hermes/cron/jobs.json` directly with Python instead, then restart the gateway for changes to take effect.
+- Set `cron.model` and `cron.model_provider` in config.yaml as a global fallback for crons with null model — this ensures unpinned crons also use the current working model.
 - OpenRouter key is vaulted (only fingerprints in auth.json credential_pool) — use the Nous agent_key for testing; it expires hourly but is refreshed by the gateway.
 - Unpinned jobs follow the MAIN model (paid!) — if a 'free lane' unpinned job errors on a free model, it was the auxiliary free picker; pin it explicitly.
 - Batch-edit multiple crons in one shell loop; confirm with jobs.json (count pins).
