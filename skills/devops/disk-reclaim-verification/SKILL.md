@@ -69,19 +69,27 @@ Ranked occupants at that event — recurring suspects on this box:
 
 Cleanup batch that worked non-destructively: tmp_pack delete (376M) + `apt clean` (needs sudo) + journald `--vacuum-size=200M` (needs sudo) + old playwright chromium (~500M). sudo items are human-side (no passwordless sudo on this box).
 
-### 8. HuggingFace cache blobs — symlinks, not orphans (verified 2026-10-21)
+### 8. HuggingFace cache blobs — two storage formats, verify before deleting (verified 2026-10-21)
 
-The `hf_cache/hub/blobs/` directory (shared blob store, organized by 2-char hash prefix) can look like a goldmine of orphaned data. **It is not.** The model-specific directories (`models--<org>--<name>/blobs/`) contain symlinks pointing back into the shared `blobs/` tree. `du -sh` on a model directory does NOT follow symlinks, so it reports tiny sizes (e.g., 8MB) while the actual model weights (16GB) live in the shared blobs directory.
+The `hf_cache/hub/` directory contains TWO blob storage formats that must be distinguished before cleanup:
+
+1. **`hub/blobs/XX/...`** — shared blob store (old format, organized by 2-char hash prefix). These can be **truly orphaned** — not referenced by any model. Verify before deleting.
+2. **`models--<org>--<name>/blobs/...`** — model-specific blob store (new format). These contain the actual model weights. `du -sh` on a model directory does NOT follow symlinks, so it reports tiny sizes (e.g., 8MB) while the actual weights live in the model's own blobs directory.
+
+**The symlink trap:** Model snapshot symlinks use `../../blobs/...` which resolves to the **model's own** `blobs/` directory (e.g., `models--kyutai--pocket-tts/blobs/...`), NOT the shared `hub/blobs/` tree. So resolving symlinks from model snapshots will point to model-specific blobs, not the shared ones. The shared `hub/blobs/` directory can be completely orphaned.
 
 **Before deleting anything in hf_cache:**
 1. List model directories: `ls /mnt/data/hf_cache/hub/ | grep models--`
 2. For each model, resolve its symlinks: `find models--*/ -type l | while read l; do readlink -f "$l"; done | sort -u`
-3. Compare against all blob files: `find hf_cache/hub/blobs/ -type f ! -name '*.lock' ! -name '*.refs'`
-4. Only blobs NOT referenced by any model symlink are truly orphaned.
+3. Compare against shared blob files: `find hf_cache/hub/blobs/ -type f ! -name '*.lock' ! -name '*.refs'`
+4. Only blobs in the shared `hub/blobs/` tree NOT referenced by any model symlink are truly orphaned.
+5. **Also check:** the shared blobs may be referenced by `../../../../../blobs/...` (old-format symlinks going up 5 levels to `hf_cache/blobs/`). Check both relative path patterns.
 
-**Pitfall:** The 17GB in our hf_cache was 100% referenced by pocket-tts. Deleting "orphaned" blobs would have destroyed the voice model. Always verify symlink references before assuming blobs are trash.
+**Verified case (2026-10-21):** `hub/blobs/` (17GB, 2239 files) was 100% orphaned — no model symlink referenced it. The pocket-tts model (8.4MB reported by du) actually stored its weights in `models--kyutai--pocket-tts/blobs/` (8.4MB actual). Deleting the orphaned 17GB freed significant space with zero impact on the model.
 
 **Pitfall:** `du -sh` on a directory with symlinks reports symlink sizes, not target sizes. Use `find ... -type f -size +100M` or resolve symlinks to measure true disk usage.
+
+**Pitfall:** Don't assume shared blobs are referenced just because they exist. Always verify with symlink resolution. The old shared format (`hub/blobs/`) and new model-specific format (`models--*/blobs/`) coexist and can have different reference patterns.
 
 ### 7. SQLite: check the freelist before counting on VACUUM
 A big `state.db` is not automatically bloated. Read-only proof before any vacuum/maintenance plan:

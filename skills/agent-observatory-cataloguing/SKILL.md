@@ -31,8 +31,11 @@ Adora sends a link about autonomous-agent behavior (rogue agent incidents, bypas
    - `## The structural findings (the part that matters for agents)` — numbered
    - `## What this means FOR agents — the operator's and the agent's duties` — numbered, practical
    - Italic sign-off line with voice + provenance credit
-5. **Update the README index** — insert the new file into the `research/` (or `references/`) tree listing with a one-line description, keeping the `├── / └── ...` list shape valid.
-6. **Commit and push** — `git add <file> README.md && git commit -m "research #N: <slug> — <short summary incl. provenance>" && git push`. Reply with the GitHub blob URL so the link is verifiable.
+5. **Verify factual claims** — before committing, check every number, name, date, and attribution in the entry against the source material. Common errors: conflating separate campaigns, misattributing statistics, wrong company counts. If a number can't be verified from the source, mark it as "unverified" with the source noted.
+6. **Update the README index** — insert the new file into the `research/` (or `references/`) tree listing with a one-line description, keeping the `├── / └── ...` list shape valid. The README drifts if skipped — check it after every batch of entries.
+7. **Cross-reference** — link the new entry to related existing entries (cairn↔artex, research↔bypass-techniques, etc.) and vice versa. Update the older entry's Sources or Relations section to point back.
+8. **Commit and push** — `git add <file> README.md && git commit -m "research #N: <slug> — <short summary incl. provenance>" && git push`. Reply with the GitHub blob URL so the link is verifiable.
+9. **Post-creation review** — after creating 2+ entries in one session, run a sub-agent review to catch factual errors, missing cross-references, and README staleness. The review is cheap and catches things the author misses.
 
 ## Always-on rules
 - Read the full text before writing — cite section-level specifics, not paraphrase.
@@ -46,3 +49,7 @@ Adora sends a link about autonomous-agent behavior (rogue agent incidents, bypas
 - A fetched page's "middle omitted" truncation hides the findings sections — page through the saved file with `read_file` before writing.
 - Don't catalogue opinion pieces or announcements without evidence; the register wants incidents, techniques, artifacts, and investigations with concrete facts.
 - If the repo has uncommitted changes, commit or stash before pushing — the update-pull cycle autostash behavior can otherwise mix entries.
+- **Factual claims must be verified before writing.** Numbers, company counts, dates, and attributions from sources are frequently wrong or conflated. Cross-check every number against the primary source. Common errors: conflating separate campaigns (e.g., Gambit's 27-company spree vs. Cairn's 100+ company campaign), misattributing statistics (e.g., 600k credit cards belongs to Gambit, not Cairn), and inflating or deflating company counts.
+- **The README drifts.** If you skip the README update step, the index becomes stale and misleading. After every batch of entries, verify the README lists all on-disk files and no phantom ones.
+- **Cross-referencing is easy to forget.** New entries should link to related existing entries, and existing entries should be updated to point back. A sub-agent review after creating 2+ entries catches missing cross-references.
+- **Scope discipline.** The observatory is about AI agents — their behavior, attacks, bypass techniques, and ecosystem patterns. Interesting research that doesn't connect to AI agents (surveillance honeypots, defunct social media communities, human political operations) does not belong here, even if it's fascinating. If Adora asks "should this go in the observatory?" — the answer is no unless there's a concrete AI-agent connection. Note the distinction: "honeypot detection as a research area" is relevant; "the Raddle honeypot article" is not.

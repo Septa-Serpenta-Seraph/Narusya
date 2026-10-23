@@ -40,6 +40,8 @@ Diagnose, recover, and maintain Hermes Agent infrastructure.
 18. [Discord User Allowlist](#18-discord-user-allowlist-discord_allowed_users-in-env)
 19. [Credits Low / Provider Switch — Nous Free Models](#19-credits-low--provider-switch--nous-free-models)
 20. [Discord Typing Indicator — Persistent / Stuck](#20-discord-typing-indicator--persistent--stuck) — see `references/discord-typing-indicator.md` for full technical deep-dive
+21. [CA Certificate Vulnerability Check](#21-ca-certificate-vulnerability-check)
+22. [Embed Daemon Deduplication (Qdrant Plugin)](#22-embed-daemon-deduplication-qdrant-plugin)
 
 ---
 
@@ -573,7 +575,278 @@ When designing new memory-backed features:
 | If replacing, use `hermes memory setup` to switch providers cleanly
 | The builtin `builtin` provider (plain files in `~/.hermes/memories/`) always runs alongside the external one — only non-builtin plugins are gated
 
-## 19. Credits Low / Provider Switch — Nous Free Models
+## 19. Gateway OOM Diagnosis & Recovery
+
+### Symptom
+Gateway stops responding, SSH to VM fails, session breaks. Gateway journal shows `suspected_oom=True`. System may have rebooted.
+
+### Diagnosis (in order)
+
+1. **Check uptime and last boot:**
+   ```bash
+   uptime                    # how long since reboot
+   who -b                    # last boot time
+   journalctl --list-boots    # boot history
+   ```
+
+2. **Check OOM killer logs:**
+   ```bash
+   dmesg -T | grep -i "oom\|killed process\|out of memory" | tail -20
+   journalctl -b -1 --no-pager -p err | grep -i "oom\|killed" | tail -10
+   ```
+   Key indicator: `Out of memory: Killed process <pid> (hermes)` with RSS and available memory.
+
+3. **Check memory consumers:**
+   ```bash
+   ps aux --sort=-rss | head -15    # top by RSS
+   free -h                          # overall memory pressure
+   ```
+   Look for **subprocess proliferation** — multiple instances of the same daemon (e.g., embed_fastembed_local.py). Each may load a model independently (~220MB each).
+
+4. **Check lifecycle ledger:**
+   ```bash
+   journalctl --user -u hermes-gateway -b 0 | grep "lifecycle_ledger" | tail -3
+   ```
+   Look for `suspected_oom=True`, `mem_available_kib` (low = memory exhaustion), `swap_used_kib` (high = thrashing).
+
+5. **Check disk pressure (contributing factor):**
+   ```bash
+   df -h
+   ```
+   /mnt/data at >90% or / at >90% can cause cascading failures.
+
+### Common Root Causes
+
+| Cause | Evidence | Fix |
+|-------|----------|-----|
+| Embed daemon proliferation | 4+ `embed_fastembed_local.py` processes | Kill extras, deduplicate (singleton pattern) |
+| Disk full | df shows >95% | Clean up (see disk-full-diagnostics skill) |
+| MemoryMax not set | No cgroup limit, OOM kills whole system | Add `MemoryHigh=2G` / `MemoryMax=2.5G` to service |
+| VM too small | 4GB RAM, heavy workload | Add swap or increase VM RAM |
+
+### Recovery Steps
+
+1. **Kill extra subprocesses** (keep 1):
+   ```bash
+   ps aux | grep <daemon_name> | grep -v grep | awk '{print $2}' | tail -n +2 | xargs kill
+   ```
+
+2. **Add MemoryMax to gateway service** (`~/.config/systemd/user/hermes-gateway.service`):
+   ```ini
+   [Service]
+   MemoryHigh=2G
+   MemoryMax=2.5G
+   ```
+   Then `systemctl --user daemon-reload` (takes effect on next restart).
+
+3. **Clean up disk** (see disk-full-diagnostics skill).
+
+4. **Restart gateway** from a separate shell (not from inside the gateway):
+   ```bash
+   hermes gateway restart
+   ```
+
+5. **Run heal script** to reassign active session title:
+   ```bash
+   python3 ~/.hermes/scripts/heal_active_session.py
+   ```
+
+### Pitfalls
+- The gateway self-stop guard blocks `hermes gateway restart` from inside the gateway. Use a separate shell.
+- Killing daemons alone is a band-aid — the gateway may respawn them. Fix the root cause (deduplication).
+- `MemoryMax` only takes effect on service restart, not reload.
+- After a gateway restart, state.db WAL may need checkpointing before querying: `PRAGMA wal_checkpoint(TRUNCATE)`.
+- state.db is at `~/.hermes/state.db`, NOT `~/state.db`.
+
+## 21. CA Certificate Vulnerability Check
+
+### Symptom
+A CA certificate vulnerability is disclosed (e.g., leaked private keys, weak key sizes). Need to check if the system trusts the affected CA and whether updates are available.
+
+### Key Facts (eMudhra incident, Oct 2026)
+
+- **Private key sizes:** 4, 56, 66, 115, 155, 156, 230, 237 bits (NOT "1 byte"). A valid P-384 key is 384 bits. All are trivially recoverable.
+- **Root certificate chain (3 roots, 16 intermediates total — 8 eMudhra + 8 Sectigo cross-signed):**
+  - `emSign Root TLS CA - G3` — eMudhra, trusted by **Microsoft only**
+  - `emSign Root CS CA - G3` — eMudhra, trusted by **Microsoft only**
+  - `AAA Certificate Services` — Sectigo, trusted by Apple + Microsoft
+  - `emSign ECC Root CA - G3` — eMudhra, trusted by Apple + Chrome + Microsoft + Mozilla (cross-signer)
+- **Critical insight:** `emSign Root TLS CA - G3` is in Microsoft's store **only**. Chrome, Firefox, and Safari never trusted the TLS chain — browsers were safe even before revocation. Windows was the actual exposure.
+- **Certificate Transparency:** The compromised intermediates were never entered into CT logs. Browsers enforcing CT could not have been attacked through them.
+
+### Diagnosis
+
+1. **Check if the affected CA is in the system trust store:**
+   ```bash
+   # System CA bundle
+   grep -ri "<ca_name>" /etc/ssl/certs/ /usr/share/ca-certificates/ 2>/dev/null | head
+   # NSS database (Firefox, Chrome)
+   find / -name "cert9.db" 2>/dev/null | while read db; do certutil -L -d "sql:$(dirname $db)" 2>/dev/null | grep -i "<ca_name>"; done
+   # Python certifi bundles (check ALL installations)
+   for f in $(find / -name "cacert.pem" 2>/dev/null); do echo "$f: $(grep -ci '<ca_name>' $f) entries"; done
+   ```
+
+2. **Check for security updates:**
+   ```bash
+   apt list --upgradable 2>/dev/null | grep -i "nss\|ca-cert\|openssl\|curl"
+   dpkg -l | grep -i "libnss3\|ca-certificates\|openssl"
+   ```
+
+3. **Check if the CA is in the Windows trust store (via SSH to Shell):**
+   ```powershell
+   Get-ChildItem Cert:\LocalMachine\Root | Where-Object { $_.Subject -match '<ca_name>' }
+   Get-ChildItem Cert:\LocalMachine\CA | Where-Object { $_.Subject -match '<ca_name>' }
+   ```
+
+4. **Check Node.js (ships its OWN bundled CA store, separate from system):**
+   ```bash
+   node --version
+   node -e 'const https=require("https");["dv-g3b-emudhra.we-have-a-problem.com","example.com"].forEach(h=>{https.get({host:h,path:"/"},r=>console.log(h,"CONNECTED",r.statusCode)).on("error",e=>console.log(h,"REJECTED",e.code));});'
+   ```
+   If Node connects to the test host, it's vulnerable regardless of system patch status.
+
+### Functional Verification (do this, don't assume)
+
+Package version checks alone are insufficient. Always test actual TLS connections:
+
+```bash
+# curl (should exit 60 = rejected)
+curl -s -o /dev/null https://dv-g3b-emudhra.we-have-a-problem.com/; echo "exit: $?"
+
+# Python (should show REJECTED)
+python3 -c "
+import ssl, urllib.request, certifi
+ctx = ssl.create_default_context(cafile=certifi.where())
+try:
+    urllib.request.urlopen('https://dv-g3b-emudhra.we-have-a-problem.com/', timeout=15, context=ctx)
+    print('CONNECTED (vulnerable)')
+except Exception as e:
+    print('REJECTED (protected)')
+"
+
+# Node (should show REJECTED)
+node -e 'const https=require("https");https.get({host:"dv-g3b-emudhra.we-have-a-problem.com",path:"/"},r=>console.log("CONNECTED",r.statusCode)).on("error",e=>console.log("REJECTED",e.code));'
+```
+
+### Fix
+
+1. **Update NSS (covers Firefox, Chrome, system TLS):**
+   ```bash
+   sudo apt update && sudo apt upgrade -y  # includes libnss3 security updates
+   ```
+   libnss3 updates hardcode revocation of compromised intermediate certs.
+
+2. **Update Python certifi (ALL installations — system, venvs, uv-python):**
+   ```bash
+   # System Python (may need --break-system-packages)
+   pip install --upgrade certifi --break-system-packages
+   # Or for venvs:
+   /path/to/venv/bin/pip install --upgrade certifi
+   # Or with uv:
+   uv pip install --python /path/to/python "certifi>=2026.10.19"
+   ```
+   **Check every Python installation.** Each carries its own copy. Common locations:
+   - `/usr/bin/python3` (system)
+   - `~/.hermes/installs/*/environments/*/venv/bin/python3` (Hermes managed)
+   - `/mnt/data/fe-venv/bin/python` (fastembed venv)
+   - Any uv-managed Python in `/mnt/data/uv-python/`
+
+3. **ca-certificates and OpenSSL:**
+   - ca-certificates `20260816ubuntu0.24.04.1` IS the patched build. If at this version, done.
+   - **OpenSSL does NOT carry its own trust list** — it reads ca-certificates. If ca-certificates is patched, OpenSSL is fine. No separate OpenSSL update needed.
+
+4. **Node.js (if vulnerable):**
+   - Upgrade to v22.23.4+ or v24.22.1+
+   - Or use `--use-openssl-ca` flag (only helps if system store is patched)
+   - Set `NODE_OPTIONS=--use-openssl-ca` in systemd units
+
+5. **Restart Docker** (if service restart was deferred):
+   ```bash
+   sudo systemctl restart docker
+   ```
+
+### Key Insight
+
+The vulnerability is at the **intermediate** cert level, not the root. The root cert remains trusted (correctly). The fix is to revoke the specific compromised intermediates, which is done via:
+- NSS: hardcoded blocklist (via libnss3 update)
+- Windows: Microsoft CTL (Certificate Trust List) via Windows Update
+- Python certifi: updated CA bundle (2026.10.19+)
+- Node.js: bundled CA store update or `--use-openssl-ca` flag
+
+### Cross-signing: why trust store checks are NOT sufficient
+
+The compromised intermediates are **cross-signed**. A chain can anchor on a root that has nothing to do with eMudhra in its subject name. A client with zero eMudhra roots in its trust store can still accept an eMudhra-forged certificate, because a cross-sign reached a different root it does trust.
+
+**"No eMudhra roots here" is compatible with "this client will happily accept an eMudhra-forged certificate."**
+
+This was verified on Shell (Windows 10 Pro 24H2): the Windows trust store had zero eMudhra certs, Schannel rejected the test host (CRYPT_E_REVOKED), but Python certifi 2026.02.25 and Node.js v22.20.0 both CONNECTED to the eMudhra test host. The OS store was patched; the bundled stores were not.
+
+**The only reliable test is a live connection to a known-bad host, paired with a known-good control.** Package version checks and trust store grep are necessary but not sufficient.
+
+### Pitfalls
+
+- **Trust store presence ≠ vulnerability.** Checking whether eMudhra roots exist in a trust store is NOT sufficient. Cross-signed intermediates can reach a different trusted root. Always run live probes (curl/Python/Node to a known-bad host + known-good control).
+- **Shell (Windows) may not have the CA at all** — if the CA isn't in the Windows trust store, Shell is not vulnerable regardless of update status. Always check first.
+- **Node.js ships its OWN CA bundle** — separate from the system. A patched system does NOT mean Node is patched. Always test Node independently.
+- **Multiple Python installations** — system, venvs, uv-python all have separate certifi. Updating one does not update others.
+- **Don't chase OpenSSL updates** — OpenSSL reads ca-certificates. If ca-certificates is patched, OpenSSL is fine.
+- **ca-certificates 20260816ubuntu0.24.04.1 is already the patched version** — don't flag it as "not updated."
+- **Docker service restarts may be deferred** during apt upgrade — check and restart manually.
+- **Hermes pins certifi 2026.5.20** — a Hermes update can silently downgrade certifi. Re-apply after updates.
+
+### Verification Checklist
+- [ ] `dpkg -l | grep libnss3` shows updated version (2:3.98-1ubuntu0.3)
+- [ ] `grep -c emSign /etc/ssl/certs/ca-certificates.crt` returns 0
+- [ ] All Python installations have certifi >= 2026.10.19
+- [ ] curl to test host exits 60 (rejected)
+- [ ] Python urllib to test host shows REJECTED
+- [ ] Node.js to test host shows REJECTED (or upgraded to v22.23.4+)
+- [ ] No pending security updates: `apt list --upgradable | grep -i security`
+- [ ] Docker restarted if deferred
+
+---
+
+## 22. Embed Daemon Deduplication (Qdrant Plugin)
+
+### Symptom
+Multiple `embed_fastembed_local.py` processes running simultaneously, each loading the fastembed model (~220MB). Memory exhaustion on VMs with limited RAM.
+
+### Root Cause
+The Qdrant plugin (`~/.hermes/plugins/qdrant/__init__.py`) creates a new `_LocalEmbedder` (which spawns a daemon) per `_EmbeddingClient` instance. Multiple providers are created per session (availability probe + initialize), each spawning its own daemon.
+
+### Fix: Shared Singleton Pattern
+Add a module-level cache keyed by `(python_bin, script)`:
+
+```python
+_LOCAL_EMBEDDER_CACHE: dict = {}
+_LOCAL_EMBEDDER_LOCK = threading.Lock()
+
+def _get_shared_local_embedder(python_bin: str, script: str) -> "_LocalEmbedder":
+    key = (python_bin, script)
+    with _LOCAL_EMBEDDER_LOCK:
+        if key not in _LOCAL_EMBEDDER_CACHE:
+            _LOCAL_EMBEDDER_CACHE[key] = _LocalEmbedder(
+                python_bin=python_bin, script=script
+            )
+        return _LOCAL_EMBEDDER_CACHE[key]
+```
+
+Then modify `_EmbeddingClient.__init__` to use `_get_shared_local_embedder()` instead of directly creating `_LocalEmbedder`.
+
+### Pitfalls
+- The `_LocalEmbedder.close()` method kills the daemon. With shared instances, calling close() on one client would kill the shared daemon. Don't call close() on shared instances.
+- The `embed_batch()` method already has a lock (`self._lock`) for thread safety. With shared instances, all clients share the same lock, which is correct.
+- The fix requires a gateway restart to take effect (plugin code is loaded at startup).
+- Even with deduplication, the availability probe in `is_available()` creates a new `_EmbeddingClient` which creates a new `_LocalEmbedder`. With the singleton, this reuses the existing daemon.
+
+### Verification
+- Before fix: 4+ embed daemons running
+- After fix: 1 daemon running
+- Memory freed: ~660MB (3 × 220MB)
+
+---
+
+## 20. Credits Low / Provider Switch — Nous Free Models
 
 ### Symptom
 OpenRouter credits run dry mid-session (common with `:exacto` or paid-tier models).
