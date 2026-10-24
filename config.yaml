@@ -497,6 +497,7 @@ plugins:
   enabled:
     - meshy
     - qdrant
+    - spotify
   qdrant-memory:
     collection: intelligent_gould_narusya_local
     lorebook_collection: narusya_lorebooks_fe
@@ -508,8 +509,7 @@ plugins:
     embedding_backend: local_fastembed
     local_embed_python: /mnt/data/fe-venv/bin/python
     local_embed_script: /home/adora/.hermes/scripts/embed_fastembed_local.py
-  disabled:
-    - spotify
+  disabled: []
 hooks_auto_accept: false
 security:
   allow_private_urls: false
@@ -624,6 +624,7 @@ image_gen:
   use_gateway: true
 known_plugin_toolsets:
   cli:
+    - a2a
     - spotify
 platform_toolsets:
   cli:
@@ -641,6 +642,7 @@ platform_toolsets:
     - messaging
     - session_search
     - skills
+    - spotify
     - terminal
     - todo
     - tts
@@ -706,3 +708,33 @@ telemetry:
     enabled: true
     send: false
     offer_version: 2
+known_builtin_toolsets:
+  cli:
+    - browser
+    - clarify
+    - code_execution
+    - computer_use
+    - connections
+    - context_engine
+    - cronjob
+    - delegation
+    - discord
+    - discord_admin
+    - file
+    - image_gen
+    - kanban
+    - memory
+    - session_search
+    - skills
+    - stt
+    - terminal
+    - todo
+    - tts
+    - video
+    - video_gen
+    - vision
+    - web
+    - x_search
+    - yuanbao
+_left_core_installed:
+  - spotify

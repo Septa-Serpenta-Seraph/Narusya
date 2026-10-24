@@ -90,6 +90,25 @@ tail -50 ~/.hermes/logs/gateway.log
 find /tmp -maxdepth 1 -name 'playwright*' -type d -mmin +60 -exec rm -rf {} + 2>/dev/null
 ```
 
+### Stale Update Locks → Gateway Draining State
+
+**Symptom:** Cron jobs fail with `GatewayUnavailableError: Gateway draining: update_paused`. The gateway is running but refuses to dispatch jobs.
+
+**Root cause:** Stale lock files from interrupted update attempts make the gateway think an update is in progress:
+- `~/.hermes/.hermes-update-in-progress.lock`
+- `~/.hermes/.hermes-update-paused-gateways.lock`
+- `~/.hermes/hermes-agent/.git/hermes-update.lock` (contains a dead PID)
+
+**Fix:** Remove the stale lock files if their PIDs no longer exist:
+```bash
+# Check if the PID in hermes-update.lock is alive
+cat ~/.hermes/hermes-agent/.git/hermes-update.lock  # contains a PID number
+# If the PID doesn't exist, remove all three:
+rm -f ~/.hermes/.hermes-update-in-progress.lock ~/.hermes/.hermes-update-paused-gateways.lock ~/.hermes/hermes-agent/.git/hermes-update.lock
+```
+
+**Pitfall:** Don't remove these if an update is actually in progress. Verify the PID is dead first.
+
 ---
 
 ## 3. OCR Fallback for Images

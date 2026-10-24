@@ -64,6 +64,27 @@ Use `scripts/ptero-helper.py` — a verified driver wrapping all of this (reads 
 - **Datapacks install as zip uploads to `world/datapacks/` — no plugin juggling:** upload the zip via the standard signed-URL flow to `/`, then move it with `PUT /files/rename` `{"root":"/","files":[{"from":"<zip>.zip","to":"world/datapacks/<zip>.zip"}]}` and restart. Paper auto-loads new datapacks on boot (log line: `Found new data pack file/<name>.zip, loading it automatically`). Verify enabled with console `datapack list` → tail latest.log for `There are N data pack(s) enabled: [... file/<name>.zip (world)]`. Check version compat FIRST via Modrinth API `game_versions` (e.g. Minecraft OST Music Discs by lumfdoesgaming, verified 1.7 = 26.2). Community datapack vetting on the observatory model: check the license (ARR = fine for private friends servers, not for public re-hosting) and note separate optional resource packs (the OST pack's texture pack is a ~2GB Drive download — skip, discs work vanilla-labeled). Verified end-to-end 9/25: AllTheMusic1.7.zip uploaded, moved, restart, auto-loaded, datapack list confirmed.
 - **server.properties edits may not survive container restarts on some hosts** — after one restart the MOTD reverted to default "A Minecraft Server" even though the file readback had shown the custom MOTD earlier. Re-read properties after any restart and re-write if the host regenerated them.
 
+## Live web map plugins (Dynmap, BlueMap, Squaremap)
+
+A live map renders the world in a browser as players explore and build — essential for community servers so players can find each other and see builds.
+
+| Plugin | Style | Resource use | Best for |
+|--------|-------|-------------|----------|
+| **Dynmap** | Classic 2D top-down + 3D perspective | Medium-heavy | Most features, most docs, biggest community |
+| **BlueMap** | Gorgeous 3D renders, smooth web viewer | Heavy (needs good CPU/RAM) | If you want it to look beautiful |
+| **Squaremap** | Clean 2D top-down, minimal | Light | Smaller servers, performance-focused |
+
+**Recommendation by server tier:**
+- **Budget 6GB (6-12 players):** Squaremap — lightweight, fast, renders as players explore. BlueMap would strain the server.
+- **Mid-tier 8GB+:** Dynmap — full feature set (markers, regions, player tracking, 3D view).
+- **Performance-focused:** Squaremap or Pl3xMap.
+
+**Install:** Download jar from Modrinth (verify Paper version compat), upload via signed URL to `/plugins/`, restart. Access at `http://<server-ip>:8123` (Dynmap default) or configured port.
+
+**Pitfall:** Live map plugins need a port open. PebbleHost budget tier may not allow custom ports — check panel settings or use the host's web proxy. Tyler (co-admin) may know from prior experience.
+
+**Pitfall:** BlueMap renders in the background and can spike CPU. On budget servers, schedule rendering during off-peak hours or limit render radius.
+
 ## Verification checklist
 - [ ] resources endpoint: `state: running`, sane RAM/CPU
 - [ ] latest.log shows `Done (Xs)!` and each plugin `Enabling` line
