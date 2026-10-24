@@ -17,12 +17,34 @@ metadata:
 
 Control the user's Spotify account via the Hermes Spotify toolset (7 tools). Setup guide: https://hermes-agent.nousresearch.com/docs/user-guide/features/spotify
 
+## Setup (first time)
+
+Spotify requires every user to register their own lightweight developer app. The flow:
+
+1. **Install & enable the plugin:** `hermes plugins install spotify && hermes tools enable spotify`
+2. **Create a Spotify app:** Go to https://developer.spotify.com/dashboard → Create app. Use app name and description of your choice. Set **Redirect URI** to `http://127.0.0.1:43827/spotify/callback` (HTTP is allowed on loopback). Check **Web API**. If the dashboard refuses `http://`, use `https://127.0.0.1:43827/spotify/callback` and set `HERMES_SPOTIFY_REDIRECT_URI` accordingly — the listener then serves https with a self-signed cert (browser shows "not private" warning once).
+3. **Login:** `hermes spotify login --client-id <CLIENT_ID>`. The wizard opens a browser for OAuth approval. Tokens stored in `auth.json`, refreshed automatically.
+4. **Verify:** `hermes spotify status` should show authenticated.
+
+**Pitfall:** The redirect URI in the Spotify dashboard must EXACTLY match what Hermes uses. A trailing space or wrong scheme causes "This redirect URI is not secure" — looks like a policy problem but is usually a stray character.
+
+**Pitfall:** On a headless/remote VM, the OAuth callback goes to 127.0.0.1:43827 *on the VM*. The user needs an SSH tunnel from their local machine: `ssh -L 43827:127.0.0.1:43827 user@vm-ip`. Run login with `--no-browser` and give the user the URL to open.
+
+**Pitfall:** The Spotify toolset is opt-in (`hermes tools enable spotify`). Even with the plugin installed, tools won't appear until the toolset is enabled.
+
+**Pitfall:** Plugin enable fetches dependencies via uv/git. If the VM disk is full, enable fails with "No space left on device." Clean `~/.hermes/cache/uv` first.
+
+Full setup walkthrough with all pitfalls: see `references/setup.md`.
+
 ## When to use this skill
 
 The user says something like "play X", "pause", "skip", "queue up X", "what's playing", "search for X", "add to my X playlist", "make a playlist", "save this to my library", etc.
 
-## The 7 tools
+## When native tools aren't available
 
+If the Spotify toolset isn't loaded in the current session (e.g., just installed/enabled), use the **direct Web API** instead: `references/direct-api.md`. Covers token access, refresh, all key endpoints, and the `/items` vs `/tracks` and `/me/playlists` vs `/users/{id}/playlists` pitfalls.
+
+## The 7 tools
 - `spotify_playback` — play, pause, next, previous, seek, set_repeat, set_shuffle, set_volume, get_state, get_currently_playing, recently_played
 - `spotify_devices` — list, transfer
 - `spotify_queue` — get, add
@@ -105,6 +127,8 @@ spotify_devices({"action": "transfer", "device_id": "<id>", "play": true})
 ## Critical failure modes
 
 **`403 Forbidden — No active device found`** on any playback action means Spotify isn't running anywhere. Tell the user: "Open Spotify on your phone/desktop/web player first, start any track for a second, then retry." Don't retry the tool call blindly — it will fail the same way. You can call `spotify_devices list` to confirm; an empty list means no active device.
+
+**Shuffle is on by default** when starting playlist/album playback. If the user expects tracks in playlist order, check `shuffle_state` in `get_state` and turn it off with `set_shuffle(false)` before or right after starting playback. The `play` action accepts a `shuffle` parameter — set it explicitly rather than relying on the default.
 
 **`403 Forbidden — Premium required`** means the user is on Free and tried to mutate playback. Don't retry; tell them this action needs Premium. Reads still work (search, playlists, library, get_state).
 
