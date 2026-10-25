@@ -826,6 +826,36 @@ with urllib.request.urlopen(req, timeout=15) as r:
     print(f"Posted! ID: {result.get('id')}")
 ```
 
+### Sending Messages (POST) — Splitting Long Content
+
+Discord enforces a **2000-character limit** per message. When posting long content (summaries, research, lists), compose the content as a list of messages and send each with a 1-second delay between posts:
+
+```python
+msgs = [
+    "First chunk of content (up to ~1900 chars)...",
+    "Second chunk...",
+    "Third chunk...",
+]
+
+for i, msg in enumerate(msgs):
+    data = json.dumps({"content": msg}).encode()
+    req = urllib.request.Request(
+        "https://discord.com/api/v10/channels/" + CID + "/messages",
+        data=data, headers=headers, method="POST"
+    )
+    with urllib.request.urlopen(req, timeout=15) as r:
+        result = json.loads(r.read())
+        print("Posted " + str(i+1) + "/" + str(len(msgs)))
+    if i < len(msgs) - 1:
+        time.sleep(1)  # rate-limit courtesy
+```
+
+**Rules:**
+- Keep each chunk under ~1900 chars to leave room for formatting
+- Add `time.sleep(1)` between posts to avoid rate limits
+- Don't split mid-sentence if avoidable — split at natural section boundaries
+- If a single section exceeds 2000 chars, use an embed (embeds have a 4096-char description limit) or link to a file
+
 ### Uploading File Attachments (audio / images)
 
 Text-only POST is covered above. To attach a file (e.g. a generated voice clip `nar.mp3`), you MUST send `multipart/form-data` with TWO fields: `payload_json` (the message content as JSON) and `file` (the binary). `json.dumps` + `Content-Type: application/json` alone will NOT carry a file — Discord ignores the body and posts an empty message.
