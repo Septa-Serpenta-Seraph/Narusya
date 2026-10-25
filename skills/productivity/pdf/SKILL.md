@@ -22,6 +22,7 @@ Create PDFs from structured specs, build and fill AcroForm forms (with layout li
 ## When to Use
 
 - Generate a report, invoice, or multi-page document as PDF.
+- Quick markdown-to-PDF conversion with Unicode support (see `references/fpdf2-markdown.md`).
 - Build a fillable AcroForm (text/checkbox/radio/dropdown) from a JSON spec, linting the layout first.
 - Pull text, tables (JSON/CSV), metadata, or form-field values out of a PDF.
 - Merge, split, rotate, extract page subsets, watermark, stamp text/images at coordinates, bookmark, or compress PDFs.
