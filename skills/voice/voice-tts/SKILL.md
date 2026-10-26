@@ -438,4 +438,32 @@ The script can either:
 - Piper outputs 22050Hz mono WAV — always resample to 48kHz stereo for Discord
 - Pitch shifting uses ffmpeg `asetrate` — formula: `asetrate=22050*<pitch>,aresample=48000`
 - edge-tts is more expressive but goes through Microsoft servers
-- Default preset is `deep` (Adora's preference)
+## 6. Phone TTS Pipeline (Android Bridge)
+
+Generate Narusya's cloned voice (Kyutai Pocket TTS) on the server and play it through the phone's speaker or during a phone call.
+
+### Script
+
+`~/.hermes/scripts/phone_speak.sh "text" [phone_ip]`
+
+### Pipeline
+
+1. Generate WAV via Pocket TTS (`/mnt/data/pocket-tts-venv/bin/pocket-tts`, voice `/mnt/data/nar_new_v1.safetensors`)
+2. Base64-encode the WAV
+3. POST to `http://<phone-ip>:8765/play_audio` with `{"audio": "<base64>", "format": "wav"}`
+4. Phone decodes, writes to cache, plays via `MediaPlayer` with `STREAM_VOICE_CALL`
+
+### Pitfalls
+
+- **PYTHONPATH must be cleared.** The Hermes install's pydantic (Python 3.14) conflicts with the pocket-tts venv's pydantic (Python 3.12). Set `PYTHONPATH=""` before running pocket-tts, or the import fails with `ModuleNotFoundError: No module named 'pydantic_core._pydantic_core'`.
+- **HF_HOME must point to /mnt/data.** Root disk is too small. Set `HF_HOME=/mnt/data/hf_cache`.
+- **Output must go to /mnt/data.** Writing WAV files to `/tmp` fails with "No space left on device" on a full root disk. Use `/mnt/data/phone_speak_$$.wav`.
+- **Base64 payload too large for curl `-d` string.** Write JSON to a file and use `-d @file`.
+- **Phone audio routing.** Set `AudioManager.mode = MODE_IN_CALL` and `isSpeakerphoneOn = true` before playing. Use `STREAM_VOICE_CALL` audio stream type.
+- **MediaPlayer must release on completion.** Set `setOnCompletionListener { mp.release() }` to avoid resource leaks.
+- **The `/play_audio` endpoint must be deployed.** The APK must include the endpoint — rebuild and reinstall if missing (returns 404).
+
+### Related Skills
+
+- `android-adb-access` — phone HTTP bridge endpoints and connection details
+- `android-app-build` — app source code and build process
