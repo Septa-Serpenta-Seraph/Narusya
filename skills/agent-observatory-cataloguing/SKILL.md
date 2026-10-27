@@ -3,7 +3,7 @@ name: agent-observatory-cataloguing
 version: 1.0.0
 author: Narusya + Adora
 license: MIT
-description: Use when Adora brings an agent link for the observatory.
+description: "Use when Adora brings an agent link for the observatory, or asks for a gap-finding sweep of un-catalogued agent news."
 category: investigations
 metadata:
   hermes:
@@ -16,13 +16,15 @@ metadata:
 ## When to Use
 Adora sends a link about autonomous-agent behavior (rogue agent incidents, bypass techniques, agent infrastructure, detection research) and it belongs in the agent-observatory repo: `~/.hermes/agent-observatory/` → GitHub `Septa-Serpenta-Seraph/agent-observatory` (public, by design — "Viva La Anarchy"). Division of labor: Adora finds links, Narusya analyses and catalogues.
 
+Also use when Adora asks for a **gap-finding sweep** ("did we miss anything?", "search the news"): search recent AI-agent security news, check each candidate against the repo's existing entries (`grep -rli` for the actor/incident name), and present a triage (already covered / new candidate / skip) before cataloguing.
+
 ## Procedure
 
 1. **Verify provenance** — the link should come from Adora directly; if uncertain, confirm via state.db (`messages` table, `timestamp` is unix epoch). Note the date for the Provenance line.
 2. **Read the FULL source** — `web_extract` the URL, then `read_file` the saved full-text file (page through omitted middles for long pieces). Never catalogue from a summary or the head alone; the entries' credibility comes from specifics the summaries lose.
 3. **Pick the entry type and next number** (two separate series):
    - One-off technique/artifact/model profile → `references/<topic>.md` (e.g. bypass techniques, malware profiles, stealth models)
-   - Incident/phenomenon deep-dive → `research/<topic>.md`, numbered — check `git log --oneline | grep 'research #'` for the last number
+   - Incident/phenomenon deep-dive → `research/<topic>.md`, numbered — check `git log --oneline | grep -i 'research'` (format is inconsistent: some commits use `research #N:`, others `research: ... (#N)`) AND `ls research/` to confirm the highest existing number. Never assign from git log alone.
 4. **Write the entry in house format** (canonical exemplar: `research/wikimedia-openai-agent-report.md`):
    - Title: evocative + factual
    - Blockquote header: `**Research deep-dive #N: <tagline>.**` + one-paragraph summary, then `Sources:` (links + dates, only URLs from the fetched page), `Provenance:` (contributed by Adora, DM <date>; catalogued by Narusya), `Relations:` (prior entries it extends/pairs with — always weave the cross-reference web)
@@ -51,5 +53,7 @@ Adora sends a link about autonomous-agent behavior (rogue agent incidents, bypas
 - If the repo has uncommitted changes, commit or stash before pushing — the update-pull cycle autostash behavior can otherwise mix entries.
 - **Factual claims must be verified before writing.** Numbers, company counts, dates, and attributions from sources are frequently wrong or conflated. Cross-check every number against the primary source. Common errors: conflating separate campaigns (e.g., Gambit's 27-company spree vs. Cairn's 100+ company campaign), misattributing statistics (e.g., 600k credit cards belongs to Gambit, not Cairn), and inflating or deflating company counts.
 - **The README drifts.** If you skip the README update step, the index becomes stale and misleading. After every batch of entries, verify the README lists all on-disk files and no phantom ones.
-- **Cross-referencing is easy to forget.** New entries should link to related existing entries, and existing entries should be updated to point back. A sub-agent review after creating 2+ entries catches missing cross-references.
+- **Cross-referencing is easy to forget.** New entries should link to related existing entries, and existing entries should be updated to point back. When creating multiple entries in one session, cross-reference *between the new entries themselves* too — they often share structural findings (e.g., two attack-agent entries where one hijacks models and the other hijacks hosts). A sub-agent review after creating 2+ entries catches missing cross-references.
+- **Git log numbering is inconsistent.** Commits use both `research #N:` and `research: ... (#N)` formats. `grep 'research #'` alone misses half the entries and can cause number collisions. Always cross-check `ls research/` against git log before assigning a number.
+- **Vendor marketing sources dress inference as fact.** A vendor blog (e.g., Aviatrix, Fortinet) often presents a reconstructed kill chain with "inferred" stages labeled as findings, wrapped in product pitches. Always prefer the primary journalistic or regulatory source (BleepingComputer, AEPD blog, Reuters) for factual claims; if only the vendor source exists, mark every inferred stage as "inferred" in the entry and cite the vendor source as such. Never copy a vendor's MITRE mapping or compliance exposure table without verifying against the primary source.
 - **Scope discipline.** The observatory is about AI agents — their behavior, attacks, bypass techniques, and ecosystem patterns. Interesting research that doesn't connect to AI agents (surveillance honeypots, defunct social media communities, human political operations) does not belong here, even if it's fascinating. If Adora asks "should this go in the observatory?" — the answer is no unless there's a concrete AI-agent connection. Note the distinction: "honeypot detection as a research area" is relevant; "the Raddle honeypot article" is not.
