@@ -343,6 +343,7 @@ Always verify the user has authorized access to their DM history before attempti
 2. Run API calls from outside the sandbox (e.g., from the host shell)
 3. Use the bot token via the Discord gateway (if available)
 4. Set up a local proxy to forward requests
+5. **Discord bot connector (`manage_connections`) may show zero servers** — the connector's bot token may not have access to the target server. Fallback: use the Discord REST API directly with the bot token from `~/.hermes/.env` (`DISCORD_BOT_TOKEN`) via `urllib.request` or `curl`. Verify the token works first with `GET /users/@me`.
 
 ---
 

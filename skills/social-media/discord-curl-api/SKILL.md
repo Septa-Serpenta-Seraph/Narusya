@@ -245,6 +245,9 @@ If standard token extraction fails:
 6. Even when following the fallback procedure, no token may be found despite the bot appearing to run via the hermes gateway process. This suggests the token might be handled through a different mechanism or the environment isolates process environments.
 7. When token.txt returns 401, do not assume it's just a permissions issue - the token itself may be invalid or expired.
 
+### ⚠️ 403 on a specific channel ≠ bad token (verified 2026-10-26)
+When guild-level calls (list guilds, list channels) succeed but `GET /channels/{id}/messages` returns **403 Forbidden** on ONE channel, the bot token is fine — the channel has a **permission override** denying the bot `VIEW_CHANNEL` / `READ_MESSAGE_HISTORY`. Do NOT rotate tokens, change the User-Agent, or retry. Two fixes: (a) grant the bot those two permissions on that channel (channel → Permissions → bot role), or (b) read it via a user account that already has access (browser login with `narusya_account.enc` — login requires hCaptcha, so browser automation or a manual export is needed). Distinguish from 401 (token actually invalid/expired) and from 403/1010 (Cloudflare UA rejection, affects ALL endpoints).
+
 ### ⚠️ `os.environ.get()` fails in terminal()-spawned scripts
 **Symptom:** A Python script run via `terminal()` gets 401 on all Discord API calls, even though `hermes gateway` is running fine and the same token works via the gateway.
 

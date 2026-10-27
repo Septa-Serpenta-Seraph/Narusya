@@ -190,6 +190,12 @@ later via `session_search`.
   carry an old date in its ID while showing recent "Last Active" — identify
   it by its current Title column in `hermes sessions list` (raise `--limit`
   until the target title appears), never by guessing from the date-prefixed ID.
+- **`hermes sessions list` can hide a known-titled session.** Its default
+  sort/pagination and title truncation can drop a session you know exists —
+  especially one with an old ID but recent activity. When the list doesn't
+  surface it, query `state.db` directly:
+  `SELECT id, title, last_activity_at FROM sessions WHERE title LIKE '%...%'`.
+  The DB is the source of truth for titles; the CLI is a view over it.
 - **`around_message_id` takes internal message ids, not Discord snowflakes.**
   Pass an id from a `session_search` result on that session (e.g. `174722`);
   a Discord snowflake raises `not in session_id`.
