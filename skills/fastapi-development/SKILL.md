@@ -701,6 +701,89 @@ Use Mermaid diagrams in the README for GitHub-native rendering. Three useful typ
 
 Mermaid renders natively on GitHub — no image files needed. Use `style` directives for color coding.
 
+## Cross-Platform Deployment (Desktop & Mobile)
+
+When extending a web app to desktop (Electron) and mobile (Capacitor/Android):
+
+### Desktop App (Electron)
+
+Wrap the backend + frontend in a native desktop shell:
+
+1. **Backend as child process** — spawn uvicorn from the Electron main process, wait for `/health` before creating the window
+2. **Frontend served by backend** — load `http://localhost:PORT` in BrowserWindow (no separate dev server)
+3. **Tray icon** — minimize to tray instead of quitting; right-click menu for show/quit
+4. **SECRET_KEY** — generate random if not set: `crypto.randomBytes(32).toString('hex')`
+5. **Backend path resolution** — use `path.join(__dirname, '..', 'backend')` for the backend directory
+6. **Wait for backend** — poll `/health` with retries (1s interval, 30 attempts) before showing window
+
+### Android App (Capacitor)
+
+Wrap the web frontend in a native Android shell:
+
+1. **Install Capacitor** — `npm install @capacitor/core @capacitor/cli @capacitor/android`
+2. **Init** — `npx cap init "AppName" "com.app.id" --web-dir dist`
+3. **Add Android** — `npx cap add android`
+4. **Sync** — `npm run build && npx cap sync android`
+5. **Build** — use Android Studio or GitHub Actions (no local SDK needed)
+
+### Configurable Server URL (Critical for Mobile)
+
+The frontend must support connecting to a remote server (not just same-origin):
+
+```javascript
+// api.js
+export function getServerUrl() {
+  return localStorage.getItem('app_server_url') || import.meta.env.VITE_API_URL || (window.location.origin || 'http://localhost:8000');
+}
+export function setServerUrl(url) {
+  localStorage.setItem('app_server_url', url.replace(/\/$/, ''));
+}
+export function getWsUrl() {
+  const url = getServerUrl();
+  const wsProtocol = url.startsWith('https') ? 'wss:' : 'ws:';
+  const host = url.replace(/^https?:\/\//, '');
+  return `${wsProtocol}//${host}`;
+}
+```
+
+- **Login screen** should include a "Server Settings" toggle for entering the server URL
+- **Save & reload** after changing server URL (page reload picks up new API_BASE)
+- **WebSocket connections** must use `getWsUrl()`, not `window.location.host`
+- **CORS**: server's `CORS_ORIGINS` must include the mobile app's origin (or use `*` for dev)
+
+### Backend Path Resolution (Critical for Cross-Platform)
+
+When spawning the backend from Electron, the venv paths differ by OS:
+
+- **Linux/macOS**: `.venv/bin/python`, `.venv/bin/uvicorn`
+- **Windows**: `.venv/Scripts/python.exe`, `.venv/Scripts/uvicorn.exe`
+
+Always detect the platform and use the correct path:
+
+```javascript
+const isWindows = process.platform === 'win32';
+const venvDir = path.join(backendDir, '.venv');
+const pythonPath = isWindows
+  ? path.join(venvDir, 'Scripts', 'python.exe')
+  : path.join(venvDir, 'bin', 'python');
+const uvicornPath = isWindows
+  ? path.join(venvDir, 'Scripts', 'uvicorn.exe')
+  : path.join(venvDir, 'bin', 'uvicorn');
+```
+
+Also, processes spawned via SSH on Windows don't persist — use `Start-Process` with `-WindowStyle Hidden` or run directly in the user's desktop session. The backend exits when the SSH session closes.
+
+Always gitignore native build artifacts:
+```
+# Capacitor/Android
+android/app/build/
+android/.gradle/
+android/local.properties
+# Electron
+node_modules/
+dist/
+```
+
 ## Dependencies
 
 ```
