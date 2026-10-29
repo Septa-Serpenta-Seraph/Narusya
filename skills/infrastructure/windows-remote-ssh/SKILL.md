@@ -74,6 +74,31 @@ Key XML elements in saves:
 - `<pawns>` — colonist list (nick, gender, health)
 - Colony name is in the save filename or `<name>` element
 
+## Python / Electron on Windows
+
+### Venv paths
+Windows venvs use `Scripts/`, not `bin/`:
+- Python: `.venv/Scripts/python.exe`
+- Uvicorn: `.venv/Scripts/uvicorn.exe`
+- pip: `.venv/Scripts/pip.exe`
+
+Cross-platform code (Electron, scripts) must branch on `process.platform === 'win32'`.
+
+### Process persistence via SSH
+Processes spawned via SSH (Start-Process, start /b, etc.) exit when the SSH session closes. To run a persistent service:
+- Use `Start-Process -WindowStyle Hidden -PassThru` and verify with a follow-up SSH call
+- Or launch the app directly in the user's desktop session (not via SSH)
+- Foreground uvicorn via SSH works (stays running for the SSH session) but dies on disconnect
+
+### Building Electron apps on Windows via SSH
+- **Frontend must be built first:** `cd frontend && npm run build` — Electron serves `frontend/dist/`
+- **Backend venv must exist:** `cd backend && python -m venv .venv && .venv/Scripts/pip install -r requirements.txt`
+- **Backend needs SECRET_KEY:** Set via env var or `.env` file in backend/ — server refuses to start without it
+- **Tray icon:** If `icon.png` is missing, tray creation fails. Make it graceful (skip if file doesn't exist)
+- **Electron main.js platform branching:** Windows venv uses `Scripts/python.exe` and `Scripts/uvicorn.exe`; Linux/macOS uses `bin/python` and `bin/uvicorn`
+- **Deploying:** `cd electron && npm run build` produces an NSIS `.exe` installer
+- **Surge deployment for static sites:** `surge <dir> <domain.surge.sh>` — instant deploy, no build step
+
 ## Pitfalls
 
 - **Windows path escaping in SSH**: Use double backslashes (`\\`) in PowerShell commands. Single backslashes may be interpreted as escape characters.
