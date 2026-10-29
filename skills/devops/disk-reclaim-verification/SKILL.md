@@ -103,6 +103,40 @@ print(f"{pc*ps/1e9:.2f}GB total, {fl*ps/1e6:.0f}MB reclaimable")
 ```
 A dense DB (freelist ~0) is real data — VACUUM reclaims nothing, so leave it and reclaim elsewhere; only a fat freelist justifies the vacuum (which needs free disk ≥ the DB size to run).
 
+### 9. Orphaned install venvs — check facts.json + leases (verified 2026-10-28)
+
+The install system can leave orphaned venvs behind. Each is ~433M. Proof of orphan status:
+
+```bash
+# 1. Find the active venv
+cat ~/.hermes/installs/*/facts.json | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['packages']['venv']['environment'])"
+
+# 2. List all environments
+ls ~/.hermes/installs/*/environments/
+
+# 3. Check leases for each environment
+ls -la ~/.hermes/installs/*/environments/*/.leases/
+
+# 4. Verify no process is using the candidate
+lsof +D ~/.hermes/installs/.../environments/<candidate>/ 2>/dev/null | head
+ps aux | grep <candidate> | grep -v grep
+```
+
+**Orphaned if:** environment dir exists but is NOT referenced in facts.json, leases are 5+ days stale, no process uses it, no symlinks point to it. Safe to delete. Verify all four conditions before deleting.
+
+### 10. Checkpoint store loose git objects — git gc (verified 2026-10-28)
+
+The checkpoint store accumulates loose git objects with zero commits. 9,563+ objects can reach 267M. Proof and cleanup:
+
+```bash
+cd ~/.hermes/checkpoints/store
+git count-objects -v          # shows loose object count + size
+git gc --aggressive --prune=now  # packs loose objects
+git count-objects -v          # verify: loose count → 0, size-pack → ~90M
+```
+
+A `.gc-pending` file (empty, in the store root) signals gc should run. The store has no commits and no work tree — it's purely a loose object dump. Safe to gc.
+
 ## Boundaries remembered
 - **`mkfs` is on the agent's unconditional blocklist** — the agent cannot format a filesystem even with approval; hand format commands to the human (`sudo parted ... mklabel gpt` + `mkpart` + `sudo mkfs.ext4`), then the agent owns mount/move/symlink.
 - `sudo` needs a password on this box; partition/format steps are human-side.

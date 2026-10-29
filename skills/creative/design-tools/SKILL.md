@@ -23,6 +23,7 @@ Tools for web design: from-scratch design process, ready-to-paste design systems
 | A page styled after Stripe / Linear / Vercel / etc. | popular-web-designs section |
 | A formal DESIGN.md token spec file | design-md section |
 | 2-3 throwaway HTML mockups to compare | sketch section |
+| Deploy a static HTML site (Surge, Cloudflare Pages) | references/static-site-deployment.md |
 
 **Composition:** Use `popular-web-designs` for the visual vocabulary, `claude-design` for the design process, and `design-md` when the output is the token spec file.
 

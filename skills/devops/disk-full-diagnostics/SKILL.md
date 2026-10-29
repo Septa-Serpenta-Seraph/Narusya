@@ -78,7 +78,8 @@ docker system df                       # summary
 ### Hermes-specific targets
 | Target | Command | Notes |
 |--------|---------|-------|
-| state-snapshots | `ls -d ~/.hermes/state-snapshots/*/` then `rm -rf` oldest; keep latest 2 | Each ~440-465M; pre-update state.db backups |
+| Checkpoint store git objects | `cd ~/.hermes/checkpoints/store && git count-objects -v` then `git gc --aggressive --prune=now` | Loose git objects (9,563+) accumulate with zero commits; gc packs them down (267M → 91M). `.gc-pending` file signals gc should run. |
+| Orphaned install venvs | Check `installs/*/facts.json` for active venv path, then `ls installs/*/environments/` — stale leases (5+ days) + no facts.json reference = orphaned. Each ~433M. Verify no process uses it before deleting. |
 | Manual backup tarballs | `ls ~/backups/*.tar.gz` — keep only latest of each type | Check dates; delete older duplicates |
 | HuggingFace cache | `rm -rf ~/.cache/huggingface/hub` | Regenerates on next use; often 500M–2G |
 | User-site-packages overlap | `du -sh ~/.local/lib/python*/site-packages/nvidia ~/.local/lib/python*/site-packages/triton` | If same packages exist in both venv and user-site, user copy may be safe to remove — check `lsof` first |

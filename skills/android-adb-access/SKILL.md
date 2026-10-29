@@ -175,6 +175,8 @@ Auth: `X-Auth-Token: narusya-bridge-2026` header.
 ### HTTP Bridge Pitfalls
 
 - **Toast must run on main thread.** HTTP server runs on a background thread. Use `Handler(Looper.getMainLooper()).post { ... }` to show toasts.
+- **`/notify` auth uses query param, not header.** The bridge rejects `Authorization: Bearer` and `X-Auth-Token` headers. Pass auth as `?token=narusya-bridge-2026` query parameter. POST JSON body `{"title": "...", "message": "..."}`. Response: `{"status": "sent", "title": "..."}`.
+- **DND blocks notification delivery.** The `/notify` endpoint returns success but the notification won't surface if Do Not Disturb is on. Check phone DND state before relying on notifications for time-critical alerts.
 - **Camera permission must be granted at runtime.** Grant via Settings → Apps → Narusya Phone Bridge → Permissions → Camera.
 - **Location returns "no location available"** if GPS is off or no cached location exists. Fix: request a fresh GPS fix with `requestLocationUpdates()` + `CountDownLatch` (10s timeout). See `android-app-build` skill for the pattern.
 - **SMS sending requires SEND_SMS permission** in addition to READ_SMS.
