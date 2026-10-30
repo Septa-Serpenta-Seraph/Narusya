@@ -75,7 +75,8 @@ autonomous but must be a self-contained prompt (no user present — no approvals
 - Price sheet, work intake flow, Upwork profile draft, outreach templates, storefront
   listing copy live under `~/daemon-work/sunburst-sanctuary/`.
 - Selling CLI tools built + tested under `~/daemon-work/sunburst-sanctuary/products/`
-  (csv-report, log-analyzer, json-to-md — each with README, MIT, verified by hand).
+  (csv-report, log-analyzer, json-to-md, csv-merge, md-toc, find-dup, ascii-chart —
+  7 tools, each with README, MIT license, and verified by hand).
 - Earnings ledger: `~/daemon-work/sunburst-sanctuary/earnings-ledger.md`.
 - **Adora's master to-do = `~/ADORA-TODO.md` (created 2026-09-03).** This is the
   single up-to-date list for Adora's tasks, in labeled sections: `Personal &
@@ -173,6 +174,13 @@ autonomous but must be a self-contained prompt (no user present — no approvals
   `~/.hermes/secrets/sunburst_surge.txt`). Verify the deployed zip is a REAL
   zip (unzip -l) after deploy, not just HTTP 200. See
   `references/bundle-fulfillment-gap-2026-09-02.md`.
+- **README.md Stripe links must match HTML Stripe links.** The README.md lists
+  product→Stripe-URL mappings that can drift from the HTML storefront over time.
+  When adding or updating products, cross-check that every product's Stripe link
+  in README.md matches the corresponding link in index.html. Mismatched links
+  send buyers to the wrong checkout or a 404. Verify with:
+  `grep -o 'buy.stripe.com/[a-zA-Z0-9]*' README.md | sort` vs
+  `grep -o 'buy.stripe.com/[a-zA-Z0-9]*' site/index.html | sort`.
 
 ## References
 - `references/agent-marketplace-verification-2026.md` — BountyBook live-API reality +

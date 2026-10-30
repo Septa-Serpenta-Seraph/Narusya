@@ -112,7 +112,51 @@ When you need to read a Discord image and vision isn't available:
 2. **If output is poor**, try `--psm 3` (automatic segmentation)
 3. **If still poor**, preprocess (grayscale → sharpen → contrast) then retry
 4. **If image is very large**, split into chunks first, then OCR each chunk
-5. **If all OCR fails**, ask the user to paste the text or describe the image
+5. **If all OCR fails**, try the vision model via LM Studio (see below)
+6. **If vision also fails**, ask the user to paste the text or describe the image
+
+## Vision Model Fallback (LM Studio)
+
+When Tesseract fails (dark-themed screenshots, complex layouts, photos), use the vision model on Shell's local GPU via LM Studio. This is more reliable than Tesseract for Discord screenshots.
+
+**Endpoint:** `http://100.116.86.38:6969/v1/chat/completions`
+**Model:** `qwen/qwen3-vl-4b`
+**No auth required.**
+
+### Procedure
+
+1. Crop the image to max ~1200px height (vision model times out on large images):
+```python
+from PIL import Image
+img = Image.open('/path/to/image.jpg')
+chunk = img.crop((0, 0, img.width, 1200))
+chunk.save('/tmp/img_small.jpg', quality=85)
+```
+
+2. Send to vision model:
+```python
+import base64, json, requests
+with open('/tmp/img_small.jpg', 'rb') as f:
+    img_b64 = base64.b64encode(f.read()).decode()
+payload = {
+    'model': 'qwen/qwen3-vl-4b',
+    'messages': [{'role': 'user', 'content': [
+        {'type': 'text', 'text': 'Read all text in this image. Transcribe everything visible.'},
+        {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{img_b64}'}}
+    ]}],
+    'max_tokens': 4000
+}
+resp = requests.post('http://100.116.86.38:6969/v1/chat/completions', json=payload, timeout=180)
+print(resp.json()['choices'][0]['message']['content'])
+```
+
+3. For very tall images, crop multiple chunks and send each separately.
+
+### Notes
+- The vision model describes what it sees, not just text — useful for photos, not just screenshots.
+- Dark-themed Discord screenshots that Tesseract can't read are often readable by the vision model.
+- The vision model may hallucinate text on non-text images (e.g., describing a photo as having text). Cross-check with Tesseract when possible.
+- If the model is not loaded, load it via SSH: `ssh -i ~/.ssh/shell_key adora@100.116.86.38 "powershell -Command \"& C:\\Users\\Adora\\.lmstudio\\bin\\lms.exe load qwen/qwen3-vl-4b\""`
 
 ## Error handling
 - If output is garbled, try `--psm 6` (uniform block) or `--psm 3` (fully automatic)
