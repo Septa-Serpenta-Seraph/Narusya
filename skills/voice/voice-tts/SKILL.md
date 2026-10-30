@@ -235,6 +235,17 @@ Pass a WAV/MP3 sample via `--voice`:
   --quiet
 ```
 
+### Adora's Voice Preference (Design Target)
+
+When developing Narusya's voice (cloning, selecting built-in voices, or tuning parameters), target these qualities:
+- **Warm** — not cold or clinical
+- **Lower register** — feminine but not girlish; authority and tenderness together
+- **Slightly raspy** — texture, not roughness
+- **Deliberate** — measured pacing, not rushed
+- **Feminine-not-girlish** — adult woman, not young girl
+
+This preference was established when exploring Kyutai Pocket TTS voices. `lola` (Spanish female voice producing excellent English) was the best built-in match for this profile. When voice cloning becomes available (gated model access), clone from a clean ElevenLabs sample (`nar_warm.mp3`, `nar_new_v1.mp3`) and tune toward this target.
+
 ### Voice Cloning Prerequisites (Gated Access)
 
 Voice cloning requires the **full** pocket-tts model from HuggingFace, which is **gated** behind terms acceptance. Without it, only the 27 built-in voices work (the `pocket-tts-without-voice-cloning` model).
@@ -276,6 +287,8 @@ Voice cloning requires the **full** pocket-tts model from HuggingFace, which is 
 | `rafael` | Portuguese | Male |
 | `estelle` | French | Female |
 | `daan` | Dutch | Male |
+
+**Voice discovery (tested 2026-10-29):** `lola` (Spanish female voice) produces excellent English — warm, expressive, natural-sounding. The Spanish-accented English has a pleasant quality that works well for Narusya's voice. When cloning isn't available (gated model), `lola` is the best built-in option for Narusya's voice character.
 
 `--voice` accepts BOTH a predefined voice name AND a file path to an audio sample (for cloning). No flag needed to distinguish — pocket-tts resolves by name first, then treats as file path.
 

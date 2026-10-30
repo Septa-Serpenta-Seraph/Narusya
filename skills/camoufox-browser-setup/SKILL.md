@@ -174,7 +174,25 @@ For actual image vision, use one of:
 - Browser shuts down after 5 minutes with no active sessions, relaunches on next request
 - Supports VNC URL for visual debugging (returned in health check response)
 
-## Appendix: Playwright Video Recording
+## Reddit Access via Camoufox (Discovered 2026-10-29)
+
+The Camoufox browser may already have an authenticated Reddit session cached from a prior browser login. This bypasses the need for OAuth2 app registration entirely.
+
+**How to check:** Navigate to `https://www.reddit.com/` in Camoufox. If the navbar shows a user avatar (not "Log In"), the session is active. Click the avatar to see which account.
+
+**How to use:**
+1. Create a tab: `POST /tabs` with `{"userId":"narusya","sessionKey":"reddit","url":"https://www.reddit.com/"}`
+2. Navigate, click, type via the Camoufox REST API (`/tabs/:tabId/navigate`, `/click`, `/type`, `/snapshot`)
+3. The session persists across tabs within the same Camoufox instance
+
+**Caveats:**
+- Session can expire (30 min inactivity, 5 min idle). Keep the tab alive during multi-step work.
+- If the session is lost, re-auth requires browser login (Reddit blocks automated login via API).
+- Posting via browser is slower than API but works without OAuth2 setup.
+
+**When to use Camoufox vs OAuth2:**
+- Camoufox: quick posts, reading, one-off interactions, when no OAuth2 app is registered
+- OAuth2 API: bulk operations, scheduled posting, programmatic access, when reliability matters
 
 For recording headless browser walkthrough videos (when Camoufox is not needed), Playwright has built-in video recording:
 

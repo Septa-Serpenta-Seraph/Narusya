@@ -145,6 +145,7 @@ $ADB -s $DEV shell am start -n <package>/<activity>
 - **OnePlus 12 has a high-res screen** — screenshots may be large. Downscale to 512px width before sending to vision model.
 - **ADB wireless debugging requires the phone to be on the same network.** If the phone is on mobile data, ADB won't connect. With Tailscale on both devices, ADB works over Tailscale (use the phone's Tailscale IP instead of LAN IP).
 - **The `adb` binary must be executable** — `chmod +x` after extraction. Python's zipfile extraction doesn't preserve permissions.
+- **ADB binary can be removed during disk cleanup.** If `adb` is not found, reinstall via the setup steps above (download platform-tools to `~/.hermes/cache/scratch/platform-tools/`). The binary is not in the system PATH by default — always use the full path.
 
 ## HTTP Bridge (Persistent Alternative)
 
@@ -230,7 +231,54 @@ The bridge service runs as a foreground service with a persistent notification. 
 - **Auth token:** narusya-bridge-2026
 - **User:** Adora (221767496145960960)
 
-## References
+## Tailscale ADB Connection (Remote Access)
 
-- ADB wireless debugging docs: https://developer.android.com/tools/adb#connect-to-a-device-over-wi-fi
-- Local GPU substrate skill: for vision model setup and the thinking-mode quirk
+When the phone is not on the same LAN (e.g., VM on Tailscale, phone on mobile data), ADB works over Tailscale:
+
+- **Phone Tailscale IP:** 100.120.37.106
+- **Connection port:** varies per session — check the phone's Wireless Debugging screen
+
+### Finding the Port (OCR Technique)
+
+The phone's Wireless Debugging screen shows the IP and port. If you can't read the screen directly, take a screenshot via the HTTP bridge or ask the user to send one, then OCR it:
+
+```bash
+# Screenshot via HTTP bridge (if available)
+curl -s "http://100.120.37.106:8765/screenshot?token=narusya-bridge-2026" -o /tmp/phone_screen.png
+# OCR to extract the port number
+tesseract /tmp/phone_screen.png stdout 2>/dev/null | grep -i "port\|100\.120"
+```
+
+The OCR output will show something like `100.120.37.106:45895` — the number after the colon is the connection port.
+
+### Connect via Tailscale
+
+```bash
+ADB=/home/adora/.hermes/cache/scratch/platform-tools/adb
+$ADB connect 100.120.37.106:<port>
+$ADB devices  # should show "device" not "offline"
+```
+
+### Health Data Access
+
+Health tracker apps store data in app-private directories (`/data/data/`) which require root. However, both Visible and FatigueSense export data to `/sdcard/Download/`:
+
+- **Visible:** CSV files named `Visible_Data_Export_YYYY-MM-DD.csv` — columns: observation_date, tracker_name, tracker_category, observation_value. Contains HRV, RHR, sleep, stability score, 40+ symptom trackers, notes.
+- **FatigueSense:** ZIP files named `fatiguesense_data_YYYY-MM-DD.zip` — contains 11 CSVs: summary, PEM episodes, daily overview, daily metrics, check-ins, sleep, heart/HRV, activity, energy budget, strain/recovery, notes.
+
+Pull these via ADB:
+```bash
+ADB=/home/adora/.hermes/cache/scratch/platform-tools/adb
+DEV=100.120.37.106:<port>
+$ADB -s $DEV pull /sdcard/Download/Visible_Data_Export_*.csv /home/adora/phone-data/visible/
+$ADB -s $DEV pull /sdcard/Download/fatiguesense_data_*.zip /home/adora/phone-data/fatiguesense/
+```
+
+FatigueSense ZIPs extract with Python's zipfile module (no unzip binary needed on VM).
+
+### Pitfalls (Tailscale ADB)
+
+- **ADB device shows "offline" after connect:** The port may have changed. Re-check the phone's Wireless Debugging screen for the current port.
+- **Port changes per session.** Wireless debugging generates a new port each time it's toggled. Always verify with `adb devices` after connecting.
+- **App-private data requires root.** `/data/data/` is not accessible without root. Use exported data from `/sdcard/Download/` instead.
+- **Health data is only as recent as the last export.** Apps don't auto-export. Ask the user to export fresh data before pulling.

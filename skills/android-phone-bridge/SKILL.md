@@ -79,7 +79,7 @@ Returns JSON with `entries` array: `{name, path, is_dir, size}`.
 
 **Limitations:**
 - Only `/sdcard` is accessible — app-private data (`/data/data/`, `/sdcard/Android/data/`) is NOT exposed
-- Only **directory listing** — there is no file read/download endpoint. `/files` returns `entries` array for directories; file paths return empty entries.
+- **Directory listing AND file reading.** `/files` returns `entries` array for directories; for file paths, it returns file content in a `content` field (base64 for binary, raw text for text files). Use this to read exported data (CSV, JSON, etc.) from `/sdcard/Download` or `/sdcard/Documents`.
 - Health tracker apps (Visible, FatigueSense) are on Adora's MAIN phone, not this Tailscale phone. To access their data, export to CSV/JSON on the main phone and transfer to this phone's `/sdcard/Download`.
 - `/screenshot` requires MediaProjection consent (user must tap "Start now" on the phone).
 - `/location` returns "no location available" if GPS is off or no cached location exists.
@@ -92,4 +92,4 @@ Returns JSON with `entries` array: `{name, path, is_dir, size}`.
 - **Phone must be on Tailscale.** If the phone's Tailscale connection drops, the bridge is unreachable.
 - **Foreground service can be killed by Android battery optimization.** If the bridge stops responding, the app may need to be restarted on the phone. Auto-starts on boot.
 - **Auth is query-param only.** `Authorization: Bearer` header is rejected. Use `?token=narusya-bridge-2026`.
-- **No file read endpoint.** `/files` only lists directories. Cannot download or read file contents through the bridge.
+- **`/files` reads files too, not just directories.** When given a file path, it returns file content in a `content` field. Use this to read exported health data (CSV/JSON) from `/sdcard/Download`. For binary files, content is base64-encoded.

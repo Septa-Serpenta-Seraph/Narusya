@@ -26,6 +26,28 @@ packed **flat** into `products/<name>.zip` (filenames at archive root, no enclos
 after a bugfix so the shipped zips carry the fix, then verify the fix bytes are inside**
 (the bugfix landed in source but the old zip still had the bug until rebuilt).
 
+**`.gitignore` gotcha:** The repo's `.gitignore` typically contains `*.zip` to keep
+build artifacts out of git. This blocks `site/dl/*.zip` from being committed and
+deployed. Fix: add a negation exception BEFORE deploying:
+```
+*.zip
+!site/dl/*.zip
+```
+Without this, zips exist locally but never reach the remote or Surge — the download
+links return 404 in production even though they work on the local filesystem.
+
+**Zip binary fallback:** `zip` may not be installed on the VM. Use Python's `zipfile`
+module instead:
+```python
+import zipfile, os
+with zipfile.ZipFile('output.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
+    for root, dirs, files in os.walk('products/my-tool'):
+        for f in files:
+            full = os.path.join(root, f)
+            zf.write(full, os.path.relpath(full, 'products/my-tool'))
+```
+Verify the result with `unzip -l output.zip` or `python3 -c "import zipfile; print(zipfile.ZipFile('output.zip').namelist())"`.
+
 ## Verifying a deploy end-to-end
 ```bash
 for f in csv-report log-analyzer json-to-md csv-merge md-toc; do
