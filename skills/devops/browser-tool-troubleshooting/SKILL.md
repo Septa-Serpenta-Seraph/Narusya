@@ -7,7 +7,7 @@ tags: [browser, troubleshooting, devops]
 # Browser Tool Troubleshooting Guide
 
 **Created:** 2026-03-20
-**Last Updated:** 2026-04-03
+**Last Updated:** 2026-10-30
 
 ---
 
@@ -167,6 +167,16 @@ When testing browser automation on a new model:
 - Message input is a `div` with `contenteditable=true`, not a `textarea`
 - User sessions persist via cookies; periodic re-login may be needed
 
+## Reddit-Specific Notes
+
+- Reddit's new UI uses React `contenteditable` divs for comment input. Setting `innerText` via JS does NOT update React's internal state, so the Comment button fires but nothing submits.
+- `browser_type` returns `element_not_actionable` for Reddit's contenteditable divs. Use `document.execCommand('insertText')` instead, but even this may not trigger React state updates reliably.
+- Reddit's API (`/api/comment`) with session cookies returns `USER_REQUIRED` even when logged in via browser. OAuth app credentials are required for API posting.
+- New accounts (< 50 karma, < 30 days) have comments silently dropped by Reddit's spam filters. Comments appear to post but never show up in search or profile.
+- The "Comment" button exists in the DOM but clicking it without React state updated does nothing.
+- **Workaround for posting:** Use Reddit OAuth (create app at reddit.com/prefs/apps) with praw or direct API calls. Browser automation cannot reliably post comments to Reddit's React UI.
+- **Workaround for reading:** Browser snapshot + search works fine for reading posts and comments.
+
 ---
 
 ## Alternative Approaches
@@ -181,4 +191,4 @@ When browser tools fail:
 ---
 
 **Maintainer:** Narusya
-**Last Updated:** 2026-04-03
+**Last Updated:** 2026-10-30
