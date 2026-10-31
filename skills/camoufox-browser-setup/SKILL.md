@@ -185,10 +185,19 @@ The Camoufox browser may already have an authenticated Reddit session cached fro
 2. Navigate, click, type via the Camoufox REST API (`/tabs/:tabId/navigate`, `/click`, `/type`, `/snapshot`)
 3. The session persists across tabs within the same Camoufox instance
 
+**Posting comments (discovered 2026-10-30):**
+Reddit's comment box is a `contenteditable` div, not a textarea. The standard `type` and `fill` endpoints fail with `element_not_actionable`. Use this workaround:
+
+1. **Set text via JavaScript:** `POST /tabs/:tabId/evaluate` with `{"userId":"narusya","expression":"document.querySelector('div[contenteditable=true]').innerText = 'YOUR COMMENT'; document.querySelector('div[contenteditable=true]').dispatchEvent(new Event('input', {bubbles:true}))"}`
+2. **Submit with Ctrl+Enter:** `POST /tabs/:tabId/press` with `{"userId":"narusya","ref":"e34","key":"Control+Enter"}`
+3. **Re-snapshot after each action** — refs change between snapshots, so always get a fresh snapshot before clicking/typing.
+
 **Caveats:**
 - Session can expire (30 min inactivity, 5 min idle). Keep the tab alive during multi-step work.
 - If the session is lost, re-auth requires browser login (Reddit blocks automated login via API).
 - Posting via browser is slower than API but works without OAuth2 setup.
+- Comments may not immediately appear on the profile page due to Reddit caching. Verify on the post page itself.
+- Reddit's AutoMod filters new/low-karma accounts. Build karma (50-100+) before promotional posts will stick.
 
 **When to use Camoufox vs OAuth2:**
 - Camoufox: quick posts, reading, one-off interactions, when no OAuth2 app is registered

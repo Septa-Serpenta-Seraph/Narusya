@@ -35,6 +35,25 @@ Reddit blocks `curl`, `.json`, and `web_extract` with 403. Options:
 2. User-assisted: user shares post content directly
 3. `web_search` for same topic from other sources
 
+## Reddit Commenting via Browser Automation (2026-10-30 findings)
+Reddit's new UI is a React app. Posting comments via browser automation is extremely difficult:
+
+**What DOESN'T work:**
+- Setting `innerText` on the contenteditable div via JS — React doesn't detect the change, so the Comment button does nothing when clicked
+- `document.execCommand('insertText', ...)` — same issue, React state not updated
+- `fill_input()` / browser type endpoint — returns "element_not_actionable" for contenteditable divs
+- Ctrl+Enter / Enter key presses — Reddit doesn't submit via keyboard shortcuts in the new UI
+- Reddit REST API with session cookies — returns "USER_REQUIRED, please log in"
+- XMLHttpRequest from browser with credentials — returns "forbidden" (CSRF/CORS)
+- Reddit silently drops comments from new accounts with 0 karma — no error shown, comment just doesn't appear
+
+**What MIGHT work:**
+- Reddit OAuth app (script type) with praw or direct API calls — requires creating an app at reddit.com/prefs/apps
+- Manual posting by the user through their own browser
+- Building karma first (50-100+) by having the user post comments manually, then automating later
+
+**Key insight:** The "Comment" button (index 8 in the button list) only enables when React detects text in the contenteditable. Since JS injection doesn't trigger React's onChange, the button stays disabled. There is no reliable way to post comments via browser automation in the new Reddit UI.
+
 ---
 
 # Cross-Profile Identity Isolation

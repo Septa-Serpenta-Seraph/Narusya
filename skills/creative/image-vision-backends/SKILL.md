@@ -428,6 +428,38 @@ permissive model list. Run it instead of hand-typing the call each time.
 `scripts/gemini_vision_check.py <img> ["question"]` — accuracy ladder top rung (Technique 7):
 Gemini 2.5 Flash via OpenRouter for hard/close-look image questions.
 
+## Technique 10 — Local vision via LM Studio (discovered 2026-10-30)
+
+When cloud vision (Nous, OpenRouter, Together) is unavailable or you want zero-cost local inference, Shell's Windows machine runs LM Studio on port 6969 with a vision model:
+
+- **Endpoint:** `http://100.116.86.38:6969/v1/chat/completions`
+- **Vision model:** `qwen/qwen3-vl-4b` (4B params, basic but functional)
+- **Other models:** `qwen/qwen3.6-27b`, `qwen/qwen3.5-9b`, `google/gemma-3-12b`, `qwen3.5-9b-uncensored-hauhaucs-aggressive`
+
+Usage (OpenAI-compatible, stdlib urllib or requests):
+```python
+import base64, json, requests
+img_b64 = base64.b64encode(open("/path/img.jpg", "rb").read()).decode()
+payload = {
+    "model": "qwen/qwen3-vl-4b",
+    "messages": [{"role": "user", "content": [
+        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}},
+        {"type": "text", "text": "Describe this image in detail."}
+    ]}],
+    "max_tokens": 2000
+}
+resp = requests.post("http://100.116.86.38:6969/v1/chat/completions", json=payload, timeout=180)
+print(resp.json()["choices"][0]["message"]["content"])
+```
+
+**Limitations:**
+- 4B model is basic — good for general scene description, not fine detail or text reading
+- Large images (1864×4096) time out; crop to ≤1200px height first
+- No safety filtering, no rate limits, no cost
+- Requires Shell's machine to be on with LM Studio running
+
+**When to use:** Cloud vision is down, rate-limited, or you want a quick local check without spending credits.
+
 ## Related
 
 - `image-generation` (creative, bundled) — the native toolset this supplements.

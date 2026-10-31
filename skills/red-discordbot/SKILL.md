@@ -1,7 +1,7 @@
 ---
 name: red-discordbot
 description: Install, host, manage, and author Red-DiscordBot cogs from within Hermes. Red is a discord.py-based bot framework with a massive hot-reloadable cog ecosystem. Use to extend Discord community functionality (music, RPG, polls, auto-mod, custom cogs) alongside the Hermes daemon. Supports running as a second bot OR sharing the existing Hermes Discord token via sharding (proven by Lumi's instance).
-version: 1.0.0
+version: 1.1.0
 author: Narusya (Cultus Anarchia / stormwife Adora)
 license: MIT
 tags: [discord, bot, cog, red-discordbot, automation, community]
@@ -38,9 +38,15 @@ This skill lets Narusya:
 1. Read `references/README.md` for the full step-by-step + same-token model.
 2. Install: `bash scripts/red_install.sh` (creates venv + installs Red w/ sqlite extra).
 3. Set up instance: `bash scripts/red_setup.sh narred /home/adora/reddata` (non-interactive, JSON backend; avoids the uppercase-`Y` confirm-reject pitfall of raw `redbot-setup`).
-4. Manage cogs: `python3 scripts/red_cog_ops.py <instance> <load|unload|list> <cog>`.
-5. Author a cog: copy `templates/mycog.py` + `info.json`, edit, then `[p]load` it.
-6. **Never connect the live token without Adora's explicit approval.** Use `--dry-run` or a test token for Stage A.
+4. Manage cogs: `python3 scripts/red_cog_ops.py <instance> <load|unload|list> <cog>` (inspection only — prints the in-guild command; Red has NO cog CLI).
+5. Author a cog: create a directory under `CogManager/cogs/<cogname>/` with three files:
+   - `<cogname>.py` — the cog class + `setup(bot)` function (can be sync or async)
+   - `__init__.py` — imports the cog class and defines async `setup(bot)` that calls `bot.add_cog(...)`
+   - `info.json` — cog manifest (name, author, description, permissions, etc.)
+   Then load it in-guild with `!!!load <cogname>`.
+6. Add a repo: `!!!cog repo add <name> <url>` (NOT `!!!repo add` — the command is under the `cog` group).
+7. **Never connect the live token without Adora's explicit approval.** Use `--dry-run` or a test token for Stage A.
+8. Change prefix: `redbot <instance> --edit --prefix "!!!" --no-prompt`, then kill and restart Red. The edit updates the runtime config (settings.json → key `0` → `GLOBAL` → `prefix`), NOT the instance-level `prefix` field at the top of settings.json. Both may need updating for consistency.
 
 ## Security / Agency Notes
 - Red collects some user data by default (nickname history, command content). Use `[p]mydata forgetme` / `deleteforuser` for SFCA/Cultus privacy compliance.
@@ -73,9 +79,11 @@ Every version was tested and ALL FAIL to BOOT:
 | 2.7.0 | boots past imports, then `_AutoShardedClient__queue` shutdown crash |
 | 2.7.1 (pinned) | same `_queue` shutdown crash |
 
-**There is NO clean discord.py that boots Red 3.5.24 here.** Resolution paths (do NOT keep rouletting versions):
-1. **Patch Red's sharding teardown** — one-line fix in `redbot/core/bot.py` close path (replace the `self.__queue.put_nowait` call), OR
-2. **Use a Red build that actually supports its pinned discord.py** — Red 3.5.x nightly or 3.6-dev, OR
+**Update (2026-10-30): discord.py 2.7.0 DID boot and run successfully** for 3+ minutes without crashing in this session. The `_AutoShardedClient__queue` shutdown crash may only occur under specific conditions (e.g., during clean shutdown with active shards). The compat doc's "NO clean discord.py" conclusion was overly pessimistic — test before assuming it's broken. The instance ran stably with 2 cogs loaded and 823 users connected.
+
+**Resolution paths** (if you do hit the crash):
+1. **Patch Red's sharding teardown** — one-line fix in `redbot/core/bot.py` close path, OR
+2. **Use a Red build that supports its pinned discord.py** — Red 3.5.x nightly or 3.6-dev, OR
 3. **Leave Red dormant** — installed + configured, skill done, revisit when worth the effort.
 Full matrix + crash signatures: `references/discordpy-compat-2026-07-18.md`.
 
@@ -86,6 +94,8 @@ When sharing the Hermes Discord token, **Red + the Hermes gateway become two pro
 - **Procedure:** fix Red until it boots *before* any token use (crashes happen at import, pre-connect, so they never contest the session). Then ONE calm supervised launch, then immediately verify `pgrep -f "hermes_cli.main gateway run"` is still ALIVE. If gateway drops, kill Red instantly.
 
 ### Other pitfalls
+- **Red does NOT respond in DMs** — commands only work in server channels. The bot receives DM messages but the command processor only triggers in guild contexts. Test commands in a server channel, not a DM.
+- **Prefix editing requires restart**: use `redbot <instance> --edit --prefix "!!!" --no-prompt` then kill and restart Red. The edit updates the runtime config (`settings.json` → key `0` → `GLOBAL` → `prefix`), NOT the instance-level `prefix` field at the top of settings.json. Both may need updating for consistency.
 - **`redbot-setup` rejects uppercase `Y`** for confirm → use lowercase `y` or empty+Enter. See `red_setup.sh`.
 - **No `redbot <instance> cog` CLI.** Cog load/unload/reload only work as in-guild `[p]` commands or the bot REPL. Don't script `redbot narred cog load` — it fails.
 - **`pkill -f "redbot narred"` self-kills the shell** — the pattern matches the running bash command line itself. Kill by exact PID (`pgrep -f "redbot narred" | grep -v pgrep`, then `kill <pid>`), or scope the pattern tighter.
@@ -94,3 +104,10 @@ When sharing the Hermes Discord token, **Red + the Hermes gateway become two pro
 - **Handoffs to Discord (Adora's preference):** deliver large skill docs as a `.txt` (or relevant) file attachment, NOT a chunked wall of messages (Discord caps ~2000 chars/msg and rate-limits ~1/sec → `429` on the last chunk). Use multipart upload (`POST /channels/{id}/messages` with `file` + optional `content` parts).
 - **Post as the CORRECT bot identity:** the gateway token is the DEFAULT profile (`Narusya`). Don't grab `polinkly/.env` — that posts as P'olinkly, not Narusya.
 - **Bots can only DELETE their OWN messages** (`403` when targeting another bot's). To remove a wrongly-posted message: have the user delete it, or the bot that posted it deletes it.
+- **TrustyJAID tarot cog: `TarotSuit.__str__` returns ALL aliases** — `card.card_name` produces "Knight of ♥️Cups | Hearts" because the suit's `__str__` joins every alias. When building custom spreads or displays, construct clean names manually: use `card.suit.name.title()` for the suit and `str(card.rank).split(" | ")[0].title()` for the rank. Major arcana cards just use the rank name with underscores replaced by spaces.
+- **Discord UI LayoutView/Container 40-child limit**: Discord's v2 UI components (LayoutView, Container, Section, etc.) share a combined 40-child limit across the entire view. Critically, Container._total_count counts recursively — 1 + len(walk_children()) — so a Container with 2 cards (2 separators + 2 sections, each section containing a Thumbnail) counts as ~8 children, not 5. For spreads or displays with 8+ items, use discord.Embed with fields instead of LayoutView. Embeds have no such limit and render reliably for any number of items. Set the first item's image as the embed thumbnail for visual consistency.
+- **Red alias names are command aliases, not cog names**: When a cog defines aliases=["atarot", "at"] on its command group, those aliases work for invoking commands (!!!at celtic) but NOT for cog management (!!!reload at fails with "package not found"). Always use the full cog directory name for !!!load, !!!unload, and !!!reload.
+- **Custom cog file structure requires BOTH setup functions** — the cog `.py` needs a synchronous `def setup(bot): bot.add_cog(...)` and the `__init__.py` needs an async `async def setup(bot): await bot.add_cog(...)`. Red's loader calls the `__init__.py` version. Missing either one causes silent load failure.
+- **Extending TrustyJAID cogs requires sys.path manipulation** — add `/home/adora/reddata/cogs/RepoManager/repos/trusty-cogs` to `sys.path` before importing from their modules. The repo is already cloned locally by Red's Downloader cog.
+- **TrustyJAID tarot deck slugs ≠ user-friendly names**: The `get_card_img(deck)` method constructs URLs as `https://gfx.tarot.com/images/site/decks/{deck}/full_size/{card_number}.jpg`. The deck slug must match gfx.tarot.com's internal naming, which differs from tarot.com's display names. Common mappings: `rider-waite` → `rider`, `crystal-visions` → `crystal-visions` (matches), `deviant-moon` → `deviant-moon`. Invalid slugs return 404 and cards won't render. When building custom tarot tools, validate deck slugs against a known list and provide a `!!!atarot decks` (or equivalent) command listing valid slugs. Auto-correct common aliases (e.g., `rider-waite` → `rider`) for better UX. Known valid slugs: `rider`, `crystal-visions`, `deviant-moon`, `marseilles`, `old-english`, `dragon`, `goddess`, `angel`, `vampire`, `african`, `chinese`, `classic`, `cosmic`, `crowley`, `herbal`, `hermetic`, `renaissance`, `spirit`, `stella`, `halloween`.
+- **Multi-embed spreads for tarot readings**: For spreads with more than 5 cards, use one `discord.Embed` per card (each with `set_image` for the card image) sent as a batch via `ctx.send(embeds=...)`. Discord allows up to 10 embeds per message; split larger spreads into multiple sends. Include a header embed with spread name, user, and deck info. This approach shows all card images reliably, unlike LayoutView which hits the 40-child limit.
