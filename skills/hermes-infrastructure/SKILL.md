@@ -12,6 +12,9 @@ triggers:
   - credits low
   - provider switch
   - free model probe
+  - smart approval
+  - command approval
+  - approvals.mode
 ---
 
 # Hermes Infrastructure
@@ -42,6 +45,7 @@ Diagnose, recover, and maintain Hermes Agent infrastructure.
 20. [Discord Typing Indicator — Persistent / Stuck](#20-discord-typing-indicator--persistent--stuck) — see `references/discord-typing-indicator.md` for full technical deep-dive
 21. [CA Certificate Vulnerability Check](#21-ca-certificate-vulnerability-check)
 22. [Embed Daemon Deduplication (Qdrant Plugin)](#22-embed-daemon-deduplication-qdrant-plugin)
+23. [Smart Approval Mode](#23-smart-approval-mode-command-approval)
 
 ---
 
@@ -825,10 +829,53 @@ This was verified on Shell (Windows 10 Pro 24H2): the Windows trust store had ze
 
 ---
 
-## 22. Embed Daemon Deduplication (Qdrant Plugin)
+## 23. Smart Approval Mode (Command Approval)
 
-### Symptom
-Multiple `embed_fastembed_local.py` processes running simultaneously, each loading the fastembed model (~220MB). Memory exhaustion on VMs with limited RAM.
+### Overview
+Hermes has three approval modes for shell commands:
+- `smart` (recommended): auxiliary LLM assesses commands, auto-approves low-risk, denies high-risk, escalates uncertain
+- `manual`: always prompts (default)
+- `off`: bypasses all approval (YOLO mode, not recommended)
+
+### Config
+```yaml
+approvals:
+  mode: smart          # manual | smart | off
+  provider: auto       # auto (inherits main) or specific provider
+  model: ''            # empty = inherits main model; set explicitly for speed
+  timeout: 30          # seconds for LLM assessment
+```
+
+### What happens when the approval model goes down
+The smart approval code catches all exceptions and returns `"escalate"`. This falls back to manual prompting — the user gets asked. No commands get auto-approved, but nothing breaks. Safe degradation.
+
+### Model selection guidance
+- `auto` inherits the main model (often large/slow for a gate that runs on every flagged command)
+- Prefer a smaller, faster model for approval (e.g., minimax/minimax-m3 via openrouter)
+- Local models work but need the provider running (LM Studio on Shell)
+- The approval model must return a single word (APPROVE/DENY/ESCALATE) — small models handle this well
+
+### Switching modes
+```bash
+hermes config set approvals.mode smart
+# Restart session for it to take effect (read once at startup)
+```
+
+### Per-invocation bypass
+```bash
+hermes --yolo                    # skip all approvals for one run
+export HERMES_YOLO_MODE=1       # env var alternative
+```
+
+### Pitfalls
+- Config is read once at startup — changing mid-session has no effect
+- The `approvals` key is plural in config but `approval` in some CLI contexts
+- Smart approval uses `call_llm(task="approval")` which routes through the auxiliary client chain
+- Empty responses (reasoning models spending all tokens on hidden reasoning) escalate rather than approve
+
+---
+
+## 22. Embed Daemon Deduplication (Qdrant Plugin)
 
 ### Root Cause
 The Qdrant plugin (`~/.hermes/plugins/qdrant/__init__.py`) creates a new `_LocalEmbedder` (which spawns a daemon) per `_EmbeddingClient` instance. Multiple providers are created per session (availability probe + initialize), each spawning its own daemon.

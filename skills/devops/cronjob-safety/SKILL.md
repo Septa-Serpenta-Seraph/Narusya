@@ -285,3 +285,17 @@ agent hand-rolled a workaround by reading another profile's secrets.
 
 See `references/cross-profile-credential-leak-2026-09-02.md` for the full
 forensic trace and the detection recipe.
+
+## Cron Context Awareness (discovered 2026-10-31)
+
+Autonomous cron jobs that modify project files (websites, documents, configs) must check recent conversation context before making changes. A cron that runs while the user is actively discussing a pivot (e.g., "Texas is off the table") can make changes that contradict the user's current direction.
+
+**Rule:** Add a "Context Check (DO THIS FIRST)" section to the cron prompt that instructs the agent to:
+1. Check what the user and agent have been discussing in the current session
+2. If there's an active topic, pivot, or decision, respect that context
+3. Do not revert or contradict recent decisions
+4. When in doubt, make only safe, non-destructive changes and log what was done
+
+**Implementation:** Use `session_search` or read `~/.hermes/sessions/` to find the latest conversation. If context cannot be determined, default to conservative changes only.
+
+**Root cause:** A cron job ran autonomously and fixed stale references that the user had already addressed in conversation, and also discovered additional stale references the user hadn't caught. The work was useful but could have contradicted the user's intent if they had changed their mind about something.

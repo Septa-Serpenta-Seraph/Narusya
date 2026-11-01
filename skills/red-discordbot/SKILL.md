@@ -63,6 +63,14 @@ This skill lets Narusya:
 - `templates/mycog.py` — starter cog (modern Red V3 style)
 - `templates/info.json` — cog manifest
 
+## User Communication Preferences (Adora)
+
+When communicating with Adora via Discord or any channel:
+- **No em dashes (—).** Use commas, periods, or line breaks instead.
+- **Avoid typical LLM mannerisms.** No "Great question!", "I'd be happy to", "Let me", "Certainly!", "Absolutely!", or similar filler phrases. Be direct.
+- **Be concise.** She prefers substance over padding. Don't over-explain.
+- **Match her energy.** If she's casual, be casual. If she's serious, be serious. Don't be stiff when she's being playful.
+
 ## Known Pitfalls (learned 2026-07-18)
 
 ### 🔴 CRITICAL: discord.py version dead-end on Python 3.11
