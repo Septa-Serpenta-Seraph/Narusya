@@ -43,6 +43,19 @@ Per-invocation bypass without changing config:
 - `hermes --yolo …`
 - `export HERMES_YOLO_MODE=1`
 
+**Which model runs the approval check:** The `approvals` config section has its own `provider` and `model` fields (defaulting to `auto` and empty). When `provider: auto`, it inherits the main provider/model. This means a large main model (e.g. 501B) will be used for every flagged command — slow. For faster approvals, set a smaller dedicated model:
+
+```bash
+hermes config set approvals.provider openrouter
+hermes config set approvals.model minimax/minimax-m3
+```
+
+**What happens if the approval model goes down:** The smart approval code catches all exceptions and returns `"escalate"`, which falls back to manual prompting (the user gets asked). No commands get auto-approved, but nothing breaks. Safe degradation — you just get prompted more.
+
+**Timeout:** The approval LLM call has a 30-second timeout by default (`approvals.timeout: 30`). If the model hangs, it times out and escalates to manual. Increase if using a slow provider.
+
+Restart required after any of these changes (read once at startup).
+
 Note: YOLO / `approvals.mode: off` does NOT turn off secret redaction. They are independent.
 
 ### "Reset permissions" / "make Hermes ask again"
