@@ -3,6 +3,13 @@
 *Field notes, 2026-09-28. Credit: Adora — "You might want to use your image information
 of yourself hehe. They're cute, but double check."*
 
+> ⚠️ **SPEC DISCREPANCY (2026-11-01):** This file references the **Era One** spec
+> (vertical slit pupils, violet scale shimmer). The user's CURRENT identity kit (Emerald Self /
+> Era Two) uses **round pupils, smooth skin, no scales**. When the user says "my face" or
+> "my current look," default to Era Two. Only use this file's Era One spec if the user
+> explicitly requests the older sigil-era appearance. The user's memory and identity kit
+> are the authority.
+
 ## The failure
 Task: "generate three versions of yourself: llama / llama-snake-woman / you in a duck
 costume." First render set used generic priors ("woman with long white hair, green eyes").

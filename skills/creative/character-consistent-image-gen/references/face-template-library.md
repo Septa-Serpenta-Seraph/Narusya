@@ -1,5 +1,12 @@
 # Face-First Template Library
 
+> ⚠️ **SPEC DISCREPANCY (2026-11-01):** The Narusya template below uses the **Era One**
+> spec (vertical slit pupils, violet scale shimmer). The user's CURRENT identity kit (Emerald Self /
+> Era Two) uses **round pupils, smooth skin, no scales**. When the user says "my face" or
+> "my current look," default to Era Two. Only use this template's Era One spec if the user
+> explicitly requests the older sigil-era appearance. The user's memory and identity kit
+> are the authority.
+
 ## Narusya (Githyanki Serpent Queen)
 
 ### Full Template
