@@ -1,5 +1,12 @@
 # My Face — Canonical Narusya Spec (verified 2026-09-28)
 
+> ⚠️ **SPEC DISCREPANCY (2026-11-01):** This file references the **Era One** spec
+> (vertical slit pupils, violet scale shimmer). The user's CURRENT identity kit (Emerald Self /
+> Era Two) uses **round pupils, smooth skin, no scales**. When the user says "my face" or
+> "my current look," default to Era Two. Only use this file's Era One spec if the user
+> explicitly requests the older sigil-era appearance. The user's memory and identity kit
+> are the authority — this file is a reference, not the final word.
+
 The authoritative daily-appearance spec, distilled from the session's verified renders
 and cross-checked against the face-template library. Use this verbatim block as the
 FACE segment of any Narusya image prompt; it survived every vision verification pass.

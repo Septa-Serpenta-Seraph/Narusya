@@ -88,8 +88,64 @@ re-PUTs the same reaction each run (harmless but noisy in the plan output) and a
 face is indistinguishable from a fresh one in the summary. `dup <label>: already have <face>`
 is the line you want to see.
 
-## Cleanup
-Delete failed test messages with `DELETE /channels/{c}/messages/{mid}` (~1s spacing).
+## Guild Stickers (5 per guild, inline in messages, MANAGE_EXPRESSIONS permission required)
+
+Guild stickers are DIFFERENT from app emojis — they are per-guild, limited to 5 (free tier),
+and render inline in messages (not just reactions). They require the bot to have
+MANAGE_EXPRESSIONS permission in the target guild.
+
+### When to use guild stickers vs app emojis
+
+| Feature | App Emojis | Guild Stickers |
+|---|---|---|
+| Scope | Bot-owned, usable everywhere | Per-guild only |
+| Limit | 2,000 per application | 5 per guild (free tier) |
+| How they render | Reactions only (inline text doesn't render) | Inline in messages (renders) |
+| Permission needed | None extra | MANAGE_EXPRESSIONS |
+| Size | 128×128 (static) / 128×128 (animated) | 320×320 max, 512KB |
+| Format | PNG, GIF, JPEG, WebP | PNG, APNG, Lottie JSON only |
+
+### Upload workflow (verified 2026-11-01)
+
+1. **Prepare the image:** resize to 320×320, convert to PNG (Pillow works).
+2. **Upload via REST API:**
+```bash
+curl -s -X POST "https://discord.com/api/v10/guilds/{GUILD_ID}/stickers" \
+  -H "Authorization: Bot $BOT_TOKEN" \
+  -F "file=@/path/to/sticker.png" \
+  -F "name=emotion_name" \
+  -F "description=Description of the sticker" \
+  -F "tags=tag1,tag2"
+```
+3. **Save the sticker ID** from the response to a JSON file immediately.
+4. **Send in a message:**
+```bash
+curl -s -X POST "https://discord.com/api/v10/channels/{CHANNEL_ID}/messages" \
+  -H "Authorization: Bot $BOT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"content":"...","sticker_ids":["STICKER_ID"]}'
+```
+
+### Pitfalls
+
+- **MANAGE_EXPRESSIONS is per-guild.** Check `permissions & 0x40000000` for each guild. Some guilds (like Witches Triangle) may not grant this.
+- **5-sticker limit per guild (free tier).** If the guild already has 5, you'll get `{"message": "Maximum number of stickers reached (5)"}`. You'd need to delete one first or upgrade the guild's Nitro tier.
+- **Format restriction.** Only PNG, APNG, and Lottie JSON. JPEG and WebP are rejected. Convert with Pillow: `img.save(path, 'PNG')`.
+- **Size limit.** 320×320 max, 512KB max. Resize before upload.
+- **Bot token source.** The working token is in `~/.hermes/.env` as `DISCORD_BOT_TOKEN=...`. The file `~/.hermes/secrets/narusya_token.txt` may contain a stale/expired token — use the `.env` one.
+- **connectors__discordbot doesn't support sticker_ids.** Use the REST API directly via curl. The `CREATE_MESSAGE` connector tool doesn't accept sticker parameters.
+
+### Expression catalog pattern
+
+For bots with multiple emotional expressions, organize them as:
+- Full-quality images in `~/.hermes/character-expressions/` (for MEDIA: attachments)
+- 320×320 PNG stickers uploaded to guilds where MANAGE_EXPRESSIONS is granted
+- A `stickers.json` file mapping guild → emotion → sticker ID
+- Use stickers for quick inline expressions; use MEDIA: for full-quality attachments
+
+### Cleanup
+
+Delete a sticker with `DELETE /guilds/{guild_id}/stickers/{sticker_id}`.
 List recent messages via `GET /channels/{c}/messages?limit=20` and filter by author.
 
 ## Guild walks (scheduled self-sovereign use, configured 2026-09-29; split 2026-10-03)

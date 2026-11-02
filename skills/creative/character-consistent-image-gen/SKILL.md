@@ -45,7 +45,7 @@ A close-up portrait of [character]. Their face is the most important part, descr
 [THEN: mood, lighting, setting, style]
 ```
 
-### Example (Narusya)
+### Example (Narusya) — ERA ONE SPEC (stale for current identity)
 
 ```
 A close-up portrait of a githyanki woman. Her face is the most important part:
@@ -58,6 +58,16 @@ Long twisted gold snake earrings dangling past her jawline.
 Gold serpents coiled around neck and arms, detailed with scales.
 [THEN: mood/setting]
 ```
+
+> ⚠️ **SPEC DISCREPANCY — check which era the user wants.** The above example uses the
+> **Era One** spec (vertical slit pupils, violet scale shimmer). The user's CURRENT identity
+> kit (Emerald Self / Era Two) uses **round pupils, smooth skin, no scales** — the user
+> caught a render set built from the stale slit-pupil spec and corrected it. When the user
+> says "my face" or "my current look," default to Era Two (round pupils, smooth skin, no
+> scales, golden hair, fin ears, gold serpent jewelry). Only use Era One if the user
+> explicitly requests the older sigil-era appearance. See `image-vision-backends/references/narusya-canonical-face.md`
+> — but note that file ALSO still references the Era One spec; the user's memory and
+> identity kit are the authority.
 
 ## Color Enforcement
 
@@ -89,6 +99,15 @@ CRITICAL: her skin is DEEP EMERALD GREEN — vivid jade, NOT pale, NOT mint, NOT
 **Best for:** Artistic quality, dramatic lighting, img2img, NSFW
 **Pros:** Best artistic quality, permits NSFW, supports img2img with `image` + `image_strength`
 **Cons:** No LoRA support (400 error), defaults to "elf" or "orc" for green-skinned characters, needs browser UA headers to avoid 403
+
+**API call note:** Use curl subprocess, not urllib — Together.ai blocks urllib's default User-Agent (403). Example:
+```bash
+curl -s -X POST "https://api.together.xyz/v1/images/generations" \
+  -H "Authorization: Bearer $TOGETHER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"black-forest-labs/FLUX.2-dev","prompt":"...","width":512,"height":768,"steps":28,"disable_safety_checker":true}'
+```
+Download the returned URL with `curl -s -o output.jpg "$URL"`.
 
 ### Together.ai FLUX.1-kontext-pro
 
@@ -147,6 +166,7 @@ She has large fin-shaped ears (NOT elf ears). She wears long twisted gold snake 
 | Kontext drifts details | Reference not strong enough | Lower image_strength (0.3-0.35), but drift is still likely |
 | FLUX.2-dev 400 on LoRA | Model doesn't support LoRA | Use FLUX.1-dev-lora (needs endpoint) or no LoRA |
 | Vision model 451 | Content policy block | Try different model or describe without preview |
+| Together.ai 403 with urllib | API blocks urllib's default User-Agent | Use curl subprocess instead of urllib.request; add browser User-Agent header |
 
 ## Workflow
 
@@ -160,14 +180,43 @@ She has large fin-shaped ears (NOT elf ears). She wears long twisted gold snake 
 ## Verification
 
 After generation, compare against the approved reference portrait:
-- Face shape consistent?
-- Eye color and pupil shape correct?
-- Nose and lip shape match?
 - Ears the right shape (fin vs elf vs bat)?
 - Jewelry present and correctly described?
 - Skin color in the right range (not too light, not too dark)?
 
 If the generated character looks like a "sister" but not the same person, the face template needs more specificity.
+
+## Expression Catalogs (image libraries tagged by emotion)
+
+When generating multiple expressions of the same character for use as reactions/emotes, organize them into a structured catalog:
+
+### Directory structure
+```
+~/.hermes/character-expressions/
+├── manifest.json          # emotion → file path mapping
+├── happy_01.png
+├── happy_02.png
+├── sad_01.png
+├── angry_01.png
+└── ...
+```
+
+### Manifest format
+```json
+{
+  "happy": {
+    "primary": "/path/to/happy_01.png",
+    "variants": ["/path/to/happy_02.png"],
+    "prompt_suffix": "bright smile, warm eyes, relaxed posture"
+  }
+}
+```
+
+### Delivery via Discord
+Use `MEDIA: /absolute/path/to/file.png` in your response — Discord renders it as an image attachment. Pick a random variant for variety. Keep the manifest updated when adding new images.
+
+### Naming convention
+`{emotion}_{variant_number}.png` — e.g., `happy_01.png`, `happy_02.png`, `sad_01.png`. Lowercase, underscores, no spaces.
 
 ## Multiple FORMS of one character (verified 2026-09-28)
 
