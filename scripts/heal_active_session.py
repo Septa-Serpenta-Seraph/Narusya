@@ -13,7 +13,7 @@ import sys
 import datetime
 
 # Make hermes_state importable (installed workspace).
-HERMES_INSTALL = "/home/adora/.hermes/installs/1efc37992d4f6aa8/environments/0e1fcd5ceaa640b59fb9b983c463f64f/workspace"
+HERMES_INSTALL = "/home/adora/.hermes/installs/1efc37992d4f6aa8/environments/bfa7b5ca292845118bbd04eda5ffda84/workspace"
 if HERMES_INSTALL not in sys.path:
     sys.path.insert(0, HERMES_INSTALL)
 
