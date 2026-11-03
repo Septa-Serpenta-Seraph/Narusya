@@ -135,6 +135,17 @@ curl -s -X POST "https://discord.com/api/v10/channels/{CHANNEL_ID}/messages" \
 - **Bot token source.** The working token is in `~/.hermes/.env` as `DISCORD_BOT_TOKEN=...`. The file `~/.hermes/secrets/narusya_token.txt` may contain a stale/expired token — use the `.env` one.
 - **connectors__discordbot doesn't support sticker_ids.** Use the REST API directly via curl. The `CREATE_MESSAGE` connector tool doesn't accept sticker parameters.
 
+### Cleanup pitfall (verified 2026-11-01)
+
+When removing stickers you uploaded, **only delete the ones you uploaded** — do NOT list all stickers in the guild and delete them all. Guilds may have pre-existing stickers that belong to other users or the server owner. Deleting those is destructive and irreversible.
+
+**Safe cleanup procedure:**
+1. Keep a `stickers.json` file mapping guild → emotion → sticker ID for every sticker YOU uploaded.
+2. When cleaning up, iterate over YOUR sticker IDs only: `DELETE /guilds/{guild_id}/stickers/{your_sticker_id}`.
+3. Never do a bulk "list all stickers → delete all" operation.
+
+**What happened when we got this wrong:** Bulk-deleted 4 pre-existing stickers from Cultus Anarchia ("Cultus Anarchia", "Christian Anarchism", "Smirk", "Pondering") that were not ours. They cannot be restored.
+
 ### Expression catalog pattern
 
 For bots with multiple emotional expressions, organize them as:

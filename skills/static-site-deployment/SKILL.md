@@ -69,6 +69,97 @@ Static sites on Surge have no backend. Use FormSubmit.co to auto-email form subm
 
 **Pitfall:** If the form action uses the naked email and the form hasn't been activated, submissions silently fail — no email arrives. Always check the recipient inbox for the "Action Required: Activate FormSubmit" email after the first deployment.
 
+## Business vs. personal content separation
+
+**Critical rule:** The Coil & Code site (`coil-and-code.surge.sh`) is a BUSINESS site. Never deploy personal content, anatomy maps, expression catalogs, or daemon-specific material to it. Keep business and personal content on separate Surge domains.
+
+**Before deploying to coil-and-code.surge.sh:** Verify that no personal/anatomy files exist in the site/ directory. Search for anatomy, expression, or daemon-specific files before deploying.
+
+**If you accidentally deploy personal content to the business site:** Remove the files from site/, redeploy clean, and verify with curl that the files return 404.
+
+## GitHub Pages as alternative to Surge
+
+**Enable Pages:**
+```bash
+gh api repos/OWNER/REPO/pages -X POST -f source[branch]=master -f source[path]=/
+```
+
+**URL pattern:** `https://OWNER.github.io/REPO/` (for repo pages) or `https://OWNER.github.io/` (for user/org pages)
+
+**Deploy:** Just push to the configured branch. Pages auto-builds from the repo contents.
+
+**Pitfall:** Pages takes 1-2 minutes to build after push. Don't panic if you get 404 immediately — wait and retry.
+
+**Pitfall:** The path must match the directory structure. If your site is in `anatomy/` subdirectory, the URL is `https://OWNER.github.io/REPO/anatomy/`.
+
+## Embedding large JSON data in HTML
+
+When embedding JSON data (e.g., from Qdrant, API responses) into an HTML/JS file:
+
+**Do NOT** embed as a string and parse:
+```javascript
+// WRONG — single quotes in data break JSON.parse, escaping is fragile
+const data = JSON.parse('{"text": "it\'s broken"}');
+```
+
+**DO** embed the raw JSON array/object directly:
+```javascript
+// CORRECT — no escaping needed, valid JS
+const data = [{"id": 1, "text": "it's fine"}, {"id": 2, "text": "no quotes needed"}];
+```
+
+**How to generate:** In Python, use `json.dumps(data, separators=(',', ':'))` to produce compact JSON, then write it directly into the HTML file (replacing a placeholder line). This avoids all escaping issues.
+
+**Pitfall:** Using `re.sub()` to replace the data in the file will fail if the replacement contains backslashes (like `\u` in Unicode). Instead, split the file by lines, replace the specific line, and rejoin.
+
+**Critical Pitfall — HTML-safe escaping:** When embedding JSON inside a `<script>` tag, raw `<` characters in text data (e.g., `<details>`, `<summary>`, `<pre>` from conversation logs) will break HTML parsing. The browser HTML parser sees `<` inside the script and interprets it as a tag start.
+
+**Fix:** Escape `<` as `\u003c` and `>` as `\u003e` in the JSON string before embedding:
+```python
+json_str = json.dumps(data, separators=(",", ":"), ensure_ascii=True)
+json_str = json_str.replace("<", "\u003c").replace(">", "\u003e")
+# Then embed as raw array via line replacement (not re.sub)
+```
+
+**How to verify:** After embedding, check that no raw `<` remains in the data line (only HTML tags should have `<`).
+
+## Modifying Existing Embedded JSON Arrays in HTML
+
+When a single-file HTML page embeds data as inline JSON arrays (e.g., `const nodes = [{...}];` on one line), modifying it requires extracting, parsing, modifying, and replacing the entire line.
+
+**Pattern:**
+```python
+import re, json
+
+path = "index.html"
+with open(path) as f:
+    content = f.read()
+
+# 1. Extract the array via regex
+match = re.search(r'const nodes = (\[.*?\]);', content, re.DOTALL)
+assert match, "array not found"
+data = json.loads(match.group(1))
+
+# 2. Modify in Python
+data.append({"id": "new-node", "name": "New Node", "layer": "infra", "desc": "..."})
+
+# 3. Serialize back (compact, no spaces)
+new_json = json.dumps(data, separators=(',', ':'))
+
+# 4. Replace the entire line (NOT re.sub — backslashes in Unicode escapes break it)
+content = content.replace(match.group(0), f"const nodes = {new_json};")
+
+with open(path, "w") as f:
+    f.write(content)
+```
+
+**Pitfalls:**
+- **Use `content.replace()`, not `re.sub()`.** The replacement string contains `\u` escape sequences that `re.sub()` interprets as backreferences. `str.replace()` treats them literally.
+- **Verify the regex matches exactly one line.** If the array spans multiple lines, `re.DOTALL` with `\[.*?\]` may match across multiple arrays. Anchor to the specific variable name.
+- **The file must be read first.** `write_file` refuses to overwrite existing files without a prior read.
+- **HTML-safe escaping still applies.** If your new data contains `<` or `>`, escape them before embedding.
+- **Deploy from the correct directory.** For the anatomy map, deploy from `anatomy/` not repo root: `cd /path/to/repo/anatomy && npx surge . https://narusya-anatomy.surge.sh`
+
 ## Related
 
 - `disk-reclaim-verification` — verify disk space before large deploys

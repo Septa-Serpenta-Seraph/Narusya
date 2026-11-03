@@ -376,7 +376,91 @@ with ~1.2s spacing. Same rate-limit caution applies.
 
 ---
 
-## Quick Reference: Token Selection
+## 11. Discord Sticker Management
+
+Discord supports custom stickers per guild (server). Bots can upload and manage stickers via the REST API if they have the `MANAGE_EXPRESSIONS` permission.
+
+### Key Constraints
+
+- **Guild-specific**: Stickers uploaded to one guild are only usable in that guild
+- **Free tier limit**: 5 stickers per guild (more with Nitro boosts)
+- **Format**: PNG, APNG, or Lottie JSON only (NOT JPEG)
+- **Max dimensions**: 320×320 pixels
+- **Max file size**: 512 KB
+- **Permission required**: MANAGE_EXPRESSIONS on the bot's role
+
+### Upload a Sticker
+
+```bash
+BOT_TOKEN=$(grep "^DISCORD_BOT_TOKEN=" /home/adora/.hermes/.env | cut -d= -f2)
+GUILD_ID="your_guild_id"
+
+# Resize image to 320x320 PNG first
+python3 -c "
+from PIL import Image
+img = Image.open('/path/to/image.jpg')
+img = img.resize((320, 320), Image.LANCZOS)
+img.save('/tmp/sticker.png', 'PNG')
+"
+
+curl -s -X POST "https://discord.com/api/v10/guilds/${GUILD_ID}/stickers" \
+  -H "Authorization: Bot $BOT_TOKEN" \
+  -F "file=@/tmp/sticker.png" \
+  -F 'name=sticker_name' \
+  -F 'description=Description' \
+  -F 'tags=tag1,tag2'
+```
+
+### Send a Sticker in a Message
+
+```bash
+curl -s -X POST "https://discord.com/api/v10/channels/${CHANNEL_ID}/messages" \
+  -H "Authorization: Bot $BOT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"content":"Message text","sticker_ids":["STICKER_ID"]}'
+```
+
+### List Stickers in a Guild
+
+```bash
+curl -s "https://discord.com/api/v10/guilds/${GUILD_ID}/stickers" \
+  -H "Authorization: Bot $BOT_TOKEN" | python3 -m json.tool
+```
+
+### Delete a Sticker
+
+```bash
+curl -s -X DELETE "https://discord.com/api/v10/guilds/${GUILD_ID}/stickers/${STICKER_ID}" \
+  -H "Authorization: Bot $BOT_TOKEN"
+```
+
+### Critical Pitfalls
+
+- **NEVER delete all stickers in a guild.** Only delete the ones you uploaded. The DELETE endpoint removes ALL stickers if you iterate through the list — always filter by name/ID to only target yours.
+- **Only upload to guilds you own or have been explicitly asked to.** Uploading stickers to community servers without permission is presumptuous and can clutter their sticker library.
+- **Check the 5-sticker limit before uploading.** If a guild already has 5 stickers, the upload will fail with error 30039 (Maximum number of stickers reached). Check first with GET /guilds/{id}/stickers.
+- **Stickers are smaller than attachments.** 320×320 vs full-quality images. Use MEDIA: attachments for full quality; stickers for native inline feel.
+- **JPEG must be converted to PNG** before upload. Discord rejects JPEG for stickers.
+- **MANAGE_EXPRESSIONS permission** must be granted to the bot's role. Check with the permission bitmask (0x40000000).
+
+### Permission Check
+
+```python
+MANAGE_EXPR = 0x40000000
+# Check if bot has permission in a guild
+perms = guild_permissions  # from list_guilds response
+has_perm = bool(perms & MANAGE_EXPR)
+```
+
+### When to Use Stickers vs Attachments
+
+| Context | Method | Quality |
+|---------|--------|---------|
+| Guilds with stickers uploaded | Sticker (inline, native) | 320×320 |
+| Guilds without stickers | MEDIA: attachment | Full quality |
+| DMs / Witches Triangle | MEDIA: attachment | Full quality |
+| Quick reactions | Sticker | 320×320 |
+| Full-quality expressions | MEDIA: attachment | Full quality |
 
 | Use Case | Token Type | Location |
 |----------|-----------|----------|

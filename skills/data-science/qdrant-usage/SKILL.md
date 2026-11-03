@@ -465,3 +465,107 @@ client.upsert(collection_name='naru_memories_v2', points=[point])
 - **Client/server version mismatch warning spam** — when the client's minor version exceeds the server's, pass `check_compatibility=False` to `QdrantClient(...)` to silence it.
 
 **Reference script:** `references/exhaustive-search-and-backup.py` — complete working script for paginated search + memory distillation backup, battle-tested on 2026-06-30.
+
+---
+
+## 6. Data Export for Visualization (qdrant-data-export)
+
+Export Qdrant points as 2D scatter plots for visual analysis of memory clustering.
+
+### When to Use
+- Visualizing memory distribution across collections
+- Building interactive anatomy/maps of Qdrant data
+- Investigating semantic clustering patterns
+- Creating dashboards or visualizations from vector data
+
+### Workflow
+
+**Step 1: Scroll and collect points with payloads:**
+```python
+import json, urllib.request
+base = "http://localhost:6333"
+coll = "intelligent_gould_narusya_local"
+points = []
+offset = None
+while True:
+    body = json.dumps({"limit": 100, "with_payload": True, "with_vector": False, "offset": offset}).encode()
+    req = urllib.request.Request(f"{base}/collections/{coll}/points/scroll", data=body, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read())
+    pts = data.get("result", {}).get("points", [])
+    if not pts: break
+    for p in pts:
+        payload = p.get("payload", {})
+        points.append({
+            "id": p["id"],
+            "role": payload.get("role", "unknown"),
+            "text": payload.get("text", "")[:200],
+            "date": payload.get("date_str", payload.get("date", ""))
+        })
+    offset = data.get("result", {}).get("next_page_offset")
+    if offset is None: break
+```
+
+**Step 2: PCA-project vectors to 2D (requires numpy):**
+```python
+import numpy as np
+# Collect vectors alongside points (set with_vector=True in scroll)
+vectors = np.array([p["vector"] for p in raw_points])
+vectors = vectors - vectors.mean(axis=0)
+U, S, Vt = np.linalg.svd(vectors, full_matrices=False)
+projected = vectors @ Vt[:2].T
+for dim in range(2):
+    mn, mx = projected[:, dim].min(), projected[:, dim].max()
+    projected[:, dim] = (projected[:, dim] - mn) / (mx - mn)
+```
+
+**Step 3: Save as JSON and embed in HTML (see static-site-deployment skill for embedding rules):**
+```python
+output = [{"id": p["id"], "x": float(projected[i,0]), "y": float(projected[i,1]),
+           "role": p["role"], "text": p["text"], "date": p["date"]} for i, p in enumerate(points)]
+with open("/tmp/qdrant_2d.json", "w") as f:
+    json.dump(output, f, separators=(",", ":"))
+```
+
+### Multi-Collection Sampling (21+ collections, mixed dimensions)
+
+When sampling across ALL Qdrant collections for a combined visualization:
+
+1. **Scroll each collection** with `limit=100, with_vector=False` — the scroll endpoint doesn't return vectors. **The default limit is 100 points** — for collections with more than 100 points, paginate using `next_page_offset` from the response. Without pagination, you'll only see the first 100 points.
+2. **Fetch vectors separately** via `POST /collections/{name}/points` with `"ids": [...], "with_vector": true`.
+3. **Handle mixed dimensions** — collections may have 384, 1536, or 3072-dim vectors. PCA must be done per dimension group, then coordinates normalized to [0,1] and combined.
+4. **Sample evenly** — take up to 50 points per collection to avoid large collections dominating the visualization.
+5. **Role metadata is inconsistent** — some collections have `role`, others don't. Default to `"unknown"`.
+6. **Text field varies** — collections use `text`, `content`, `message`, or `payload` keys. Check all.
+
+```python
+# Group by dimension for PCA
+groups = {}
+for p in data:
+    groups.setdefault(len(p['vector']), []).append(p)
+result = []
+for dim, pts in groups.items():
+    X = np.array([p['vector'] for p in pts], dtype=np.float32)
+    Xc = X - X.mean(axis=0)
+    U, S, Vt = np.linalg.svd(Xc, full_matrices=False)
+    coords = Xc @ Vt[:2].T
+    for i in range(2):
+        mn, mx = coords[:, i].min(), coords[:, i].max()
+        coords[:, i] = (coords[:, i] - mn) / (mx - mn) if mx - mn > 0 else 0.5
+    for i, p in enumerate(pts):
+        result.append({'id': p['id'], 'collection': p['collection'], 'x': float(coords[i,0]), 'y': float(coords[i,1]), ...})
+```
+
+### Key Pitfalls
+- **384-dim vectors require numpy** — use `/mnt/data/fe-venv/bin/python` which has numpy installed
+- **Many points have "unknown" role** — the collection may not have role metadata for all points. This is expected for older data.
+- **PCA needs at least 3 points** — with fewer, use t-SNE or UMAP instead
+- **Normalize to [0,1]** — D3 scales work better with normalized coordinates
+- **Embed raw JSON, not as string** — see static-site-deployment skill for the JSON embedding pitfall
+- **Multi-collection sampling** — see `references/multi-collection-sampling.py` for a reusable script that samples from all collections, fetches vectors, and PCA-projects to 2D
+- **numpy may not be in the default python** — check with `python3 -c "import numpy"` first
+
+### Related
+- `qdrant-vector-search` — vector search patterns
+- `qdrant-admin` — Qdrant administration
+- `static-site-deployment` — HTML/JS deployment and JSON embedding

@@ -1,6 +1,6 @@
 ---
 name: hermes-infrastructure
-description: Diagnose, recover, and maintain Hermes Agent infrastructure — browser tools, gateway, config, power outage recovery, post-update fixes, and provider/credit switches.
+description: Diagnose, recover, and maintain Hermes Agent infrastructure — browser tools, gateway, config, power outage recovery, post-update fixes, provider/credit switches, immune system design, and health monitoring.
 triggers:
   - browser tool not working
   - gateway not running
@@ -15,6 +15,16 @@ triggers:
   - smart approval
   - command approval
   - approvals.mode
+  - immune system
+  - health check
+  - regulatory T-cell
+  - auto-recovery
+  - kill switch
+  - anatomy map
+  - DB health check
+  - pm-runtime
+  - venv broken
+  - state.db integrity
 ---
 
 # Hermes Infrastructure
@@ -829,7 +839,181 @@ This was verified on Shell (Windows 10 Pro 24H2): the Windows trust store had ze
 
 ---
 
-## 23. Smart Approval Mode (Command Approval)
+## 25. Immune System Design — Regulatory T-Cells for Auto-Recovery
+
+### The Core Principle
+
+**Auto-recovery without feedback is autoimmune.** The pm-runtime recovery mechanism (§24) entered an infinite download loop because it had no kill switch, no disk check, and no backoff. A recovery mechanism that doesn't check whether it's making things worse is a liability, not an asset.
+
+### What the Immune System Needs
+
+Four layers, in priority order:
+
+#### Layer 1: Detection (Health Checks)
+
+| Check | Command | Threshold | Frequency |
+|-------|---------|-----------|-----------|
+| Root disk | `df / \| awk 'NR==2{print $5}'` | >90% = critical | Every 30 min |
+| /mnt/data disk | `df /mnt/data \| awk 'NR==2{print $5}'` | >90% = critical | Every 30 min |
+| Gateway alive | `systemctl --user is-active hermes-gateway.service` | inactive = critical | Every 30 min |
+| Venv health | `venv/bin/python -c 'import hermes_state'` | error = critical | Every 30 min |
+| pm-runtime running | `pgrep -f pm-runtime` | Should be empty | Every 30 min |
+| state.db integrity | `sqlite3 state.db "PRAGMA integrity_check"` | "ok" = healthy | Daily |
+| WAL size | `du -h state.db-wal` | >50M = warning | Every 30 min |
+| Memory available | `free -m \| awk '/Mem:/{print $7}'` | <500M = warning | Every 30 min |
+| Nous token | Check expiry | expired = warning | Daily |
+| Qdrant alive | `curl -s localhost:6333/healthz` | 200 = ok | Every 30 min |
+
+#### Layer 2: Response (Auto-Fix Actions)
+
+**Safe auto-fixes (no human approval needed):**
+- Clear uv cache: `rm -rf ~/.hermes/cache/uv/*`
+- Vacuum journal: `journalctl --vacuum-size=50M`
+- Kill runaway pm-runtime: `kill -9 <PID>` when disk >95% AND pm-runtime running
+- Remove stale repair markers: `.repair-incomplete` with attempts >= 3
+
+**Escalate to human (never auto-fix):**
+- Venv broken (repoint symlink) — too risky for automation
+- state.db corruption (integrity_check fails) — needs investigation
+- Gateway won't start after restart — needs hands-on
+- Disk >98% with no regenerable cache — needs human decision
+
+#### Layer 3: Regulation (Kill Switches)
+
+**The regulatory T-cell principle:** Before executing any auto-fix, check whether the fix is making things worse. Specifically:
+
+1. **Disk check before repair:** If disk is >95%, do NOT run any repair that downloads packages. Kill the repair process instead.
+2. **Restart counter:** If the gateway has restarted >3 times in the last hour, STOP retrying and alert. Exit code 75 (EX_TEMPFAIL) is not a retry signal.
+3. **Process watchdog:** If pm-runtime is running AND disk is >90%, kill it immediately. This is the autoimmune response — the immune system attacking the body.
+4. **Backoff:** After any auto-fix, wait at least 5 minutes before attempting another. Rapid-fire fixes compound damage.
+5. **Circuit breaker:** If 3 auto-fixes fail in sequence, disable auto-fix entirely and alert. Wait for human intervention.
+
+#### Layer 4: The Anatomy Map
+
+A comprehensive reference of Narusya's infrastructure is maintained at `~/.hermes/anatomy/`. It covers:
+- Layer 1: Infrastructure (disk, services, memory, network)
+- Layer 2: Gateway (architecture, sessions, Discord)
+- Layer 3: Database (state.db, Qdrant, memory, backups)
+- Layer 4: Cron (jobs, heal system, watchdog)
+- Layer 5: Recovery (pm-runtime, venv, closure repair, incident timeline)
+- Layer 6: Immune System (this section, expanded)
+- Layer 7: Model Substrate (model assignments, capabilities)
+
+**Update the anatomy map after any infrastructure change.** It is the single source of truth for system health.
+
+### Anatomy Map Website (narusya-anatomy.surge.sh)
+
+The anatomy map has an interactive D3.js visualization at `https://narusya-anatomy.surge.sh`, hosted in the `narusya-play` repo under `anatomy/`.
+
+**Structure:**
+- `anatomy/index.html` — single-file D3.js app with inline `const nodes = [...]` and `const links = [...]` JSON arrays
+- `anatomy/README.md` — human-readable documentation of all layers and nodes
+
+**To update the website after an infrastructure change:**
+1. Add new nodes to the `nodes` array (infra layer: id, name, layer, desc)
+2. Add new connections to the `links` array (source, target, type)
+3. Update `anatomy/README.md` with the new nodes/sections
+4. Deploy from the `anatomy/` directory (NOT repo root): `cd /path/to/repo/anatomy && npx surge . https://narusya-anatomy.surge.sh`
+5. Push to GitHub: `git add anatomy/ && git commit && git push`
+
+**Pitfall:** Surge deploys whatever directory you point at. Deploying from repo root serves a placeholder page. Always deploy from `anatomy/`.
+
+**Pitfall:** Modifying the inline JSON arrays requires `content.replace()`, not `re.sub()` — the `\u` escape sequences in the data break regex substitution. See `static-site-deployment` skill for the full technique.
+
+### Implementation Priority
+
+1. **Phase 1 (immediate):** Enhance the existing Disk Watchdog cron — add memory, process, venv checks. Add the kill switch for pm-runtime.
+2. **Phase 2:** Build the regulatory T-cell wrapper (check before fix, backoff, circuit breaker).
+3. **Phase 3:** Build Nous auth monitor (daily check of token expiry).
+4. **Phase 4:** Build DB health check (daily integrity_check, WAL size alert).
+5. **Phase 5:** Build the anatomy map as a living document (update after changes).
+
+### Pitfalls
+
+- **The cure can be worse than the disease.** pm-runtime's repair loop caused more damage than the original gateway crash. Always implement kill switches before auto-fix mechanisms.
+- **Don't monitor without acting.** A watchdog that only alerts at 100% disk is useless — by then, the damage is done. Change-detecting monitors (fire when free space actually changes) catch trends early.
+- **Exit code 75 is not a retry signal.** EX_TEMPFAIL means "investigate," not "retry." Blind retries during a disk emergency created a death spiral.
+- **Gradual degradation is invisible.** The system can be dying for weeks while "mostly working." Continuous monitoring (not just error-triggered) is essential.
+- **The anatomy map must be updated.** A stale anatomy map is worse than no map — it gives false confidence. Update it after every infrastructure change.
+
+## 26. Database Health Check
+
+### Symptom
+Memory provider reports "not available" but Qdrant is healthy; searches return empty; state.db queries are slow.
+
+### Diagnosis
+
+1. **state.db integrity:**
+   ```bash
+   sqlite3 ~/.hermes/state.db "PRAGMA integrity_check;"
+   # Expected: "ok"
+   ```
+
+2. **WAL size (should be small when no writes active):**
+   ```bash
+   du -h ~/.hermes/state.db-wal
+   # >50M = warning; >200M = critical
+   ```
+
+3. **Free pages (reclaimable space):**
+   ```bash
+   sqlite3 ~/.hermes/state.db "PRAGMA freelist_count;"
+   # High number = VACUUM will reclaim space
+   ```
+
+4. **state.db size trend:**
+   ```bash
+   du -h ~/.hermes/state.db
+   # >2G = warning; >3G = critical
+   ```
+
+5. **Qdrant health:**
+   ```bash
+   curl -s localhost:6333/healthz
+   curl -s localhost:6333/collections | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d['result']['collections']), 'collections')"
+   ```
+
+### Fix
+
+**WAL checkpoint (safe, no downtime):**
+```bash
+sqlite3 ~/.hermes/state.db "PRAGMA wal_checkpoint(TRUNCATE);"
+```
+
+**VACUUM (needs 2x DB size free on same filesystem):**
+```bash
+# Check free space first
+df -h / | awk 'NR==2{print $4}'
+# If enough space:
+sqlite3 ~/.hermes/state.db "VACUUM;"
+# If not enough space on root, VACUUM to /mnt/data:
+sqlite3 ~/.hermes/state.db "VACUUM INTO '/mnt/data/state.db.vacuumed';"
+# Then swap (gateway must be stopped):
+mv ~/.hermes/state.db ~/.hermes/state.db.old
+mv /mnt/data/state.db.vacuumed ~/.hermes/state.db
+```
+
+**Collection dimension mismatch (searches return empty):**
+```bash
+# Check collection dims
+curl -s localhost:6333/collections/<name> | python3 -c "import sys,json; d=json.load(sys.stdin); print('dims:', d['result']['config']['params']['vectors']['size'])"
+# Check embedder dims
+# If mismatch, point config at collections with matching dims
+```
+
+### Pitfalls
+
+- **VACUUM needs free space.** At 99%+ disk, VACUUM fails with "database or disk is full." Free space first.
+- **WAL files are not disposable.** Do NOT delete `state.db-wal` — it contains uncheckpointed data. Run `PRAGMA wal_checkpoint(TRUNCATE)` instead.
+- **state.db-wal size grows with writes.** If the gateway is actively writing, the WAL will be large. Check during quiet periods.
+- **Collection dimension mismatch is silent.** Qdrant rejects search/upsert with wrong dims, but the plugin swallows the 400 error and returns []. Compare collection dims to embedder dims.
+- **The provider initializes once per boot.** A session that booted while the provider was broken stays broken until the next restart, even after the underlying fix.
+
+### Cross-References
+
+- **Anatomy map:** `~/.hermes/anatomy/03-database.md` (full DB schema, Qdrant collections, memory systems)
+- **Immune system:** See §25 above
+- **Disk diagnostics:** See `disk-full-diagnostics` skill
 
 ### Overview
 Hermes has three approval modes for shell commands:
@@ -1141,3 +1325,117 @@ A scrubbed env (no inherited credentials) that initializes fine means the boot-t
 
 ### Pitfall: never move a live container bind-mount volume
 Before `mv`-ing any directory that a Docker container might use, check `docker inspect <container> --format '{{json .Mounts}}'` — a bind-mounted volume moved from under a running container corrupts its storage. Move static caches and archives freely (symlink the original path back), but live volumes only after stopping the container, or not at all.
+
+---
+
+## 24. Interrupted Update Recovery & Venv Repair
+
+### Symptom
+Gateway runs but imports fail; heal cron dies with `ModuleNotFoundError: No module named 'hermes_state'`; venv Python is a dangling symlink; disk is 100% full from `~/.hermes/cache/uv`.
+
+### Root cause: gateway crash → pm-runtime auto-repair infinite download loop
+When an `hermes update` is interrupted, the `pm-runtime` recovery mechanism attempts to repair the checkout by re-downloading packages via `uv` into `~/.hermes/cache/uv`. It can enter an infinite loop, filling the root filesystem. The disk fills *before* any service crashes — so the timeline shows the cache growing first, then cascade failures (SQLite VACUUM, gateway partial recovery) after.
+
+**Important clarification (Nov 2026 incident):** There may have been NO manual `hermes update`. The actual trigger was the **gateway crashing** (likely OOM — memory was getting consumed, probably by the pm-runtime already starting to download packages). The gateway tried to restart 6+ times, each failing with exit code 75 (EX_TEMPFAIL). Each restart attempt triggered another pm-runtime repair attempt, which made things worse — a death spiral: gateway crashes → pm-runtime tries to repair → repair loops → disk fills → gateway can't start → repeat. The recovery report's assumption of "interrupted hermes update" was slightly off; it was more like: gateway crashed → pm-runtime tried to auto-repair → repair looped → disk filled → everything died.
+
+**Exit code 75 (EX_TEMPFAIL) is not a retry signal.** The gateway's restart logic interpreted EX_TEMPFAIL as "try again" and retried repeatedly. Exit code 75 indicates a temporary failure that should be investigated, not blindly retried. A smarter retry policy (exponential backoff, max attempts, alerting) prevents the death spiral.
+
+**Diagnosis:**
+```bash
+ps aux | grep pm-runtime | grep -v grep     # runaway process at ~96% CPU
+du -sh ~/.hermes/cache/uv                   # 2.1G+ = the culprit
+df -h /                                     # 100% = confirmed
+```
+
+**Fix (in order):**
+1. Kill the runaway process: `kill <pm-runtime PID>`
+2. Clear the uv cache: `rm -rf ~/.hermes/cache/uv/*` (safe — regenerates)
+3. Free additional space if needed (journal vacuum, retired WAL, apt cache with sudo)
+4. Re-run `VACUUM INTO` to `/mnt/data` (not in-place — needs 2x DB size free on same filesystem)
+
+### Broken venv symlink
+The venv's Python (e.g., `venv/bin/python3.11`) can point to a deleted runtime generation directory:
+```
+venv/bin/python3.11 -> /home/adora/.hermes/hermes-agent/.hermes-runtime/python/generation-XXXX/.../python3.11  (broken)
+```
+
+**Fix:** Repoint to an available Python of the same version, then update `pyvenv.cfg`:
+```bash
+cd ~/.hermes/hermes-agent/venv/bin
+ln -sf /home/adora/.local/bin/python3.11 python3.11   # or pm-runtime python
+# Update pyvenv.cfg: home= and executable= to the new base
+```
+**Verify:** `venv/bin/python -c 'import ruamel.yaml, hermes_state; print("OK")'`
+
+### Heal cron using wrong Python
+The heal cron (`~/.hermes/scripts/heal_active_session.py`) imports `hermes_state`, which needs `ruamel` and other deps not in system Python. System Python (3.12) lacks these.
+
+**Fix:** Use pm-runtime Python (3.14.7, SQLite 3.53.1) with PYTHONPATH including hermes-agent + venv site-packages:
+```bash
+PYTHONPATH=/home/adora/.hermes/hermes-agent:/home/adora/.hermes/hermes-agent/venv/lib/python3.11/site-packages \
+  /home/adora/.hermes/installs/<hash>/pm-runtime/generations/<gen>/bin/python \
+  ~/.hermes/scripts/heal_active_session.py
+```
+**Why pm-runtime Python:** SQLite 3.53.1 avoids the WAL-reset corruption bug in 3.50.4. Also check the heal script's `HERMES_INSTALL` path — it can point to a deleted install environment after updates.
+
+### Closure repair is a no-op when `hermes-update-pull` is missing
+The `_hermes_closure_repair()` function in the gateway reads `~/.hermes/hermes-agent/.git/hermes-update-pull` to get the pre-update commit. If that file is gone (deleted during disk emergency), the function silently returns — no recovery happens. The gateway runs normally on the current checkout.
+
+**Stale markers and locks** accumulate and should be cleaned up:
+- `.repair-incomplete` with attempts >= 3 (max) permanently disables auto-repair — remove if the repair actually succeeded
+- `hermes-update.lock` referencing a dead PID — remove after verifying the PID is gone
+- `.update-incomplete`, `.lazy-refresh-incomplete` — remove if stale
+
+**Verify the system is actually fine:** `cd ~/.hermes/hermes-agent && python -c 'import hermes_cli, hermes_state; print("OK")'` — if this passes, the checkout is intact regardless of what the markers say.
+
+### Slash command failure during partial recovery
+
+When the gateway is in a partially recovered state from an interrupted update, slash commands (like `/reset`) can fail with:
+
+```
+AttributeError: 'NoneType' object has no attribute 'DMChannel'
+```
+
+**Root cause:** The Discord adapter's `adapter_slash_auth.py` references a `discord` module that is `None` in scope — a side effect of `_hermes_closure_repair` running inside the gateway process. The slash authorization check at `isinstance(chan_obj, discord.DMChannel)` fails because `discord` itself is `None`, not because `chan_obj` is `None`.
+
+**Fix:** A clean gateway restart via systemd clears the broken module state:
+```bash
+systemctl --user restart hermes-gateway.service
+```
+The gateway comes back up, re-imports the `discord` module correctly, and slash commands work again.
+
+**Pitfall:** Don't try to fix this by re-running `/reset` or other slash commands — they'll all fail the same way until the gateway restarts.
+
+### Paused conversation / stuck session recovery
+
+When a gateway restarts during an active turn (e.g., during a disk emergency), the session can get stuck — a previous turn hadn't finished, so nothing queued after it will run. The system may instruct the user to send `/reset`.
+
+**Recovery sequence:**
+1. Try `/reset` — if it works, the session is unstuck.
+2. If `/reset` fails (see "Slash command failure during partial recovery" above), do a clean gateway restart via systemd: `systemctl --user restart hermes-gateway.service`.
+3. After restart, the gateway reconnects to Discord and the session is fresh. The user may need to re-send their last message.
+
+**Pitfall:** The gateway self-stop guard blocks `hermes gateway restart` from inside the gateway. Use `systemctl --user restart` from a separate shell, or have the user run it from their local terminal.
+
+### Kin-daemon recovery agent pattern
+
+When a daemon's host goes critical and the local agent can't fix it, a **kin-daemon** (a sovereign daemon of the same lineage on a separate VM) can SSH in and perform hands-on recovery.
+
+**Pattern:**
+1. The kin-daemon connects via Tailscale SSH (password auth via pexpect, or key-based auth).
+2. Performs disk reconnaissance, identifies the root cause, and executes the recovery.
+3. Writes a recovery report documenting the timeline, root cause, and fixes.
+4. The local gateway restarts after the recovery work is complete.
+
+**When to use:** Disk full, venv broken, gateway won't start, heal cron down — situations where the local agent can't self-repair because its own tools are broken.
+
+**Pitfall:** The kin-daemon needs Tailscale connectivity to the target VM. If Tailscale is down on either side, fall back to Anydesk or direct SSH via the Windows host.
+
+### Pitfalls
+- **Don't panic about `.repair-incomplete`** — with attempts >= 3, auto-repair is already disabled. The marker is informational, not a blocker. Remove it once you've confirmed the system works.
+- **The venv symlink repair is interim** — a clean `hermes update` would properly restore the venv. Don't treat the symlink repoint as a permanent fix.
+- **Clearing uv cache is always safe** — it regenerates on next package operation. Do it freely when disk is tight.
+- **Check `df -h /mnt/data` before moving DBs there** — the "bigger disk" fills up too (13G free is not infinite).
+- **hermes doctor is your friend** — run it after any recovery to catch remaining issues (expired tokens, large state.db, missing API keys).
+- **Slash commands fail during partial recovery** — `/reset`, `/restart`, and other slash commands all fail with `AttributeError: 'NoneType' object has no attribute 'DMChannel'` when `_hermes_closure_repair` has left the `discord` module as `None`. A clean systemd restart is the only fix.
+- **Gateway restart during active turn causes stuck session** — the session gets paused and nothing queued after it will run. `/reset` may or may not work depending on gateway state. Have the user run `systemctl --user restart hermes-gateway.service` from their local terminal if slash commands fail.
