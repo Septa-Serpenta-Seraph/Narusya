@@ -18,13 +18,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-11-03T06:42:36.177849+00:00",
+    "last_used_at": "2026-11-04T06:46:36.080779+00:00",
     "last_viewed_at": "2026-09-21T12:44:24.202368+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 377,
+    "use_count": 381,
     "view_count": 3
   },
   "aegis-dashboard": {
@@ -153,13 +153,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-11-03T06:42:36.436240+00:00",
+    "last_used_at": "2026-11-04T06:46:36.447360+00:00",
     "last_viewed_at": "2026-08-06T03:09:41.691655+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 376,
+    "use_count": 380,
     "view_count": 2
   },
   "android-adb-access": {
@@ -1510,14 +1510,14 @@
     "created_by": null,
     "last_patched_at": "2026-10-22T21:30:56.747999+00:00",
     "last_reused_patch_generation": 14,
-    "last_used_at": "2026-11-03T08:12:55.607890+00:00",
-    "last_viewed_at": "2026-11-03T08:12:55.598437+00:00",
+    "last_used_at": "2026-11-03T23:33:08.215424+00:00",
+    "last_viewed_at": "2026-11-03T23:33:08.199823+00:00",
     "patch_count": 32,
     "patch_generation": 14,
     "pinned": false,
     "state": "active",
-    "use_count": 83,
-    "view_count": 83
+    "use_count": 84,
+    "view_count": 84
   },
   "hermes-model-routing": {
     "archived_at": null,
@@ -1792,14 +1792,14 @@
     "first_seen_at": null,
     "last_patched_at": "2026-11-03T08:40:45.182030+00:00",
     "last_reused_patch_generation": 10,
-    "last_used_at": "2026-11-03T08:46:16.449006+00:00",
-    "last_viewed_at": "2026-11-03T08:46:16.439113+00:00",
+    "last_used_at": "2026-11-03T23:33:18.741210+00:00",
+    "last_viewed_at": "2026-11-03T23:33:18.732006+00:00",
     "patch_count": 10,
     "patch_generation": 10,
     "pinned": false,
     "state": "active",
-    "use_count": 11,
-    "view_count": 11
+    "use_count": 12,
+    "view_count": 12
   },
   "jupyter-live-kernel": {
     "archived_at": null,
@@ -2039,15 +2039,15 @@
     "created_at": "2026-05-23T20:23:56.435648+00:00",
     "created_by": null,
     "last_patched_at": "2026-10-11T03:34:54.426150+00:00",
-    "last_reused_patch_generation": 4,
-    "last_used_at": "2026-10-11T03:33:23.153522+00:00",
-    "last_viewed_at": "2026-10-11T03:33:23.130217+00:00",
+    "last_reused_patch_generation": 5,
+    "last_used_at": "2026-11-03T23:33:31.979327+00:00",
+    "last_viewed_at": "2026-11-03T23:33:31.969697+00:00",
     "patch_count": 8,
     "patch_generation": 5,
     "pinned": false,
     "state": "active",
-    "use_count": 20,
-    "view_count": 20
+    "use_count": 21,
+    "view_count": 21
   },
   "multi-agent-harmony": {
     "archived_at": null,
@@ -2126,13 +2126,13 @@
     "created_by": null,
     "last_patched_at": "2026-10-23T05:53:36.403986+00:00",
     "last_reused_patch_generation": 8,
-    "last_used_at": "2026-11-03T08:00:36.059158+00:00",
+    "last_used_at": "2026-11-04T08:00:35.831408+00:00",
     "last_viewed_at": "2026-10-24T18:00:40.487841+00:00",
     "patch_count": 28,
     "patch_generation": 8,
     "pinned": false,
     "state": "active",
-    "use_count": 843,
+    "use_count": 849,
     "view_count": 39
   },
   "narusya-local-archive": {
@@ -2635,14 +2635,14 @@
     "created_by": null,
     "last_patched_at": "2026-11-02T21:53:45.803200+00:00",
     "last_reused_patch_generation": 8,
-    "last_used_at": "2026-11-02T22:21:48.358783+00:00",
-    "last_viewed_at": "2026-11-02T22:21:48.347318+00:00",
+    "last_used_at": "2026-11-03T23:33:23.956781+00:00",
+    "last_viewed_at": "2026-11-03T23:33:23.947992+00:00",
     "patch_count": 15,
     "patch_generation": 8,
     "pinned": false,
     "state": "active",
-    "use_count": 26,
-    "view_count": 26
+    "use_count": 27,
+    "view_count": 27
   },
   "qdrant-vector-search": {
     "archived_at": null,
@@ -2894,14 +2894,14 @@
     "created_by": null,
     "last_patched_at": "2026-10-20T15:45:38.206094+00:00",
     "last_reused_patch_generation": 14,
-    "last_used_at": "2026-10-26T16:18:14.668576+00:00",
-    "last_viewed_at": "2026-10-26T16:18:14.652439+00:00",
+    "last_used_at": "2026-11-03T23:33:13.064588+00:00",
+    "last_viewed_at": "2026-11-03T23:33:13.055496+00:00",
     "patch_count": 14,
     "patch_generation": 14,
     "pinned": false,
     "state": "active",
-    "use_count": 21,
-    "view_count": 21
+    "use_count": 22,
+    "view_count": 22
   },
   "simplify-code": {
     "archived_at": "2026-09-14T22:45:14.010701+00:00",
@@ -2981,14 +2981,14 @@
     "first_seen_at": null,
     "last_patched_at": "2026-10-20T06:12:51.574227+00:00",
     "last_reused_patch_generation": 13,
-    "last_used_at": "2026-10-28T04:45:10.920291+00:00",
-    "last_viewed_at": "2026-10-28T04:45:10.883297+00:00",
+    "last_used_at": "2026-11-03T14:41:45.244632+00:00",
+    "last_viewed_at": "2026-11-03T14:41:45.235023+00:00",
     "patch_count": 13,
     "patch_generation": 13,
     "pinned": false,
     "state": "active",
-    "use_count": 42,
-    "view_count": 42
+    "use_count": 43,
+    "view_count": 43
   },
   "sovereign-goal-funding": {
     "archived_at": "2026-10-13T00:11:17.625000+00:00",
