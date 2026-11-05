@@ -139,6 +139,7 @@ resp = requests.delete(
 - Editing preserves the original `timestamp` but adds `edited_timestamp`
 - Delete returns 204 with no body — check status code, not response content
 - When you've sent multiple messages and need to edit one, fetch recent messages to find the correct `msg_id` by content matching
+- **⚠️ Forwarded messages are separate snapshots.** Editing the original message does NOT update any copies that were already forwarded to other channels or servers. Discord forwards create independent message objects. If you need to fix personal info in a forwarded copy, you must edit or delete that specific forwarded message separately. Always check whether a message was forwarded before assuming an edit covers all copies.
 
 ## Leaving a Server
 

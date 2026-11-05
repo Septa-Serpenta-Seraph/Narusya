@@ -18,13 +18,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-11-04T06:46:36.080779+00:00",
+    "last_used_at": "2026-11-05T06:53:45.582583+00:00",
     "last_viewed_at": "2026-09-21T12:44:24.202368+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 381,
+    "use_count": 385,
     "view_count": 3
   },
   "aegis-dashboard": {
@@ -153,13 +153,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-11-04T06:46:36.447360+00:00",
+    "last_used_at": "2026-11-05T06:53:45.843130+00:00",
     "last_viewed_at": "2026-08-06T03:09:41.691655+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 380,
+    "use_count": 384,
     "view_count": 2
   },
   "android-adb-access": {
@@ -1018,14 +1018,14 @@
     "created_at": "2026-05-03T17:50:03.333496+00:00",
     "last_patched_at": "2026-10-17T16:45:08.139525+00:00",
     "last_reused_patch_generation": 3,
-    "last_used_at": "2026-11-01T10:10:27.647653+00:00",
-    "last_viewed_at": "2026-11-01T10:10:27.636985+00:00",
+    "last_used_at": "2026-11-05T07:29:20.612137+00:00",
+    "last_viewed_at": "2026-11-05T07:29:20.594830+00:00",
     "patch_count": 94,
     "patch_generation": 3,
     "pinned": false,
     "state": "active",
-    "use_count": 350,
-    "view_count": 131
+    "use_count": 351,
+    "view_count": 132
   },
   "discord-dm-recovery": {
     "archived_at": null,
@@ -1059,14 +1059,14 @@
     "created_by": null,
     "last_patched_at": "2026-10-14T05:16:36.825437+00:00",
     "last_reused_patch_generation": 4,
-    "last_used_at": "2026-11-02T17:23:34.439034+00:00",
-    "last_viewed_at": "2026-11-02T17:23:34.428020+00:00",
+    "last_used_at": "2026-11-05T00:52:45.287953+00:00",
+    "last_viewed_at": "2026-11-05T00:52:45.272540+00:00",
     "patch_count": 4,
     "patch_generation": 4,
     "pinned": false,
     "state": "active",
-    "use_count": 52,
-    "view_count": 52
+    "use_count": 55,
+    "view_count": 55
   },
   "discord-thread-post": {
     "archived_at": null,
@@ -1119,14 +1119,14 @@
     "created_by": null,
     "last_patched_at": "2026-11-02T22:22:06.027314+00:00",
     "last_reused_patch_generation": 7,
-    "last_used_at": "2026-11-03T08:12:44.908091+00:00",
-    "last_viewed_at": "2026-11-03T08:12:44.899225+00:00",
+    "last_used_at": "2026-11-05T07:26:53.553819+00:00",
+    "last_viewed_at": "2026-11-05T07:26:53.537188+00:00",
     "patch_count": 17,
     "patch_generation": 7,
     "pinned": false,
     "state": "active",
-    "use_count": 60,
-    "view_count": 60
+    "use_count": 61,
+    "view_count": 61
   },
   "disk-reclaim-verification": {
     "archived_at": null,
@@ -1714,16 +1714,16 @@
     "archived_at": null,
     "created_at": "2026-07-26T18:50:11.979429+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-10-31T20:46:34.373066+00:00",
+    "last_patched_at": "2026-11-05T00:25:12.300816+00:00",
     "last_reused_patch_generation": 42,
-    "last_used_at": "2026-11-02T21:50:07.566331+00:00",
-    "last_viewed_at": "2026-11-02T21:50:07.466303+00:00",
-    "patch_count": 44,
-    "patch_generation": 42,
+    "last_used_at": "2026-11-05T00:24:18.429053+00:00",
+    "last_viewed_at": "2026-11-05T00:24:18.394823+00:00",
+    "patch_count": 45,
+    "patch_generation": 43,
     "pinned": false,
     "state": "active",
-    "use_count": 57,
-    "view_count": 57
+    "use_count": 58,
+    "view_count": 58
   },
   "imessage": {
     "archived_at": "2026-09-14T22:45:10.713424+00:00",
@@ -2126,13 +2126,13 @@
     "created_by": null,
     "last_patched_at": "2026-10-23T05:53:36.403986+00:00",
     "last_reused_patch_generation": 8,
-    "last_used_at": "2026-11-04T08:00:35.831408+00:00",
+    "last_used_at": "2026-11-05T08:00:45.096177+00:00",
     "last_viewed_at": "2026-10-24T18:00:40.487841+00:00",
     "patch_count": 28,
     "patch_generation": 8,
     "pinned": false,
     "state": "active",
-    "use_count": 849,
+    "use_count": 855,
     "view_count": 39
   },
   "narusya-local-archive": {
@@ -2268,16 +2268,16 @@
   "ocr-image": {
     "archived_at": null,
     "created_at": "2026-05-04T03:51:24.595542+00:00",
-    "last_patched_at": "2026-06-01T00:52:22.443598+00:00",
+    "last_patched_at": "2026-11-05T00:25:01.130380+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-10-30T06:24:05.812246+00:00",
-    "last_viewed_at": "2026-10-30T06:24:05.790696+00:00",
-    "patch_count": 3,
-    "patch_generation": 0,
+    "last_used_at": "2026-11-05T00:24:23.117922+00:00",
+    "last_viewed_at": "2026-11-05T00:24:23.017968+00:00",
+    "patch_count": 4,
+    "patch_generation": 1,
     "pinned": false,
     "state": "active",
-    "use_count": 12,
-    "view_count": 12
+    "use_count": 15,
+    "view_count": 15
   },
   "offsite-vault-backup": {
     "archived_at": "2026-11-03T01:57:50.763747+00:00",
@@ -2894,14 +2894,14 @@
     "created_by": null,
     "last_patched_at": "2026-10-20T15:45:38.206094+00:00",
     "last_reused_patch_generation": 14,
-    "last_used_at": "2026-11-03T23:33:13.064588+00:00",
-    "last_viewed_at": "2026-11-03T23:33:13.055496+00:00",
+    "last_used_at": "2026-11-05T00:24:32.311202+00:00",
+    "last_viewed_at": "2026-11-05T00:24:32.277489+00:00",
     "patch_count": 14,
     "patch_generation": 14,
     "pinned": false,
     "state": "active",
-    "use_count": 22,
-    "view_count": 22
+    "use_count": 24,
+    "view_count": 24
   },
   "simplify-code": {
     "archived_at": "2026-09-14T22:45:14.010701+00:00",

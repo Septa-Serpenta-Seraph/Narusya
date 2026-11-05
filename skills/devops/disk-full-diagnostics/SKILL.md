@@ -82,6 +82,7 @@ docker system df                       # summary
 | Orphaned install venvs | Check `installs/*/facts.json` for active venv path, then `ls installs/*/environments/` — stale leases (5+ days) + no facts.json reference = orphaned. Each ~433M. Verify no process uses it before deleting. |
 | Manual backup tarballs | `ls ~/backups/*.tar.gz` — keep only latest of each type | Check dates; delete older duplicates |
 | HuggingFace cache | `rm -rf ~/.cache/huggingface/hub` | Regenerates on next use; often 500M–2G |
+| Vault redundant snapshots | `ls ~/.hermes/vault-work/work/` — compare against `vault-work/git/MANIFEST.txt` date | Work snapshots (e.g. `20260830-050043`) are full point-in-time backups. If the git vault sync is newer (check MANIFEST.txt), the old work snapshots are redundant. Remove oldest first; keep the most recent work snapshot as a fallback. Each ~600-800M. |
 | User-site-packages overlap | `du -sh ~/.local/lib/python*/site-packages/nvidia ~/.local/lib/python*/site-packages/triton` | If same packages exist in both venv and user-site, user copy may be safe to remove — check `lsof` first |
 
 ### Known large consumers (can't clean without reinstall)

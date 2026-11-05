@@ -112,8 +112,9 @@ When you need to read a Discord image and vision isn't available:
 2. **If output is poor**, try `--psm 3` (automatic segmentation)
 3. **If still poor**, preprocess (grayscale → sharpen → contrast) then retry
 4. **If image is very large**, split into chunks first, then OCR each chunk
-5. **If all OCR fails**, try the vision model via LM Studio (see below)
-6. **If vision also fails**, ask the user to paste the text or describe the image
+5. **If OCR only picks up partial text** (a caption, headline, or a few words), search the web for that fragment — it often identifies the full meme/post/screenshot. Combine the OCR fragment with context (e.g., "left-wing transgender witches last night" meme) to find the source.
+6. **If all OCR fails**, try the vision model via LM Studio (see below)
+7. **If vision also fails**, ask the user to paste the text or describe the image
 
 ## Vision Model Fallback (LM Studio)
 
@@ -153,10 +154,13 @@ print(resp.json()['choices'][0]['message']['content'])
 3. For very tall images, crop multiple chunks and send each separately.
 
 ### Notes
+- **Check if the service is running first.** Before attempting the vision model, verify port 6969 is listening: `ssh ... "powershell -Command \"Get-NetTCPConnection -LocalPort 6969 -ErrorAction SilentlyContinue\""` — if empty, the service is down and must be started (see below). Do not wait for a timeout.
+- **Model name discrepancy:** The config (`~/.hermes/config.yaml`) lists `qwen3.5-9b-uncensored-hauhaucs-aggressive` but the working model is `qwen/qwen3-vl-4b`. Use the latter.
 - The vision model describes what it sees, not just text — useful for photos, not just screenshots.
 - Dark-themed Discord screenshots that Tesseract can't read are often readable by the vision model.
 - The vision model may hallucinate text on non-text images (e.g., describing a photo as having text). Cross-check with Tesseract when possible.
-- If the model is not loaded, load it via SSH: `ssh -i ~/.ssh/shell_key adora@100.116.86.38 "powershell -Command \"& C:\\Users\\Adora\\.lmstudio\\bin\\lms.exe load qwen/qwen3-vl-4b\""`
+- If the model is not loaded, load it via SSH: `ssh -i ~/.ssh/shell_key adora@100.116.86.38 "powershell -Command "& C:\Users\Adora\.lmstudio\bin\lms.exe load qwen/qwen3-vl-4b""`
+- **If port 6969 is not listening at all**, the LM Studio server itself is not running — loading a model will not help. Start the server first: ssh -i ~/.ssh/shell_key adora@100.116.86.38 "powershell -Command "& C:\Users\Adora\.lmstudio\bin\lms.exe server start"" then load the model.
 
 ## Error handling
 - If output is garbled, try `--psm 6` (uniform block) or `--psm 3` (fully automatic)
