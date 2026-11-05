@@ -462,6 +462,18 @@ print(resp.json()["choices"][0]["message"]["content"])
 
 **When to use:** Cloud vision is down, rate-limited, or you want a quick local check without spending credits.
 
+**Server startup (if port 6969 is not listening):**
+```bash
+ssh -i ~/.ssh/shell_key adora@100.116.86.38 "powershell -Command \"& C:\\Users\\Adora\\.lmstudio\\bin\\lms.exe server start\""
+```
+Wait 10-15s for the server to become responsive, then load the model:
+```bash
+ssh -i ~/.ssh/shell_key adora@100.116.86.38 "powershell -Command \"& C:\\Users\\Adora\\.lmstudio\\bin\\lms.exe load qwen/qwen3-vl-4b\""
+```
+Verify: `ssh ... "powershell -Command \"& C:\\Users\\Adora\\.lmstudio\\bin\\lms.exe ps\""` — should show the model as loaded.
+
+**Pitfall:** The HTTP server may not respond immediately after starting. Check `curl -s --max-time 5 http://100.116.86.38:6969/v1/models` before sending requests. If it times out, wait and retry — the model may still be loading into memory.
+
 ## Related
 
 - `image-generation` (creative, bundled) — the native toolset this supplements.

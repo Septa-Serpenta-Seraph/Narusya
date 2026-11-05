@@ -738,3 +738,12 @@ known_builtin_toolsets:
     - yuanbao
 _left_core_installed:
   - spotify
+platforms:
+  discord:
+    enabled: true
+    home_channel:
+      platform: discord
+      chat_id: '1267489522732630068'
+      name: 'National Security Bureau — USRE / #garden'
+      user_id: '722566466603319368'
+      scope_id: '1266408865617154070'
