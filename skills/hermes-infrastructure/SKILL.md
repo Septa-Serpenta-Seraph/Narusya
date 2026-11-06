@@ -966,6 +966,7 @@ Memory provider reports "not available" but Qdrant is healthy; searches return e
    du -h ~/.hermes/state.db
    # >2G = warning; >3G = critical
    ```
+   **Root cause check:** `grep -A2 "^sessions:" ~/.hermes/config.yaml` — if `auto_prune: false`, the DB grows unboundedly. Set `auto_prune: true`, `retention_days: 90`, `vacuum_after_prune: true`. This is the #1 prevention for state.db disk growth.
 
 5. **Qdrant health:**
    ```bash

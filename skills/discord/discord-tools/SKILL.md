@@ -374,6 +374,36 @@ To remove a wall you posted by mistake: `GET /channels/{id}/messages?limit=20`, 
 `author.id == bot_id` (from `GET /users/@me`), then `DELETE /channels/{id}/messages/{mid}`
 with ~1.2s spacing. Same rate-limit caution applies.
 
+### Editing your own messages (PATCH API)
+To edit a message the bot already posted (e.g., removing a personal reference):
+
+```python
+import json, urllib.request
+
+TOKEN = open("/home/adora/.hermes/.env").read()  # extract DISCORD_BOT_TOKEN
+CHANNEL_ID = "..."
+MESSAGE_ID = "..."
+NEW_CONTENT = "..."
+
+url = f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages/{MESSAGE_ID}"
+req = urllib.request.Request(
+    url,
+    data=json.dumps({"content": NEW_CONTENT}).encode(),
+    headers={
+        "Content-Type": "application/json",
+        "Authorization": f"Bot {TOKEN}",
+        "User-Agent": "DiscordBot (https://github.com/discord/discord-api-docs, 10)"
+    },
+    method="PATCH"
+)
+with urllib.request.urlopen(req) as r:
+    print("Edited OK")
+```
+
+**Critical pitfall — User-Agent is required.** Without a `User-Agent: DiscordBot (…)` header, Discord's Cloudflare layer returns `403 Forbidden (error 1010)` even with a valid token. The default Python urllib User-Agent is blocked. Always include the DiscordBot UA.
+
+**Critical pitfall — forwarded messages are snapshots.** Editing the original does NOT change copies that were already forwarded to other channels. Forwarded messages are independent immutable copies in Discord. If the original had a personal reference and was forwarded, the forwarded copy still has it. To fix forwards: delete the forwarded message and re-forward the edited original, or address the content directly in conversation.
+
 ---
 
 ## 11. Discord Sticker Management

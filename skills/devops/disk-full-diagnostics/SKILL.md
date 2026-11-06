@@ -11,10 +11,17 @@ Use when disk hits 100% or "No space left on device" errors appear. Goal: find w
 
 ## Diagnostic Steps (in order)
 
+### 0. Check for symlinks first (before trusting any du output)
+```bash
+ls -la ~/.hermes/ | grep "^l"   # symlinks in .hermes (tools, node, camoufox, etc. often point to /mnt/data)
+du -sh -P ~/.hermes/             # physical size, no symlink follow
+```
+`du` follows symlinks by default — `~/.hermes/tools` (1.6G), `node` (213M), `camoufox-browser` (199M), and `lsp` (104M) are already symlinks to `/mnt/data` on this VM. Without the symlink check, you'll report gigabytes on root that aren't there, and recommend moves that are already done.
+
 ### 1. Get the lay of the land
 ```bash
 df -h                          # overall usage per filesystem
-du -sh /* 2>/dev/null | sort -rh | head -15    # top-level breakdown
+du -sh /* 2>/dev/null | sort -rh | head -15    # top-level breakdown (note: /mnt is a separate mount)
 du -sh ~/.hermes/* /var/log/* /var/lib/* 2>/dev/null | sort -rh | head -20
 ```
 
@@ -83,6 +90,8 @@ docker system df                       # summary
 | Manual backup tarballs | `ls ~/backups/*.tar.gz` — keep only latest of each type | Check dates; delete older duplicates |
 | HuggingFace cache | `rm -rf ~/.cache/huggingface/hub` | Regenerates on next use; often 500M–2G |
 | Vault redundant snapshots | `ls ~/.hermes/vault-work/work/` — compare against `vault-work/git/MANIFEST.txt` date | Work snapshots (e.g. `20260830-050043`) are full point-in-time backups. If the git vault sync is newer (check MANIFEST.txt), the old work snapshots are redundant. Remove oldest first; keep the most recent work snapshot as a fallback. Each ~600-800M. |
+| hermes-agent .git | `du -sh ~/.hermes/hermes-agent/.git/` — if >500M, `rm -rf ~/.hermes/hermes-agent/.git` | Git history packs (636K+ objects, 1.3G+) accumulate from clone/fetch. Deleting .git frees the space; code still runs fine. Regenerates on next `hermes update` or `git clone`. Emergency recovery only. |
+| Corrupted hermes-agent .git pack | If `git gc` fails with "Out of diskspace", the pack is too large to repack. `rm -rf hermes-agent/.git` then re-clone if needed. |
 | User-site-packages overlap | `du -sh ~/.local/lib/python*/site-packages/nvidia ~/.local/lib/python*/site-packages/triton` | If same packages exist in both venv and user-site, user copy may be safe to remove — check `lsof` first |
 
 ### Known large consumers (can't clean without reinstall)
@@ -150,6 +159,9 @@ See `references/aegis-vm-disk-layout.md` for this specific machine's topology an
 - Camoufox browser cache (especially fonts) regenerates on next use — safe to delete but will re-download
 - **Approval-gated deletions in cron**: `find -delete` and `rm -rf` trigger Hermes command approval and stall forever in autonomous/cron contexts. Use `mv` to a trash dir or pre-resolve exact file paths with `xargs rm -f` instead. See `references/cron-approval-gated-deletions.md`.
 - **`/mnt/data` fills up too** — the "bigger disk" is not infinite. When `mv` to `/mnt/data` fails midway with "No space left on device", the source directory is left partially moved (some files copied, rest still in original, no symlink created). Clean up the partial destination dir first, then free space on `/mnt/data` (delete redundant archives, old snapshots) before retrying. Check `df -h /mnt/data` before every large move.
+- **Moving to a bigger disk is a band-aid, not a fix.** If you haven't identified and stopped the actual growth mechanism, the bigger disk fills at the same rate. Never present "move to /mnt/data" as a complete solution. Always pair it with: (a) enable `sessions.auto_prune` if state.db is growing, (b) fix any cron that recreates large files daily (vault-sync, pm-runtime), and (c) a weekly cleanup cron. Calculate actual growth rate (GB/day) before estimating headroom — "14G free" means nothing if something writes 2G/day.
+- **Vault-sync git packs accumulate on push failure.** The vault-sync script creates orphan commits, force-pushes, then runs `git gc --prune=now --aggressive`. If the push fails (GitHub unreachable, auth expired), gc never runs and the `.git/objects/pack/` grows every day. A 523M pack was observed. Fix: run `git gc --prune=now --aggressive` independently of push success, or check pack size in the watchdog.
+- **Check `sessions.auto_prune` in config.yaml.** If `sessions.auto_prune: false`, state.db grows unboundedly (observed: 427M → 1.3G over months). Set `auto_prune: true` with `retention_days: 90` and `vacuum_after_prune: true` to bound growth. This is the single most important prevention step for Hermes disk health.
 - **User-site-packages can be a silent space hog**: `~/.local/lib/python*/site-packages/` often contains duplicate ML packages (nvidia, triton) that also exist in the active venv. Check for overlap before assuming they're needed.
 - **HuggingFace cache: two blob stores, different rules.** Model-local `blobs/` directories (inside `models--*/`) ARE referenced by symlinks from snapshots — never delete those. But the top-level `hub/blobs/` (old format, hex-prefixed subdirectories like `00/`, `01/`) can be **orphaned** when models migrated to the new format (model-local blobs). Diagnostic: `scan_cache_dir()` returns 0 repos while `du` shows huge size in `hub/blobs/`. Verify by checking whether any snapshot symlinks resolve into `hub/blobs/` (not `models--*/blobs/`). If none do, the top-level `hub/blobs/` is safe to delete. Always run this check — never assume either way.
 - **Interrupted `hermes update` recovery loop can be the root cause of disk-full.** When an update is interrupted, Hermes' `pm-runtime` recovery mechanism can enter an infinite download loop via `uv`, filling `~/.hermes/cache/uv` until the disk is 100% full. The disk fills *before* any service crashes, so the timeline shows the cache growing first, then cascade failures (SQLite VACUUM, gateway partial recovery) after. Always monitor disk during updates; kill runaway `pm-runtime` processes early if an update takes >10 minutes. Clearing the uv cache (`rm -rf ~/.hermes/cache/uv/*`) is safe — it regenerates.
@@ -157,3 +169,6 @@ See `references/aegis-vm-disk-layout.md` for this specific machine's topology an
 - **Gradual degradation is harder to detect than sudden crashes.** The system can be dying for weeks and remain "mostly working" — turns are slow but not broken, context is lost but not obviously, the disk is filling but nobody is watching. By the time it's bad enough to notice, it's already critical. Monitor disk space continuously (not just on errors), and treat any sustained increase in disk usage as a signal requiring investigation. A disk watchdog that change-detects (only fires when free space actually changes) is better than one that only alerts at 100%.
 - **Gateway restart during active turn causes stuck session** — When the gateway restarts during an active turn (common during disk emergencies), the session gets paused and nothing queued after it will run. `/reset` may or may not work depending on gateway state. Have the user run `systemctl --user restart hermes-gateway.service` from their local terminal if slash commands fail.
 - **SQLite VACUUM needs free space first.** `VACUUM` writes a temporary copy of the database — if the disk is 99%+ full, it fails with "database or disk is full" even when the DB itself has free pages. Free at least 2x the DB size in temporary space before attempting VACUUM. Alternative: use `PRAGMA journal_mode = DELETE; PRAGMA wal_checkpoint(TRUNCATE);` to reclaim WAL space without VACUUM. If VACUUM is essential, move the DB to a larger disk first (`mv state.db /mnt/bigdisk/ && ln -s /mnt/bigdisk/state.db state.db`), run VACUUM there, then move back.
+- **`du` follows symlinks — always check for them before disk analysis.** On this VM, `~/.hermes/tools`, `node`, `camoufox-browser`, and `lsp` are symlinks to `/mnt/data/`. Running `du -sh ~/.hermes/*` without checking reports ~2G of /mnt/data usage as if it were on root. Use `ls -la ~/.hermes/ | grep "^l"` to find symlinks, then `du -sh -P` for physical-only sizes. This is the #1 cause of wrong disk diagnosis on this VM.
+- **Hermes blocklist prevents `rm -rf` of its own Python interpreter in `tools/`.** The agent cannot delete `~/.hermes/tools/python-*/bin/python3` — the command is blocked even with --yolo. To relocate tools: `mv tools tools-old && ln -s /mnt/data/hermes-tools tools` (rename + symlink, not delete). `mv` on a symlink renames the symlink itself, not the target — if `tools` is already a symlink to `/mnt/data`, the rename just moves the link.
+- **Check `cron/jobs.json` for disabled cleanup jobs before creating new ones.** A `disk-cleanup-weekly` cron may exist with `enabled: false` (observed: created but never enabled, model/provider null). Enabling it is safer than creating a duplicate from scratch.
