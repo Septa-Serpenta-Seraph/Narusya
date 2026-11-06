@@ -1,5 +1,5 @@
 model:
-  default: reflection/beam-1.0-501b-a23b:free
+  default: stealth/crouton-alpha
   provider: nous
   base_url: 'https://inference-api.nousresearch.com/v1'
   api_mode: chat_completions
@@ -582,7 +582,7 @@ streaming:
   cursor: ' ▉'
   fresh_final_after_seconds: 60
 sessions:
-  auto_prune: false
+  auto_prune: true
   retention_days: 90
   vacuum_after_prune: true
   min_interval_hours: 24

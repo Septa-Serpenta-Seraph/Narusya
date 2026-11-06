@@ -1,42 +1,50 @@
-# AEGIS VM Disk Layout (as of June 2026)
+# AEGIS VM Disk Layout (updated November 2026)
 
-## Filesystem
-- Single LVM logical volume: `/dev/mapper/ubuntu--vg-ubuntu--lv`
-- Size: 37G total
-- Mount: `/` (everything on one filesystem)
+## Filesystems
+- Root: `/dev/mapper/ubuntu--vg-ubuntu--lv` — 37G, mount: `/`
+- Data: `/dev/sdb1` — 49G, mount: `/mnt/data`
 
-## Top Space Consumers (June 28, 2026 snapshot)
+## Root Filesystem — Top Consumers (November 2026)
 
 | Path | Size | Cleanable? | Notes |
 |------|------|-----------|-------|
-| `~/.hermes/hermes-agent/venv/` | 5.2 GB | No | Active Python venv for Hermes; contains torch, nvidia, triton |
-| `~/.hermes/` (total) | 8.3 GB | Partial | venv (5.2G) + state.db + sessions + skills + state-snapshots (524M) |
-| `~/.local/lib/python3.12/site-packages/` | 1.6 GB | Maybe | User-site packages; may duplicate venv packages |
-| `/var/log/journal/` | 845 MB | Needs sudo | systemd journal; grows without limits |
-| `~/backups/` | 420 MB | Yes (approval-gated) | Old April 2026 backup tarballs |
-| `~/.cache/camoufox/` | 321 MB | Yes | Camoufox/Firefox browser binary; regenerates |
-| `~/.hermes/state-snapshots/` | 524 MB | Partial | Pre-update state.db backups; keep latest 1-2 |
-| `~/.hermes/camoufox-browser/` | 138 MB | No | Camoufox server installation |
-| `~/.cache/huggingface/` | 88 MB | Yes | HF model cache; regenerates |
-| `/var/log/` (total) | 861 MB | Needs sudo | Mostly journal |
+| `/snap/` + `/var/lib/snapd/` | 15G | No | Snap packages; user instruction: do not touch |
+| `/usr/` | 4.3G | No | System binaries |
+| `/swap.img` | 2.1G | No | Swap file |
+| `~/.hermes/tools/` | 1.6G | No | ffmpeg (438M), python (402M), chromium (364M), node (227M) |
+| `~/.hermes/state.db` | 1.3G | VACUUM | **Grows unboundedly if `sessions.auto_prune: false`.** Set to true with 90-day retention. |
+| `~/.hermes/installs/` | 836M | No | 2 active venvs (gateway + heal script) |
+| `~/.hermes/hermes-agent/` | 359M | Partial | Code only; .git deleted to save 1.5G (regenerates on hermes update) |
+| `~/.hermes/node/` | 213M | No | Node runtime |
+| `/var/cache/apt/` | 606M | Needs sudo | `sudo apt-get clean` |
+| `~/qdrant_storage/` | 429M | No | Qdrant data (Docker also mounts from /mnt/data) |
+| `/var/log/journal/` | 110M | Needs sudo | `sudo journalctl --vacuum-size=100M` |
 
-## What's NOT cleanable without elevated access
-- `/var/log/journal/` — needs `sudo journalctl --vacuum-size=100M`
-- `/var/log/syslog.*` — needs sudo or logrotate
+## /mnt/data — Contents (November 2026)
 
-## What's safe to clean (no approval needed)
-- `pip cache purge` — usually already clean
-- `uv cache prune --ci` — usually already clean
-- `npm cache clean --force` — usually already clean
-- Docker builder/image prune — if docker present
+| Path | Size | Notes |
+|------|------|-------|
+| `/mnt/data/adora-main/` | 6.6G | Older backups (Sep 2026) |
+| `/mnt/data/vault-work-work/` | 5.0G | 7 old vault snapshots (Aug 2026) |
+| `/mnt/data/qdrant_storage/` | 3.9G | **Real Qdrant data** (Docker bind-mount) |
+| `/mnt/data/TinyMU/` | 2.3G | Game data |
+| `/mnt/data/hermes-tools/` | 1.6G | Duplicate of `~/.hermes/tools/` |
+| `/mnt/data/Narusya-Archive/` | 1.4G | Session archive |
+| Free | 14G | |
 
-## What requires approval (avoid in cron)
-- `find ... -delete` — triggers approval gate
-- `rm -rf <directory>` — triggers approval gate
-- `rm -f` on individual files — usually OK
+## Growth Vectors (what fills the disk fast)
 
-## Long-term concern
-At 37G total with 5.2G for the Hermes venv alone, this disk will continue to fill. Recommend:
-1. LV expansion if host has space (`lvextend -L +20G /dev/mapper/ubuntu--vg-ubuntu--lv`)
-2. Regular journal vacuuming via sudo
-3. Periodic state-snapshot rotation
+1. **pm-runtime infinite download loop** — fills `~/.hermes/cache/uv/` to 2G+ in days. Fix: clear uv cache, verify pm-runtime generation is stable.
+2. **Vault-sync git packs** — if GitHub push fails, `git gc` never runs and `.git/objects/pack/` grows daily (observed 523M). Fix: run gc independently, or point vault to /mnt/data.
+3. **state.db unbounded growth** — `sessions.auto_prune: false` means every session adds data forever. Fix: set `auto_prune: true`, `retention_days: 90`, `vacuum_after_prune: true`.
+4. **vault-sync daily snapshots** — creates ~1.2G in vault-work every morning. Fix: point `VAULT_DIR` to /mnt/data.
+
+## Long-term Recommendations
+
+1. Move `~/.hermes` to `/mnt/data/` with symlink (frees 2.9G from root, immediate relief)
+2. Enable `sessions.auto_prune` (prevents state.db unbounded growth)
+3. Point vault-sync `VAULT_DIR` to `/mnt/data/` (prevents daily 1.2G on root)
+4. Weekly disk cleanup cron (clears uv/npm caches, old logs, orphaned files)
+5. LV expansion if host has space (`lvextend -L +20G /dev/mapper/ubuntu--vg-ubuntu--lv`)
+6. `sudo apt-get clean` when sudo available (606M)
+7. `sudo journalctl --vacuum-size=100M` when sudo available (110M)

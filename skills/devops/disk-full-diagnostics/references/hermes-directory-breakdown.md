@@ -1,56 +1,26 @@
-# Hermes Agent Directory Breakdown (May 2026 snapshot)
+# Hermes Agent Directory Breakdown
 
-Measured on a 37G Ubuntu LV with hermes-agent installed. Sizes will grow over time.
-
-## ~/.hermes/ — 12G total
+## ~/.hermes/ — ~2.9G (November 2026)
 
 | Directory | Size | Notes |
 |-----------|------|-------|
-| hermes-agent/ | 7.8G | Main installation; venv is 5.1G, node_modules 1.6G |
-| state-snapshots/ | 2.7G | Pre-update state.db backups; ~440-465M each; prune to latest 2 |
-| state.db | 465M | Active session store; VACUUM if freelist significant |
-| node/ | 205M | Node.js runtime |
-| sessions/ | 163M | Session JSON files; old ones can be archived |
-| camoufox-browser/ | 138M | Camoufox browser binary |
-| skills/ | 27M | Installed skills |
-| hermes-docs/ | 25M | Documentation mirror |
-| lsp/ | 24M | Language server protocol tools |
-| backup-repo/ | 11M | Git backup of hermes config |
-| logs/ | 7.3M | agent.log, errors.log, gateway.log |
+| tools/ | 1.6G | ffmpeg (438M), python-3.14.7 (402M), chromium (364M), node (227M), cua-driver (87M), uv (54M) |
+| state.db | 1.3G | **Grows unboundedly if `sessions.auto_prune: false`.** Was 465M in May, 1.3G in Nov. |
+| installs/ | 836M | 2 active venvs (416M + 417M). Gateway uses one, heal script uses the other. Orphaned ones >5 days = safe to delete. |
+| hermes-agent/ | 359M | Code only. .git was 1.5G (deleted for space; regenerates on clone/update). |
+| node/ | 213M | Node.js runtime |
+| profiles/ | 105M | Profile-specific data |
+| camoufox-browser/ | 20M | After node_modules deletion (was 199M) |
+| skills/ | 41M | Installed skills |
+| scripts/ | 24M | Utility scripts |
+| logs/ | 9M | Truncated periodically |
+| checkpoints/ | 16M | Git checkpoint store |
 
-## ~/.hermes/hermes-agent/ — 7.8G
+## Key Changes Since May 2026
 
-| Directory | Size | Notes |
-|-----------|------|-------|
-| venv/ | 5.1G | Python 3.11 venv; nvidia packages are 1.7G of this |
-| node_modules/ | 1.6G | Electron is 261M alone |
-| web/ | 294M | Gateway web assets |
-| ui-tui/ | 229M | TUI frontend |
-| apps/ | 74M | Desktop apps |
-| scripts/ | 67M | Utility scripts |
-
-## ~/.cache/ — 2.3G
-
-| Directory | Size | Notes |
-|-----------|------|-------|
-| camoufox/ | 1.4G | Fonts are 1G+; safe to delete; regenerates |
-| huggingface/ | 664M | Model cache; safe to delete; re-downloads on use |
-| electron/ | 110M | Cleared in this session |
-| uv/ | 103M | Python package cache |
-| node-gyp/ | 67M | Native node build cache |
-
-## ~/.local/ — 2.1G total
-
-| Directory | Size | Notes |
-|-----------|------|-------|
-| lib/python3.12/ | 1.5G | nvidia (432M) + triton (641M) + others; check if redundant with venv |
-| share/piper-voices/ | 191M | TTS voice models |
-| share/uv/ | 100M | UV tool cache |
-
-## Other notable
-
-| Path | Size | Notes |
-|------|------|-------|
-| ~/backups/ | 709M | Manual tarballs; keep latest of each type only |
-| /snap/ | 6.8G | Snap packages; firefox, gnome, etc. |
-| /var/lib/snapd/ | 2.5G | Snap data |
+- **state.db tripled** (465M → 1.3G) because `sessions.auto_prune: false`. VACUUM didn't reduce size — data is real.
+- **hermes-agent shrank** from 7.8G to 359M — nvidia/torch packages removed or restructured; .git deleted.
+- **state-snapshots eliminated** — was 2.7G, cleaned up.
+- **vault-work added** — daily sync creates ~1.2G; deleted for space (GitHub has off-site backup). Cron recreates daily.
+- **tools/ grew** — python-3.14.7 added (402M).
+- **installs/ duplicated** — 2 environments at 416M+ each (both in use).
