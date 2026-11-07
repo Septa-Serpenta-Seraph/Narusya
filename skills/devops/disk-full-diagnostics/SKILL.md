@@ -150,6 +150,7 @@ The `monitor` field takes the **filename of a script saved under `~/.hermes/scri
 See `references/aegis-vm-disk-layout.md` for this specific machine's topology and typical space consumers.
 
 ## Pitfalls
+- **ext4 reserved blocks hide freed space.** On ext4, 5% of the filesystem (default) is reserved for root and never appears as free in `df`. On a 37G root that's ~1.85G. After deleting 1.9G of files, `df` may still show only ~244M free because the freed space partially overlaps the reserve. This is normal — the space IS freed, it's just that `df` reports available-to-unprivileged-users. Non-root writes can use reserved blocks, so operations won't fail the way the raw number suggests. Recalculate with `df -B1 /` and compare against `stat -f /` for total vs available.
 - Don't assume the biggest directory is the root cause — it might be a secondary effect (postgres crash logs filling apport.log)
 - `journalctl --vacuum-time=3d` can free 0B even when journal is 500M+ — `--vacuum-size` may also fail; journald config may override. Check `/etc/systemd/journald.conf` for `SystemMaxUse` settings. **Without sudo, journal cleanup is impossible** — report and move on. See `references/sudo-denied-journal-cleanup.md`.
 - `docker image prune -f` only removes dangling (untagged) images. Use `-a` (or `-af`) to also remove unused images that are still tagged — this is where the real space is.

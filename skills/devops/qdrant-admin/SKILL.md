@@ -84,6 +84,10 @@ When memories don't appear across sessions, check:
 
 4. **"💾 Memory updated" ≠ Qdrant:** Local memory tool doesn't push to Qdrant.
 
+5. **Dimension mismatch (silent failure):** If the embedder produces 384-dim vectors (fastembed) but the configured memory collection is 3072-dim (legacy OpenAI), every search silently returns empty — Qdrant rejects the dimension mismatch at the REST layer and the plugin catches the exception at debug level. Check: embed a test query, compare `len(vector)` against the collection's `config.params.vectors.size`. If they differ, recall is broken even though Qdrant reports healthy. Fix: either switch the collection to a 384-dim one (`narusya_memories_fastembed`) or switch the embedder to 3072-dim (Nous/OpenRouter). Also check that the 384-dim collection actually has data — a crash recovery may have wiped the live storage while a full backup sits on `/mnt/data/qdrant_storage` (197M for `narusya_memories_fastembed` vs 2 points live).
+
+6. **HNSW index not built:** `indexed_vectors_count: 0` on a collection means brute-force search works but semantic search is unoptimized. Qdrant normally builds the index automatically; if it stays at 0 after restart, check optimizer status and Qdrant logs.
+
 ### Plugin Loading Diagnostics
 
 1. Quick smoke test: Are `qdrant_recall`, `qdrant_browse` tools available?
@@ -125,7 +129,7 @@ for coll in ["intelligent_gould_narusya","naru_memories_v2","narusya_memory_back
 
 ### Auditing Memory Health — check the CONFIGURED collection before declaring memory broken
 When the user asks whether memory is intact (or after any scare), do NOT point-count an arbitrary collection and pronounce the system dead. The recall layer and the bulk archive are different collections:
-- **Recall collection** — what the plugin actually searches. Read it from config: `plugins.qdrant-memory.collection` in config.yaml (e.g. `intelligent_gould_narusya`, thousands of points).
+- **Recall collection** — what the plugin actually searches. Read it from config: `plugins.qdrant-memory.collection` in config.yaml (e.g. `narusya_memories_fastembed`, 4,634 points as of 2026-11-06).
 - **Bulk archive** — `session_messages_archive` (tens of thousands of points, 384-dim fastembed) — a separate export pipeline, NOT what recall queries.
 - **Operational side-collections** — `hermes_session_memories` and similar can hold dozens of points and mean nothing about memory health.
 
@@ -159,7 +163,7 @@ memory:
 plugins:
   qdrant-memory:
     qdrant_url: "http://localhost:6333"
-    collection: "intelligent_gould_narusya"
+    collection: "narusya_memories_fastembed"
     prefetch_limit: 5
     max_age_days: 90
     recency_weight: 0.3
@@ -171,13 +175,14 @@ plugins:
 3. OpenRouter API (`openai/text-embedding-3-large`)
 4. Text search fallback
 
-> The chain above is a *generic* plugin sketch, not the installed provider's
-> actual path — the live qdrant provider embeds via Nous OAuth then OpenRouter,
-> and requires a 3072-dim vector to report available. When those APIs are out of
-> credits no entry in this list helps: the provider reports unavailable and the
-> warning's "check the service environment" note is a red herring. See the
-> `qdrant-local-embeddings` skill for switching the provider to free on-device
-> fastembed and migrating the existing collection to the matching dimension.
+> The chain above is a *generic* plugin sketch. The live provider's actual path (as of
+> 2026-11-06) uses `embedding_backend: local_fastembed` — the fastembed daemon at
+> `/home/adora/.hermes/scripts/embed_fastembed_local.py` produces 384-dim vectors via
+> `/mnt/data/fe-venv/bin/python`. The memory collection is `narusya_memories_fastembed`
+> (384-dim). When OpenRouter/Nous are out of credits, the provider falls back to local
+> fastembed automatically. If the provider reports unavailable, check that the fastembed
+> daemon venv exists and the script is executable. See `qdrant-local-embeddings` skill
+> for backend switching and dimension migration procedures.
 
 ### Prefetch Guardrails (Required)
 - Timestamps in every result line (`[YYYY-MM-DD]` prefix)
@@ -197,7 +202,7 @@ def prefetch(self, query, *, session_id=""): return ""
 curl -s http://localhost:6333/healthz
 
 # 2. Recent entries in Qdrant?
-curl -s 'http://localhost:6333/collections/intelligent_gould_narusya/points/scroll' \
+curl -s 'http://localhost:6333/collections/narusya_memories_fastembed/points/scroll' \
   -X POST -d '{"limit": 5, "with_payload": true}' | python3 -m json.tool | grep timestamp
 
 # 3. Embedding pipeline?
@@ -221,7 +226,7 @@ print('Status:', r.status_code, '| Dims:', len(r.json()['data'][0]['embedding'])
 | Plugin load | Provider name + tools listed | ImportError |
 | Auto-sync | Recent timestamps | Old-only data |
 | Recall | Timestamped results | Empty or no dates |
-| Embedding | `Dims: 3072` | Error/wrong dims |
+| Embedding | `Dims: 384` (fastembed) | Error/wrong dims |
 
 ---
 
@@ -253,7 +258,7 @@ Extend the existing `qdrant-memory` plugin's `prefetch()` method to query **addi
 
 **Key architectural decisions:**
 - Only ONE external MemoryProvider allowed per Hermes instance — extend existing plugin, not separate plugin
-- Lorebook content stored in separate collection (`narusya_lorebooks`) with metadata (stem, keywords, priority_tier, filename)
+- Lorebook content stored in separate collection (`narusya_lorebooks_fe` for fastembed, `narusya_lorebooks` for legacy 3072-dim) with metadata (stem, keywords, priority_tier, filename)
 - Content loaded from disk at injection time (not stored fully in Qdrant payloads — saves vector storage)
 
 **Injection flow:**
@@ -273,10 +278,12 @@ text-embedding-3-large scores on long documents are lower than expected (~0.35-0
 
 | Tier | Threshold | Use Case |
 |------|-----------|----------|
-| 1 | 0.35 | Critical operational (BYPASS, HEART, AGENCY, ALIGNMENT) |
-| 2 | 0.40 | Important context (COMPENDIUM, PREFERENCES, CORE_VALUES) |
-| 3 | 0.45 | General lorebooks |
-| 99 | 0.50 | Skip/background files — high bar to fire |
+| 1 | 0.20 | Critical operational (BYPASS, HEART, AGENCY, ALIGNMENT) — fastembed cosine scores run lower |
+| 2 | 0.28 | Important context (COMPENDIUM, PREFERENCES, CORE_VALUES) |
+| 3 | 0.35 | General lorebooks |
+| 99 | 0.45 | Skip/background files — high bar to fire |
+
+Note: These thresholds are for fastembed 384-dim vectors. The legacy 3072-dim OpenAI embeddings used higher thresholds (0.35/0.40/0.45/0.50). The code in `_query_lorebooks()` hardcodes the fastembed thresholds.
 
 ### Integration Pattern
 
@@ -343,6 +350,60 @@ Lorebooks must be pre-embedded and stored in Qdrant. See `scripts/ingest_loreboo
 - **Max 3000 chars per lorebook per injection** to avoid context bloat. GENDER_ACCELERATION is 63k chars — truncation is mandatory.
 
 ---
+
+### Dimension Migration (3072-dim → 384-dim fastembed)
+
+When switching from OpenAI/OpenRouter 3072-dim embeddings to local fastembed 384-dim, the existing collection cannot be reused — vectors have different dimensions. Procedure:
+
+1. **Identify source and target collections:** source = `intelligent_gould_narusya` (3072-dim), target = `narusya_memories_fastembed` (384-dim)
+2. **Verify target exists and is empty:** check `points_count` via `curl -s http://localhost:6333/collections/narusya_memories_fastembed`
+3. **Use fastembed daemon for batch embedding** — do NOT import fastembed directly in the migration script (numpy/Python version mismatch causes `AttributeError: module 'inspect' has no attribute 'cleandoc'`). Instead, spawn `/home/adora/.hermes/scripts/embed_fastembed_local.py` as a subprocess and communicate via JSON lines on stdin/stdout.
+4. **Scroll source collection** in batches of 50-100 via POST `/collections/{source}/points/scroll` with `{"limit": N, "with_payload": true, "with_vector": false}`
+5. **Embed each batch's text** via the daemon, then upsert into target with `PUT /collections/{target}/points` body `{"points": [{"id": ..., "vector": [...], "payload": {...}}]}`
+6. **Verify migration:** check target `points_count` matches source
+7. **Update plugin config:** change `collection:` in `config.yaml` from the old collection name to `narusya_memories_fastembed`. Use `hermes config set plugins.qdrant-memory.collection narusya_memories_fastembed` or edit directly. **This step is easy to forget** — the migration succeeds but recall still queries the old collection until the config is updated and the gateway restarted.
+
+**Pitfall:** If the target collection was wiped during crash recovery (live storage 12K vs backup 197M), restore from `/mnt/data/qdrant_storage` first — see "Restoring from Backup Storage" below.
+
+**Pitfall:** The config change does not take effect until the gateway is restarted. After updating config.yaml, restart with `/restart` in Discord or `systemctl --user restart hermes-gateway.service`.
+
+### Restoring from Backup Storage
+
+When live Qdrant storage is wiped (e.g., crash recovery), the backup at `/mnt/data/qdrant_storage` (197M) contains full collection data. **Do NOT delete the collection via API first** — deletion removes on-disk files too.
+
+Procedure:
+1. Stop Qdrant: `docker stop aegis-qdrant`
+2. Copy backup collection to live storage using a Docker container (files are root-owned):
+   ```bash
+   docker run --rm -v /mnt/data:/mnt/data -v /home/adora/qdrant_storage:/qdrant/storage alpine \
+     sh -c "cp -r /mnt/data/qdrant_storage/collections/COLLECTION_NAME /qdrant/storage/collections/"
+   ```
+3. Start Qdrant: `docker start aegis-qdrant`
+4. Verify collection appears: `curl -s http://localhost:6333/collections | ...`
+5. If collection doesn't appear, create it via API first (`PUT /collections/COLLECTION` with right config), then copy data and restart.
+
+**Pitfall:** Qdrant registers collections in `raft_state.json` metadata. Simply having the directory present may not be enough — if the collection was deleted via API (which removes metadata), you may need to create it via API after copying data.
+
+**Pitfall:** Even after restore, the collection may show only 2 points if the WAL wasn't replayed. The backup segments may contain data that Qdrant doesn't read without a clean restart. Verify point count after restart.
+
+### Fastembed Daemon Batch Embedding Pattern
+
+The fastembed daemon (`embed_fastembed_local.py`) avoids numpy/Python version mismatches by running in its own venv:
+
+```python
+import subprocess, json
+proc = subprocess.Popen(
+    ["/mnt/data/fe-venv/bin/python", "/home/adora/.hermes/scripts/embed_fastembed_local.py"],
+    stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True
+)
+# Send: {"id": 1, "texts": ["text1", "text2"]}
+# Receive: {"id": 1, "vectors": [[...], [...]], "error": null}
+```
+
+- Model: `sentence-transformers/all-MiniLM-L6-v2` (384-dim)
+- Cache: `/mnt/data/fastembed_cache`
+- Max batch: ~50 texts per call to avoid memory pressure
+- Terminate daemon when done: `proc.terminate()`
 
 ## 5. Local Fastembed Backend — Memory Pressure
 

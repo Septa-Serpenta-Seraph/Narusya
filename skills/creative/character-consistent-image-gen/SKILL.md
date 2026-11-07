@@ -85,6 +85,8 @@ pale skin, white skin, light skin, alabaster, porcelain, mint green, olive green
 CRITICAL: her skin is DEEP EMERALD GREEN — vivid jade, NOT pale, NOT mint, NOT seafoam, NOT olive, NOT teal, NOT pastel, NOT light. Think dark rich green like an emerald gemstone.
 ```
 
+**Verified finding (2026-11-06):** Even with this emphasis, SDXL Base and Juggernaut XL v9 (via ComfyUI) produce almost zero green pixels (0.1-0.6% green-dominant). The models fundamentally default to human skin tones. For non-human skin colors, FLUX.2-dev (with `disable_safety_checker:true`) or Perchance handle color better — FLUX.2-dev still smooths anatomy but at least respects the green. Pixel-verify any result: if green-dominant pixels <5%, the skin color didn't render and you need a different model.
+
 ## Model Selection
 
 ### Perchance (via Camoufox driver)

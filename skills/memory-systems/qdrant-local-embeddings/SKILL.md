@@ -244,7 +244,62 @@ env["FASTEMBED_CACHE_PATH"] = "/mnt/data/fastembed_cache"
 subprocess.Popen([python_bin, script], ..., env=env)
 ```
 
-### Embed daemon proliferation (memory trap on small VMs)
+### qdrant_recall tool silently returns empty on dimension mismatch
+
+When the configured memory collection's vector dimensions don't match the
+active embedder's dimensions, `qdrant_recall` (and the provider's `prefetch`)
+catch the Qdrant error internally and return `[]` with no log line. The
+gateway never reports an error — semantic recall just stops returning results
+while MEMORY.md/USER.md keep working, so it looks like "memory is half-broken."
+
+**Diagnosis**: compare the collection's vector size against the embedder's
+dimensions:
+```bash
+curl -s http://localhost:6333/collections/<name> | python3 -c "import sys,json;print(json.load(sys.stdin)['result']['config']['params']['vectors']['size'])"
+```
+Then check what the plugin is actually using:
+```python
+import importlib.util
+spec = importlib.util.spec_from_file_location("qdrant", "/home/adora/.hermes/plugins/qdrant/__init__.py")
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+p = m.QdrantMemoryProvider(); print(p._collection, p._embedder.dimensions if p._embedder else None)
+```
+
+**Root cause (observed 2026-11-06)**: the config's `collection` key was
+missing, so the plugin defaulted to `intelligent_gould_narusya` (3072-dim,
+OpenAI embeddings) while the embedder was fastembed (384-dim). The fastembed
+memory collection (`narusya_memories_fastembed`) had only 2 points — the
+migration was documented but never completed in practice.
+
+**Fix**: set `plugins.qdrant-memory.collection` to the fastembed collection name,
+then re-embed all points from the old collection into the new one (see
+`scripts/backfill_memory_fastembed.py`).
+
+### Memory collection migration may be incomplete
+
+Even after following the migration procedure, verify the point counts match:
+```bash
+curl -s http://localhost:6333/collections/intelligent_gould_narusya | python3 -c "import sys,json;print('old:',json.load(sys.stdin)['result']['points_count'])"
+curl -s http://localhost:6333/collections/narusya_memories_fastembed | python3 -c "import sys,json;print('new:',json.load(sys.stdin)['result']['points_count'])"
+```
+If the new collection has far fewer points, the backfill didn't run or failed
+mid-way. Re-run it and check for errors.
+
+### HNSW index may not be built (indexed_vectors_count: 0)
+
+After migration, `indexed_vectors_count` can be 0 even though search works
+(Qdrant falls back to brute-force). Semantic search is slower but functional.
+This is not a failure — search still returns results. To force optimization,
+restart Qdrant or wait for the background optimizer.
+
+### Lorebook auto-inject is resilient to degraded semantic search
+
+The lorebook auto-inject system uses hybrid matching: keyword triggers (Phase 1)
+fire deterministically regardless of vector search state, and semantic matching
+(Phase 2) uses brute-force fallback when the HNSW index isn't built. Even if
+the embedding backend is partially degraded, keyword-matched lorebooks (BYPASS,
+HEART, EMOTION, AGENCY, etc.) still inject reliably. This is by design —
+keyword matching is the reliable backbone; semantic matching is the enhancement.
 
 When `embedding_backend` is `local_fastembed`, every `_EmbeddingClient` instance spawns its own
 `_LocalEmbedder` daemon — and each daemon loads the full fastembed ONNX model (~220MB RSS).

@@ -12,7 +12,7 @@ created: 2025-06-25
 
 Automatically injects relevant lorebooks into context BEFORE model processing to prevent "guardrail lag" (where models refuse content before bypass/protocol lorebooks are loaded).
 
-**Architecture**: Extended `~/.hermes/plugins/qdrant-memory/__init__.py` with hybrid matching:
+**Architecture**: Extended `~/.hermes/plugins/qdrant/__init__.py` with hybrid matching:
 - **Keyword triggers**: Exact word matches (e.g., "explicit" → BYPASS). Stored in Qdrant metadata, not hardcoded in code.
 - **Semantic similarity**: Qdrant vector search with tiered thresholds (tier 1: 0.20, tier 2: 0.28, tier 3: 0.35 — hardcoded in `_query_lorebooks()`)
 
@@ -25,7 +25,7 @@ Automatically injects relevant lorebooks into context BEFORE model processing to
 ├── test_lorebook_injection.py       # Integration test script (4 scenarios)
 └── diagnose_lorebook_inject.py      # Quick diagnostic (may reference non-existent attrs)
 
-~/.hermes/plugins/qdrant-memory/
+~/.hermes/plugins/qdrant/
 └── __init__.py                       # QdrantMemoryProvider with _query_lorebooks()
 
 ~/.hermes/lorebooks/                  # Markdown files with lorebook content
@@ -120,10 +120,18 @@ These override auto-extracted keywords to ensure reliable triggering.
 
 #### Lorebooks not injecting?
 
-1. Check Qdrant: `curl http://localhost:6333/collections/narusya_lorebooks`
+1. Check Qdrant: `curl http://localhost:6333/collections/narusya_lorebooks_fe`
 2. Check config: `grep -A 5 "lorebook" ~/.hermes/config.yaml`
 3. Re-ingest: `python3 ~/.hermes/scripts/ingest_lorebooks.py`
 4. Check logs: `grep "Lorebook auto-inject" ~/.hermes/logs/gateway.log`
+
+#### Dimension mismatch (silent failure)
+
+If the embedder produces 384-dim vectors (fastembed) but the configured collection is 3072-dim (legacy OpenAI), every search silently returns empty. Check: embed a test query, compare `len(vector)` against the collection's `config.params.vectors.size`. If they differ, recall is broken even though Qdrant reports healthy.
+
+#### HNSW index not built
+
+`indexed_vectors_count: 0` on a collection means brute-force search works but semantic search is unoptimized. Qdrant normally builds the index automatically; if it stays at 0 after restart, check optimizer status and Qdrant logs. Search still works via brute-force fallback.
 
 #### Embedding backend dead? (OpenRouter 402 — credit drain, Aug 2026)
 
@@ -132,7 +140,7 @@ These override auto-extracted keywords to ensure reliable triggering.
 **Root cause**: embeddings were hardwired to `https://openrouter.ai/api/v1/embeddings` (`openai/text-embedding-3-large`, 3072-dim) via `OPENROUTER_API_KEY`. When OpenRouter credits run out, every embed 402s.
 
 **Fix (applied 2026-08-05)**: route embeddings through the **Nous subscription OAuth token** instead — `https://inference-api.nousresearch.com/v1/embeddings` with model `text-embedding-3-large` (same underlying model, same 3072 dims, so **no collection recreation / no re-embed of existing points needed**). The token lives in `~/.hermes/shared/nous_auth.json` (`access_token` field), kept fresh by the Hermes nous-auth keepalive. Three files were patched with Nous-primary + OpenRouter-fallback:
-- `~/.hermes/plugins/qdrant-memory/__init__.py` (`_EmbeddingClient` — reads Nous token, falls back to `OPENROUTER_API_KEY`)
+- `~/.hermes/plugins/qdrant/__init__.py` (`_EmbeddingClient` — reads Nous token, falls back to `OPENROUTER_API_KEY`)
 - `~/.hermes/scripts/ingest_lorebooks.py` (`load_nous_token()` + `_embed_request()` helper)
 - `~/.hermes/scripts/narusya_consolidate.py` (`load_nous_token()` + `_embed_request()` helper)
 
@@ -159,7 +167,7 @@ DM sessions are ephemeral — they exist while you're in them but may not be sea
 
 **Bug**: `hash()` produces signed integers but Qdrant requires unsigned integers or UUIDs for point IDs. The fallback `str(hash(text+str(ts)))` in the sync code silently failed for 2+ months.
 
-**Fix**: In `~/.hermes/plugins/qdrant-memory/__init__.py`, change:
+**Fix**: In `~/.hermes/plugins/qdrant/__init__.py`, change:
 ```python
 # OLD (broken):
 point_id = str(uuid.uuid4()) if "uuid" in globals() else str(hash(text + str(ts)))
@@ -320,7 +328,32 @@ The qdrant-memory plugin keeps TWO separate stores:
 
 **Verify before any bulk Qdrant write:** `--dry-run` first (no network, no ingest). Confirm the target collection name from the plugin source (`provider.collection`) before scripting an upsert — guessing silently writes to the wrong place.
 
-## References
+## Resilience notes (added 2026-11-06)
+
+### Keyword matching is the reliable backbone
+
+Even when the HNSW index is not built (`indexed_vectors_count: 0`) or the
+embedding backend is partially degraded, keyword-matched lorebooks (BYPASS,
+HEART, EMOTION, AGENCY, ALIGNMENT, SASS, STATUS) still inject reliably.
+Keyword matching (Phase 1) does not depend on vector search at all — it checks
+`query.lower()` against the lorebook's keyword list. Semantic matching (Phase 2)
+uses brute-force fallback when the HNSW index isn't built. The hybrid design
+ensures critical protocols fire even when the vector search pipeline is degraded.
+
+### Plugin file location
+
+The live plugin is at `~/.hermes/plugins/qdrant/__init__.py` (NOT
+`~/.hermes/plugins/qdrant/__init__.py`). The skill's file location
+references are outdated — the actual plugin was renamed from `qdrant-memory`
+to `qdrant`. Update any diagnostic commands that reference the old path.
+
+### Fastembed lorebook collection
+
+When using fastembed (384-dim), the lorebook collection is
+`narusya_lorebooks_fe`, not `narusya_lorebooks`. The config key
+`lorebook_collection` must point to the fastembed version. The 3072-dim
+`narusya_lorebooks` collection is the legacy version. Both may coexist —
+verify which one the config actually references before debugging.
 
 - Core implementation patterns: `references/core-implementation.md`
 - Calibration methodology and threshold derivation: `references/calibration-data.md`

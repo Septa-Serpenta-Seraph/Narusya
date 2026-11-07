@@ -104,6 +104,8 @@ Processes spawned via SSH (Start-Process, start /b, etc.) exit when the SSH sess
 - **Windows path escaping in SSH**: Use double backslashes (`\\`) in PowerShell commands. Single backslashes may be interpreted as escape characters.
 - **Apostrophes in filenames break PowerShell string literals**: A filename like `Her Majesty's Cult.rws` breaks single-quoted PowerShell strings. Use `Get-ChildItem -Filter 'Her Majesty*.rws'` to find the file by wildcard, then read via the returned `.FullName` property. Never embed apostrophes directly in a quoted path.
 - **Output truncation**: Large files will be truncated. Use `Get-Content -Head N` or PowerShell substring extraction.
-- **Player.log location**: `C:\Users\Adora\AppData\LocalLow\Ludeon Studios\RimWorld by Ludeon Studios\Player.log`
+- **Player.log location**: `C:\\Users\\Adora\\AppData\\LocalLow\\Ludeon Studios\\RimWorld by Ludeon Studios\\Player.log`
 - **RimWorld process name**: `RimWorldWin64.exe`
 - **SSH key permissions**: The shell_key must have 600 permissions. If permission denied, check `chmod 600 ~/.ssh/shell_key`.
+- **Windows cmd pitfalls**: `head` and `wmic` don't exist on modern Windows. Use `powershell -Command "Get-Content ... -Head N"` instead of `head`, and `powershell -Command "Get-CimInstance Win32_Process ..."` instead of `wmic`. Python is invoked via `py` (not `python`). Git is available at 2.51.0.
+- **Long installs via SSH die on disconnect**: Background pip installs started over SSH are killed when the SSH session closes. For multi-GB downloads (e.g., PyTorch CUDA ~2.5GB), create a batch file on the Windows side that runs the install, then launch it detached with `start /min` — or run the install in the foreground with a long timeout so the SSH session stays open until completion.
