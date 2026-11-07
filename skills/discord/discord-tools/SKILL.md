@@ -218,6 +218,15 @@ tesseract /path/to/image.jpeg stdout --psm 11 -l eng # Sparse text
 - Discord dark-theme screenshots may produce garbled OCR
 - Very tall narrow screenshots (1800x4000) may produce ZERO output
 - `vision_analyze` fails with 401/404 when API key is not configured
+- **Image pixel size limit:** The vision model rejects images exceeding 5,242,880 total pixels (e.g., 7264000px for a 2800×2594 image). When an image fails with "Image total pixels exceeds maximum allowed size", resize it before analysis:
+  ```python
+  from PIL import Image
+  img = Image.open('/path/to/image.jpg')
+  img.thumbnail((1200, 1200))  # keeps aspect ratio, caps at ~1.44M px
+  img.save('/tmp/resized.jpg', quality=85)
+  ```
+  Then call `vision_analyze` on the resized file. Do NOT retry the original — it will fail the same way.
+- **Intermittent "text input only" error:** The vision model occasionally returns `400: "This model accepts text input only"` even when a valid image is provided. This is a model routing inconsistency, not a problem with the image. Retry the same call 1-2 times — it usually succeeds on the second attempt. If it still fails, fall back to OCR or ask the user.
 - Neither vision nor tesseract can access Discord CDN without auth
 
 ---

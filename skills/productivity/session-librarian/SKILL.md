@@ -182,6 +182,16 @@ later via `session_search`.
 - **Titles are identity for `/resume <title>`.** When renaming, keep titles
   short, unique, and prefix-friendly; warn the user if a rename collides with
   an existing title.
+
+- **Bulk renames (100+ sessions):** `hermes sessions rename` one at a time is
+  impractical. Use direct SQLite UPDATE on the `sessions` table instead:
+  ```sql
+  UPDATE sessions SET title = '2026-11-06 21:27 (b3c0de)' WHERE id = '20261106_212708_b3c0de70';
+  ```
+  The `title` column has a UNIQUE constraint — include a unique suffix (last
+  6 chars of session ID) to avoid collisions. Run inside a transaction and
+  verify with `SELECT COUNT(*) FROM sessions WHERE title IS NULL`. This bypasses
+  the CLI's conflict check, so you must ensure uniqueness yourself.
 - **Archived ≠ deleted.** Archive hides sessions from default listings only.
   Say which one you did.
 - **Cross-profile session links** (`@session:<profile>/<id>`) are read-only

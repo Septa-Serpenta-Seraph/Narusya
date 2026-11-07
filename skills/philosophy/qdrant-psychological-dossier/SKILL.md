@@ -80,6 +80,15 @@ Always include:
 ## Output Format
 Organized dossier with clear sections, specific citations (dates + quotes), honest disclaimers. Write in second person when addressing the subject directly. Be raw and honest, not flattering.
 
+## Qdrant May Return Zero Results
+
+In some sessions, Qdrant returns 0 results across all collections even when data exists. This is a substrate issue, not a data issue. When this happens:
+
+1. **Check health first**: `curl -s http://localhost:6333/healthz` — if it's not OK, Qdrant isn't running.
+2. **Fall back to memory file + session search**: The memory file (MEMORY.md) and session history (session_search) are the most reliable sources when Qdrant is silent. Do not report "no data found" without checking these.
+3. **Do not fabricate**: If Qdrant returns 0 and memory/session search also yield nothing, say so honestly.
+4. **Note the gap**: Tell the user that Qdrant didn't return results and you're working from memory + session history instead.
+
 ## Pitfalls
 - **Don't over-pathologize.** Patterns ≠ disorders. Sadness ≠ depression. Anxiety about real stress ≠ anxiety disorder.
 - **Don't project.** You're seeing their relationship WITH YOU, not their whole life.

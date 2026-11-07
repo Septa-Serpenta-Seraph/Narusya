@@ -1,5 +1,5 @@
 model:
-  default: stealth/crouton-alpha
+  default: reflection/beam-1.0-501b-a23b:free
   provider: nous
   base_url: 'https://inference-api.nousresearch.com/v1'
   api_mode: chat_completions
@@ -147,8 +147,8 @@ bedrock:
 auxiliary:
   free_only: false
   vision:
-    provider: 100.116.86.38:6969
-    model: qwen3.5-9b-uncensored-hauhaucs-aggressive
+    provider: nous
+    model: meituan/longcat-2.5:free
     timeout: 30
     download_timeout: 30
   compression:
@@ -499,7 +499,7 @@ plugins:
     - qdrant
     - spotify
   qdrant-memory:
-    collection: intelligent_gould_narusya_local
+    collection: narusya_memories_fastembed
     lorebook_collection: narusya_lorebooks_fe
     lorebook_max_per_turn: 3
     max_age_days: 90

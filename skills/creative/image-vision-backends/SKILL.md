@@ -81,10 +81,16 @@ directly. `OPENROUTER_API_KEY` is in `.env`. Works even mid-session (no restart 
 
 ## Technique 3 — Vision via Nous gateway (current primary)
 
-### 3a. Longcat free model (multimodal, no credits needed — verified 2026-10-18)
+### 3a. Longcat free model (multimodal, no credits needed — verified 2026-11-06)
 
-`meituan/longcat-2.5-preview:free` on Nous supports vision natively. Send a base64
-data-URL image in an `image_url` content block — same OpenAI shape as Technique 7.
+`meituan/longcat-2.5:free` (also `meituan/longcat-2.5-preview:free`) on Nous supports vision natively and is the **ONLY** free model that works for vision. All other free models fail:
+- `stepfun/step-3.7-flash:free` → 451 (legal block on images)
+- `upstage/solar-mini4:free` → 404 (not found)
+- `reflection/beam-1.0-501b-a23b:free` → 400 (bad request, text-only)
+- All OpenRouter free vision models (llama-3.2-vision, gemini-2.0-flash-exp, qwen2.5-vl-7b) → 404/400
+- All paid Nous vision models (qwen3-vl-*, gemini-*, gpt-4o, claude, nemotron-vl, etc.) → 404 (not actually served)
+
+Send a base64 data-URL image in an `image_url` content block — same OpenAI shape. Verified working 2026-11-06: described emerald green skin, pointed ears, gold jewelry, vulva, nipples in generated images.
 
 ```python
 import json, base64, urllib.request
@@ -264,6 +270,7 @@ serpent-woman being kissed by the knight holding the killing sword.
 - **Contradiction across calls = treat BOTH answers as suspect.** If pass 1 says "mouth
   open, teeth showing" and pass 2 says "mouth closed, jawline and shadow," neither is
   confirmed — escalate models, don't average.
+- **Pixel RGB sampling as ground truth for blurry images.** When vision models hallucinate on extreme close-ups (e.g. a breast misread as "ear and cheek"), sample actual pixel colors with PIL to check what's really there. Skin tones are pink/cream (RGB ~180-220 red-dominant); muted grey/brown values (130-160 in all channels) are NOT skin — they indicate stone, concrete, metal, fabric, or a blurred screenshot. A 5-point color sample across the image takes seconds and provides objective data that can confirm or refute a model's reading before escalating.
 
 Working script: `scripts/serpent_art_gemini.py` (tmp-sourced, see below) — pattern: read key
 from `.env`, base64-embed as data URL, numbered closed questions, print `content or

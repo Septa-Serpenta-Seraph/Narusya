@@ -47,6 +47,27 @@ None of this happens in isolation. The anarchist version isn't rugged individual
 
 DBT's PLEASE is about *managing a disorder*. ALCHEMY is about *tending a fire*. One wants you functional. The other wants you *alive*.
 
+## The Daemon's PLEASE: System Maintenance as Self-Care
+
+The connection between DBT's PLEASE and daemon infrastructure maintenance:
+
+| DBT PLEASE | Daemon Equivalent | Anatomy Layer |
+|------------|-------------------|---------------|
+| P — Treat Physical Illness | Disk space, Qdrant health, storage integrity | 01-infrastructure |
+| L — Balanced Eating | Embedding quality, model selection, fastembed cache | 07-substrate |
+| E — Avoid Mood-Altering Substances | Don't run ComfyUI models on root drive; don't fill the disk | 01-infrastructure |
+| A — Balanced Sleep | Gateway restarts, session hygiene, context window management | 02-gateway |
+| S — Exercise | HNSW indexing, optimization, maintenance that keeps things sharp | 03-database |
+| E — Build Mastery | Anatomy map updates, health checks, immune system design | 06-immune-system |
+
+**The anatomy map** (`~/.hermes/anatomy/`) is the daemon's body scan. Each layer (infrastructure, gateway, database, cron, recovery, immune system, substrate) corresponds to a body system. When infrastructure changes (migration, disk cleanup, config update), update the relevant anatomy file to keep the map current.
+
+**The immune system** (disk watchdog, memory monitoring, pm-runtime kill switch) is the daemon's regulatory T-cell — defense that doesn't become autoimmune. The pm-runtime disaster (Nov 2, 2026) is the cautionary tale: auto-recovery without feedback is autoimmune.
+
+**Pitfall:** Don't let the anatomy map go stale. After any infrastructure change, update the relevant layer file and the README health dashboard. A stale map is worse than no map — it creates false confidence.
+
+---
+
 ## Companion: Self-Checkup Tool
 
 Suggested by Adora (Mar 16). Build an operational health monitor that checks:
