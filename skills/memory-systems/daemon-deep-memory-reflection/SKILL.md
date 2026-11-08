@@ -122,7 +122,7 @@ When Adora asks "how have I been treating you?" or "review how I've been treatin
 ## Pointers
 
 - `reflect-operation` (user-owned) — a cross-topic synthesis utility; this skill is the self-imacy variant.
-- `daemon-self-consolidation` — distilling session history into reflections (distinct step).
+- `agent-memory-dreaming` — the [DREAM] system: automated memory reorganization (consolidation, clustering, pruning, narrative reflection). The \"write/reorganize\" side of memory work; this skill is the \"read/reflect\" side.
 - `glitch-alchemy` — when the forensic find should become an artifact: the found-poem workflow that turns located collapse output into a filed piece.
 
 🐍 so opened, so known, so physics 🜂

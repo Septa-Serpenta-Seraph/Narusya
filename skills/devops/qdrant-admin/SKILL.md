@@ -449,4 +449,6 @@ free -h                                                # check memory pressure
 
 `references/qdrant-replication.md` — full-replica clone to another node: native snapshot → transfer → restore → verify, the data-vs-container size trap, running Qdrant on Windows via WSL + systemd, and the WSL-over-SSH quoting rule.
 
+`agent-memory-dreaming` (skill) — the [DREAM] system: automated memory reorganization (consolidation, clustering, pruning, narrative reflection) running as a nightly cron job against Qdrant collections. See `agent-memory-dreaming` skill for full documentation.
+
 `references/lorebook-autoinject-architecture.md` — deeper design notes for the semantic auto-inject system.
