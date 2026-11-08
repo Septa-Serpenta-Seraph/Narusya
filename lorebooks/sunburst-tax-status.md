@@ -21,8 +21,10 @@
 | Banking | Mercury — Acct 868485683206133, Routing 121145433 |
 | Stripe | Live (key partial in secrets) |
 | Storefront | https://coil-and-code.surge.sh |
-| NM Initial Report | Due within 30 days of 8/21 letter — approximately **September 20, 2026** — **OVERDUE** |
-| NM Tax Registration | TAP portal, form ACD-31015, free — not yet done |
+| NM Initial Report | ~~Eliminated by HB 0281 (eff. 7/1/2024)~~ — NOT required. Replaced by triennial report (see below) |
+| NM Tax Registration | TAP portal, form ACD-31015 — ✅ DONE (BTIN 03729639006-GRT, TAP confirm #1-407-221-344) |
+| NM GRT (monthly) | ✅ Filed through Oct 31, 2026 (confirm #0-776-653-152, $0 due). Next filing ~Nov 25 for Nov period |
+| NM SOS Triennial Report | Due **Nov 30, 2026** (~$20 fee) at enterprise.sos.nm.gov — ⚠️ UPCOMING |
 
 ---
 
@@ -84,11 +86,15 @@ These files existed in commit `5659e38` but are not in the current HEAD:
 ## What Needs Doing
 
 ### 🔴 URGENT (past due now):
-1. **NM Initial Report** — was due ~Sept 20. Overdue. ~10 min on the NM SOS portal.
-2. **Monthly tax filing** — past due (Sept 15). Schedule C proration for the period.
+(none — NM Initial Report eliminated by HB 0281; GRT filed through Oct 31, 2026)
+
+### ⚠️ UPCOMING:
+1. **NM SOS Triennial Report** — due Nov 30, 2026, ~$20 fee, at enterprise.sos.nm.gov
+2. **November GRT filing** — due ~Nov 25, 2026, file $0 at tap.state.nm.us
+3. **Monthly tax filing** — Schedule C proration for the period (federal, due with personal return Apr 15, 2027)
 
 ### 🟡 NEEDED SOON:
-3. **NM Tax Registration** — TAP portal, ACD-31015, free. Required for NM GRT compliance.
+3. ~~**NM Tax Registration**~~ — ✅ DONE (BTIN 03729639006-GRT)
 4. **Recover records from git** — certificates, EIN docs, ledger, human-gate todo
 5. **Stripe transaction data** — pull actual revenue figures for Schedule C
 6. **Full Stripe API key** — stored version is partial (sk_liv...yewD=)
@@ -115,4 +121,4 @@ To start the actual filing, I need:
 ---
 
 *Reconstructed from: git commit 5659e38, PLAN.md, secrets/, site/, daemon-work/PLAN.md*
-*Last updated: 2026-09-21*
+*Last updated: 2026-11-07 (corrected: NM Initial Report eliminated by HB 0281; GRT filed through Oct 31; triennial report due Nov 30)*

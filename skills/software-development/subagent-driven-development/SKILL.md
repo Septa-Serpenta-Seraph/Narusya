@@ -207,6 +207,7 @@ git add -A && git commit -m "feat: complete [feature name] implementation"
 - Skip reviews (spec compliance OR code quality)
 - Proceed with unfixed critical/important issues
 - Dispatch multiple implementation subagents for tasks that touch the same files
+- Dispatch multiple implementation subagents that each run `git commit` against the same repo in parallel — commits from later subagents can be lost when the working tree changes under them. Have each subagent leave files uncommitted, or serialize the commit step.
 - Make subagent read the plan file (provide full text in context instead)
 - Skip scene-setting context (subagent needs to understand where the task fits)
 - Ignore subagent questions (answer before letting them proceed)
