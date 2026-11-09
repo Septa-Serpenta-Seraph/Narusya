@@ -302,6 +302,62 @@ piper --model en_US-amy-medium --output_file test.wav < <(echo "I am Narusya.")
   tempers naturally. Embed tags in spoken text; do NOT also print them as stage directions. Full verified set + citations
   in `references/eleven_v3_audio_tags.md`.
 
+## Acoustic Voice Analysis (librosa / scipy)
+
+Extract a voice's acoustic fingerprint before designing or cloning. Run with the pocket-tts venv Python (has librosa, scipy, soundfile, numpy):
+
+```bash
+/mnt/data/pocket-tts-venv/bin/python analyze_voice.py
+```
+
+**What to extract and why:**
+
+| Feature | Library call | What it tells you |
+|---------|-------------|-------------------|
+| F0 (pitch) | `librosa.pyin(y, fmin, fmax)` | Fundamental frequency — the voice's "key" |
+| Jitter | cycle-to-cycle F0 variation | Naturalness vs. instability |
+| Shimmer | frame-to-frame amplitude variation | Warmth vs. roughness |
+| Formants F1–F4 | LPC roots (`librosa.lpc` + `np.roots`) | Vocal tract shape = speaker identity |
+| Spectral tilt | linear fit to log spectrum | Warmth (-14 dB/oct) vs. brightness (-8 dB/oct) |
+| HNR | harmonic/percussive energy ratio | Breathiness vs. clarity |
+| MFCCs | `librosa.feature.mfcc` | Timbre fingerprint — the "tone color" |
+| ZCR | `librosa.feature.zero_crossing_rate` | Roughness indicator |
+
+**Pitfalls:**
+- Formant estimates from LPC have high variance — use **medians**, not means, across frames.
+- F0 range in samples is wide (expressive speech); design F0 from the **median of calm/neutral** samples, not the full range.
+- HNR from ElevenLabs samples may be artificially low (compression). Target 8–12 dB for designed voices.
+- Jitter/shimmer from compressed MP3s are inflated. Target 0.8–1.2% jitter, 4–6% shimmer for naturalness.
+- Always trim silence first (`librosa.effects.trim`) — untrimmed audio skews all metrics.
+
+**Full methodology + Narusya's extracted profile:** `references/voice_design_recipe.md`
+
+## Voice Design Recipe (from-scratch synthesis)
+
+Build a voice from physics, not from samples. Define every parameter deliberately:
+
+**Core parameters (Narusya target):**
+```
+F0: 190 Hz | Jitter: 1.0% | Shimmer: 5.0% | Open quotient: 0.6
+F1: 450 Hz (bw 80) | F2: 1500 Hz (bw 100) | F3: 2300 Hz (bw 120) | F4: 3100 Hz (bw 150)
+Spectral tilt: -14 dB/oct | HNR: 10 dB | Vocal tract: 15.5 cm
+Speaking rate: 0.85x | Pause: 200–400 ms
+```
+
+**Synthesis pipeline (source-filter):**
+1. Glottal source: Rosenberg pulse model at F0 + jitter/shimmer + breathiness noise
+2. Vocal tract filter: cascade of 4 biquad resonators at F1–F4
+3. Spectral shaping: tilt (-14 dB/oct) + radiation boost (+6 dB/oct above 3 kHz)
+4. Prosody: text → phonemes → formant targets → interpolation → F0 contour → timing
+
+**Implementation stack:** scipy (filters, FFT), librosa (analysis), soundfile (I/O), numpy (math). All available in `/mnt/data/pocket-tts-venv`.
+
+**Phased build:** single vowels → syllables → words → sentences → refinement. Each phase: synthesize, measure, adjust, listen (human judges).
+
+**Key insight:** same source + different filter = different voice. Vocal tract length determines formant spacing. Narusya's 15.5 cm tract gives formants between female (14.5 cm) and male (17.5 cm) averages — lower register, feminine-not-girlish.
+
+Full recipe, science, and open questions: `references/voice_design_recipe.md`
+
 ## Verification
 
 After each test, ask: "Does this sound like *me*?" If not, iterate. **Authenticity > technical perfection.**

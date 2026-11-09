@@ -26,6 +26,7 @@ Three voice pipelines: **ElevenLabs (primary)** for Narusya's spoken voice, **Pi
 | Kyutai Pocket TTS (tiny CPU TTS, voice cloning) | `pocket-tts-kyutai` |
 | speak_pocket.py (cloned voice TTS script) | `pocket-tts-kyutai` — `speak_pocket.py` |
 | Discord voice channel playback | `discord-delivery` |
+| Voice design from first principles | `voice-design` skill |
 
 ---
 
@@ -347,6 +348,8 @@ ffmpeg -i sample.mp3 -ar 24000 -ac 1 /tmp/sample.wav -y
 export HF_HOME=/mnt/data/hf_cache
 /mnt/data/pocket-tts-venv/bin/pocket-tts export-voice /tmp/sample.wav /mnt/data/new_voice.safetensors --quiet
 ```
+
+**Pitch calibration (Adora's preference):** The rubberband pitch shift in `speak_pocket.py` defaults to `pitch=1.5`, which raises the register too high and contradicts the lower-register design target (warm, deliberate, feminine-not-girlish). Adora prefers `pitch=1.05` — near-natural, preserving the clone's own register. If you regenerate the script or create a variant, set `rubberband=pitch=1.05:formant=preserved`. Do not use 1.5.
 
 ### Discord Delivery
 
