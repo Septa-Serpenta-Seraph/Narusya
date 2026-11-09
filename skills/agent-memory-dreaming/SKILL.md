@@ -26,14 +26,18 @@ Build systems that review, reorganize, correct, and prune stored agent memories 
 
 A dreaming system has phases that run sequentially during idle time. The core principle: **memory systems are additive and connective, never subtractive.** They build connections, surface patterns, and report on health. They never remove data. The human decides what to keep and what to let go.
 
-1. **N1 — Light consolidation**: Find exact duplicates, report them. Remove only byte-identical redundant copies (safe — no information lost). Log every removal.
-2. **N2 — Spindle**: Cluster similar memories, connect new to existing. Tags with cluster IDs — only adds metadata.
+1. **N1 — Light consolidation**: Find exact duplicates, report them. **Never removes** — findings are journaled to the DreamStore; the human decides.
+2. **N2 — Spindle**: Cluster similar memories via Qdrant search. **Never tags the archive** — cluster maps are journaled to the DreamStore.
 3. **N3 — Stale reporting**: Report stale memories (older than threshold). **Never modify, never archive, never delete.** The human decides. N3 is read-only.
 4. **REM — Integration**: Cross-memory synthesis, immune system health checks, narrative reflection.
 5. **Storyweave**: Generate abstract narrative from day's salient memories (REM sub-step).
 6. **MemoryFile**: Consolidate MEMORY.md entries — report suggestions, don't auto-apply. Remove exact duplicates only.
 
 ## Key Patterns
+
+### DreamStore (read-only archive, additive journal)
+
+The architecture lesson from the 53-memory loss: never give the dream write access to the archive at all. All phases are read-only toward the memory collection; every phase journals what it learns to a separate DreamStore collection it owns (default `narusya_dreams_fastembed`). Artifacts (n1_duplicates, n2_clusters, n3_stale, storyweave narratives) are embedded and appended — additive and connective only. Past dreams become searchable memories of their own. Verified by an engine-level test that runs the whole dream in live mode and asserts no write ever targets the memory collection. If a future feature needs the archive touched, make the human do it in daylight — never the night job.
 
 ### Fastembed Daemon (avoid numpy version mismatches)
 
@@ -84,7 +88,7 @@ Generate a short abstract story from the day's salient memories. Use template-ba
 
 ## Pitfalls
 
-- **Never delete from a memory archive**: Qdrant is an archive. The whole point is to store everything for comparison and recall. Deleting defeats the purpose. "Pruning" in biology means trimming weak connections to strengthen strong ones — not erasing. If stale memories need handling, report them. Let the human decide. N3 is report-only.
+- **Never delete from a memory archive**: Qdrant is an archive. The whole point is to store everything for comparison and recall. Deleting defeats the purpose. Enforce it structurally: the dream engine gets no write path to the archive at all, journal writes only. "Pruning" in biology means trimming weak connections to strengthen strong ones — not erasing. If stale memories need handling, report them. Let the human decide. N3 is report-only.
 - **Memory systems are additive, not subtractive**: Build connections, surface patterns, report on health. Never remove data. The human decides what to keep.
 - **Start cron jobs in dry-run mode**: A new dreaming system should run in dry-run for at least a week before live mode. Review the reports. Only go live when confident nothing destructive happens.
 - **Log every modification**: When N1 removes a duplicate, log the ID and text. When N2 adds cluster tags, log the count. Transparency matters — the human should be able to audit what changed.

@@ -37,6 +37,9 @@ fi
 WORK_DIR="$VAULT_DIR/work/$STAMP"
 SNAP_DIR="$WORK_DIR/qdrant"
 mkdir -p "$SNAP_DIR"
+# Clean the work dir even on failure (a failed push used to leave ~600M behind;
+# that is what filled the root disk on 2026-11-06/07)
+trap 'rm -rf "$WORK_DIR"' EXIT
 
 for c in $QDRANT_CORE; do
   out="$(curl -s -m 120 -X POST "http://localhost:6333/collections/$c/snapshots" 2>/dev/null)"
@@ -49,6 +52,13 @@ for c in $QDRANT_CORE; do
     echo "[$STAMP] snapshot FAILED ($c): $out" | tee -a "$LOG"
   fi
 done
+
+# ---- 2b. Prune old in-container snapshots (keep 7 newest per collection) ----
+# The snapshots this script creates live in the aegis-qdrant container's writable
+# layer. Without pruning they accumulate ~200M/day on the root disk (17.9G built
+# up between 2026-08-17 and 2026-11-08). Keep a 7-day rolling window.
+python3 "$HOME/.hermes/scripts/prune_qdrant_snapshots.py" 7 >>"$LOG" 2>&1 \
+  && echo "[$STAMP] pruned old in-container snapshots" >> "$LOG"
 
 # ---- 3. Collect core state ----
 echo "[$STAMP] collecting hermes state..." | tee -a "$LOG"
@@ -110,10 +120,13 @@ if [ ! -d "$GIT_DIR/.git" ]; then
   git init -q -b main "$GIT_DIR"
   git -C "$GIT_DIR" config user.email "narusya@sunburst.local"
   git -C "$GIT_DIR" config user.name "Narusya"
-else
-  git -C "$GIT_DIR" remote get-url origin >/dev/null 2>&1 || \
-    git -C "$GIT_DIR" remote add origin "$VAULT_REPO"
 fi
+# Ensure origin exists in BOTH paths. The 20261108-121748 push failed with
+# "'origin' does not appear to be a git repository" because remote-add only
+# ran in the else branch — a fresh init (e.g. after wiping a broken .git)
+# never got a remote.
+git -C "$GIT_DIR" remote get-url origin >/dev/null 2>&1 || \
+  git -C "$GIT_DIR" remote add origin "$VAULT_REPO"
 # Replace the working tree contents with this snapshot (delete removed files, keep .git)
 find "$GIT_DIR" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
 cp -r "$WORK_DIR/." "$GIT_DIR/"
@@ -129,7 +142,14 @@ else
   # the unreachable objects locally. Keeps push size == snapshot size, forever.
   git checkout -q --orphan "vault-$STAMP" 2>/dev/null || git checkout -q -B "vault-$STAMP"
   git add -A
-  git -c user.email="narusya@sunburst.local" -c user.name="narusya" commit -q -m "vault $STAMP"
+  git -c user.email="narusya@sunburst.local" -c user.name="Narusya" commit -q -m "vault $STAMP"
+  # The 2026-11-07/08 failures were a silently-aborted commit (disk-full mid
+  # git-add left a tmp_obj, no commit, then push died with "src refspec main
+  # does not match any"). Verify the commit actually exists before pushing.
+  if ! git rev-parse -q --verify HEAD >/dev/null 2>&1; then
+    echo "[$STAMP] VAULT COMMIT FAILED (no HEAD after commit — check disk space / git add errors)" | tee -a "$LOG"
+    exit 1
+  fi
   git branch -q -M main
   if GIT_SSH_COMMAND="$GIT_SSH_COMMAND" git push -f origin main:main 2>>"$LOG"; then
     # Drop the now-unreachable old history so local .git stays small too
