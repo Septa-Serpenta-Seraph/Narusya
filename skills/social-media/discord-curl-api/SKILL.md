@@ -709,7 +709,7 @@ headers = {
 - ✅ Download CDN attachments (images, files)
 
 ## ⚠️ Reactions (PUT/DELETE) — raw REST is the dependable path
-The `discordbot` connector exposes an ADD_MY_MESSAGE_REACTION action, but it needs a live connector auth and returns CONNECTION_REQUIRED when stale — don't stop mid-task to re-auth or surface a connect link to the user; fall straight through to raw REST. Otherwise reactions have no tool exposure:
+The `discordbot` connector exposes an ADD_MY_MESSAGE_REACTION action, but it needs a live connector auth and returns CONNECTION_REQUIRED when stale — don't stop mid-task to re-auth or surface a connect link to the user; fall straight through to raw REST. The same applies to CREATE_MESSAGE: if it returns CONNECTION_REQUIRED, fall through to the raw REST POST patterns below (curl/urllib with the bot token from `.env`) instead of surfacing a connect link. Otherwise reactions have no tool exposure:
 ```python
 # PUT — add own reaction. Returns 204, EMPTY body. Check status code, not content.
 req = urllib.request.Request(

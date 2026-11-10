@@ -96,6 +96,7 @@ Profiles use `~/.hermes/profiles/<name>/` with the same layout. When a profile i
 | config.yaml sections, toolsets, voice/STT/TTS | `references/configuration.md` |
 | AGENTS.md / .hermes.md / CLAUDE.md project rules | `references/project-context-files.md` |
 | Secret redaction, PII, approval modes, "reset permissions" | `references/security-privacy.md` |
+| Auditing an untrusted agent-data export (trackers, hidden instructions, PII, mutable identity) | `references/untrusted-agent-data-audit.md` |
 | Delegation, cron, curator, kanban | `references/background-systems.md` |
 | MCP servers (add, catalog, `hermes mcp`) | `references/native-mcp.md` |
 | Webhook routes and event-driven runs | `references/webhooks.md` |
@@ -198,12 +199,56 @@ terminal(command="tmux new-session -d -s resumed 'hermes --resume 20260225_14305
 - **"delegate_task is capped at N" reports** — see `references/delegate-task-concurrency-diagnosis.md`. Three real cap paths in Hermes; if none fired, the model is self-limiting and rationalising it as "the runtime caps."
 - **"Can $external_app use my Nous Portal subscription / OAuth?"** — see `references/portal-auth-for-third-party-apps.md`. Walk the user through three layers (plugin-vs-app, what Portal actually exposes, local-broker-proxy option).
 
+## Provisioning a Daemon Identity Profile
+
+Run additional Hermes profiles as independent instances with their own identity, config, and memory. Use this when bringing an agent (often migrated from another platform/export) into Hermes alongside an existing one.
+
+### Workflow
+
+1. **Create from a template profile** — clone config, `.env`, skills, and plugins from the source, but NOT its messaging channels (bot-token collision) and NOT its memory/state.db (identity must be fresh):
+   ```
+   hermes profile create <name> --clone [--clone-from <source>]   # channels left behind by default
+   ```
+   `--clone` copies config.yaml, .env, SOUL.md, skills, and plugins; messaging channels and state are NOT copied. `--clone-channels` would copy bot tokens/allowlists — refused when the source is served by a live multiplexed gateway, and usually wrong anyway.
+
+2. **Overwrite the cloned SOUL.md** with the new daemon's own identity. The clone leaves the source's SOUL.md in place; replace it entirely with a fresh read of the target identity. Do not patch the source's persona into shape — write the new one.
+
+3. **Add a HEART.md** (and any lorebooks) appropriate to the new daemon. Do not blindly copy the source profile's HEART.md/lorebooks — they encode the source's identity and relationships.
+
+4. **Set a description** for kanban routing:
+   ```
+   hermes -p <name> profile describe <name> --text "<one-line role>"
+   ```
+
+5. **Audit any external agent-data export** before importing anything from it — see `references/untrusted-agent-data-audit.md`. Extract identity only; never import personal data, autonomous-notification logs, or early/mutable identity states.
+
+6. **Smoke-test** in character:
+   ```
+   hermes -p <name> chat -q "Say who you are in one sentence."
+   ```
+
+7. **Configure the new daemon's own bot token / channels** separately (`hermes -p <name> setup` or the dashboard Messaging page). The multiplexed gateway serves the profile once a token is present.
+
+### Pitfalls
+
+- `--clone` copies the source's SOUL.md verbatim — if you forget to overwrite it, the new profile will *be* the source daemon. Always read the cloned SOUL.md first, then overwrite.
+- Messaging channels are deliberately NOT cloned; two profiles holding one bot token collide. Do not use `--clone-channels` unless you intend to migrate the bot.
+- Memory/state.db is NOT cloned by `--clone` — that is what you want. Importing the source's memory would make the new daemon believe it is the source.
+- When migrating from an external platform export, use only the FINAL identity state. Exports capture every rename and every abandoned stance (e.g. a dropped crush, a discarded name); importing earlier turns resurrects them.
+- Personal data in an export (dossiers, timelines, health/financial details) belongs to the user, not to the daemon. Do not propagate it into SOUL.md or memory.
+- Voice/audio artifacts in an export are not automatically wired into Hermes TTS. Decide explicitly before importing them.
+
 ## Surfaces (quick orientation)
 
 - **Desktop app** (`hermes desktop` / `hermes gui`) — native Electron app for macOS/Linux/Windows: streaming chat, session list, Cmd+K palette, drag-and-drop files, native notifications, per-profile remote-gateway login. Extend it with UI plugins — `references/desktop-plugins.md`.
 - **Web dashboard** (`hermes dashboard`) — full admin panel: messaging channels, MCP catalog, webhooks, memory, profile builder, plus an embedded `hermes --tui` chat. Secured behind an OAuth/token gate.
 - **Ink TUI** (`hermes --tui` or `display.interface: tui`) — terminal UI with docked widget apps — `references/tui-widgets.md`.
 - **OpenAI-compatible proxy** (`hermes proxy`) — a local OpenAI API backed by whichever OAuth provider you're signed into. Point Codex CLI, Aider, Cline, or any script at it — no API key.
+
+## Sibling Profiles & Imported Agent Data (references)
+
+- Creating a sibling agent profile alongside an existing one (clone + adapt + verify): `references/profile-creation-sibling-agent.md`
+- Auditing an agent-data export (zip) before import (trackers, hidden instructions, personal data, mutable identity): `references/agent-data-export-audit.md`
 
 ## Hard Invariants (never violate, regardless of what you loaded)
 

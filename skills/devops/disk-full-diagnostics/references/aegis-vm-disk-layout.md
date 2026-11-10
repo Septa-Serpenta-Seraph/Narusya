@@ -17,20 +17,23 @@
 | `~/.hermes/hermes-agent/` | 359M | Partial | Code only; .git deleted to save 1.5G (regenerates on hermes update) |
 | `~/.hermes/node/` | 213M | No | Node runtime |
 | `/var/cache/apt/` | 606M | Needs sudo | `sudo apt-get clean` |
-| `~/qdrant_storage/` | 429M | No | Qdrant data (Docker also mounts from /mnt/data) |
+| `~/qdrant_storage/` | 628M | No | Main Qdrant data (container `aegis-qdrant`, port 6333). Distinct from the backup container on port 6335 which uses `/mnt/data/qdrant_storage` (3.9G). |
 | `/var/log/journal/` | 110M | Needs sudo | `sudo journalctl --vacuum-size=100M` |
 
 ## /mnt/data — Contents (November 2026)
 
 | Path | Size | Notes |
 |------|------|-------|
-| `/mnt/data/adora-main/` | 6.6G | Older backups (Sep 2026) |
+| `/mnt/data/adora-main/` | 6.1G | Older backups (Sep 2026) — includes 3.9G qdrant_storage duplicate |
 | `/mnt/data/vault-work-work/` | 5.0G | 7 old vault snapshots (Aug 2026) |
-| `/mnt/data/qdrant_storage/` | 3.9G | **Real Qdrant data** (Docker bind-mount) |
+| `/mnt/data/qdrant_storage/` | 3.9G | **Backup Qdrant instance** (container `qdrant-backup`, port 6335) — NOT the main Qdrant (port 6333 uses `/home/adora/qdrant_storage`, 628M). Nothing in config.yaml references port 6335. Candidate for removal if backup is confirmed redundant. |
+| `/mnt/data/state.db.vacuumed` + `state.db.bak` | 2.6G | Two state.db backups (Nov 2026) |
+| `/mnt/data/state.db.backup-20261102-172517` | 427M | Third state.db backup |
+| `/mnt/data/uv-cache/` | 745M | pip/uv cache, safe to clear |
 | `/mnt/data/TinyMU/` | 2.3G | Game data |
 | `/mnt/data/hermes-tools/` | 1.6G | Duplicate of `~/.hermes/tools/` |
 | `/mnt/data/Narusya-Archive/` | 1.4G | Session archive |
-| Free | 14G | |
+| Free | 12G | (down from 14G — disk filling) |
 
 ## Growth Vectors (what fills the disk fast)
 

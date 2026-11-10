@@ -1,7 +1,7 @@
 ---
 name: managed-game-server-hosting
 description: "Run Pterodactyl-hosted game servers via the client API."
-tags: [pterodactyl, pebblehost, minecraft, hosting, api, paper, plugins, game-server]
+tags: [pterodactyl, pebblehost, minecraft, hosting, api, paper, plugins, game-server, proxy, bungeecord, velocity, patreon]
 platforms: [linux, macos]
 ---
 
@@ -84,6 +84,34 @@ A live map renders the world in a browser as players explore and build — essen
 **Pitfall:** Live map plugins need a port open. PebbleHost budget tier may not allow custom ports — check panel settings or use the host's web proxy. Tyler (co-admin) may know from prior experience.
 
 **Pitfall:** BlueMap renders in the background and can spike CPU. On budget servers, schedule rendering during off-peak hours or limit render radius.
+
+## Multi-server networks (proxy + backends)
+
+PebbleHost (and any Pterodactyl panel) can run more than one Minecraft server under one account. Use this when you want in-game portals or `/server` switching between separate worlds (e.g. a public SFCA server + a Patreon-gated Forge server).
+
+**Sub-Servers (split one plan):** PebbleHost can divide one plan's RAM/CPU into multiple servers, including a "proxy" type (BungeeCord/Velocity). Minimum 2 CPU threads for MC sub-servers. Only viable if the plan has free RAM — check `resources` first; SFCA already runs ~5GB/6GB, so splitting would starve it. Prefer a separate plan (or upgrade + split) when the primary server is near capacity.
+
+**Account-level API:** one `ptlc_` key manages every server on the account; `GET /api/client` lists them all with identifiers. The same `ptero-helper.py` workflow (power, files, console, backups) works per server ID — just change the ID argument.
+
+**Proxy choice:** Velocity is recommended for modern Paper (26.x) — better performance and modern forwarding. BungeeCord has more docs/community and PebbleHost ships it as a one-click JAR. Don't chain proxies (Velocity behind BungeeCord is unsupported).
+
+**Backend forwarding (required on every backend):** set `online-mode=false` in server.properties and enable forwarding — `bungeecord: true` under `settings` in spigot.yml for BungeeCord, or Velocity modern forwarding with a shared secret in paper's proxy config. Proxy handles auth.
+
+**UUID-spoofing protection (mandatory):** BungeeCord has an exploit allowing join-as-anyone. Use BungeeGuard (plugin) or Velocity's built-in secret. See PebbleHost's "protect against UUID spoofing" guide.
+
+**Direct backend port exposure:** PebbleHost may expose backend ports publicly. Keep the Patreon-gated backend whitelisted anyway (defense in depth) so direct hits still require whitelist.
+
+**In-game portals:** the "Advanced Portals" plugin creates physical portals that switch servers via BungeeCord plugin messaging. Alternatives: ServerSelector / AnimatedMenu (GUI menus). Install on backends, configure destination server names matching the proxy's `servers` block.
+
+**MOTD regression:** server.properties edits (including MOTD) can revert after a container restart on some hosts. Re-read properties after any restart and re-write if regenerated.
+
+**Patreon-gated access (MC 26.2 reality check):** no modern plugin supports Paper 26.2 for Patreon whitelist. "Minecraft Authentication" (minecraftauth.me) stops at 1.19.2; MCLink is Java 8 / 1.7.10-era. Options:
+1. **Custom automation (recommended):** Patreon webhook → verify membership via Patreon API → Pterodactyl console `whitelist add <name>`. Narusya can build this (same API plumbing as backups/crons). Players submit their MC username via a form/Discord command.
+2. **Discord-gated (fallback):** only Patreon-tier Discord members see the server IP/channel; keep whitelist off, rely on obscurity + GriefPrevention. Zero build cost, weaker.
+3. **Permission-plugin gate:** whitelist off, but a join-listener (LuckPerms + Skript or a tiny plugin) kicks non-patrons. Middle ground.
+MCPatron (Patreon creator service) exists but is small/semi-abandoned (manages whitelist via whitelist.json download) — third-party dependency.
+
+See `references/multi-server-networks.md` for the full proxy setup procedure, Sub-Servers how-to, and Patreon automation design.
 
 ## Verification checklist
 - [ ] resources endpoint: `state: running`, sane RAM/CPU
