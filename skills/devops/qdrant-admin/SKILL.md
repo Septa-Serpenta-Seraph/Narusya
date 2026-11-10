@@ -145,9 +145,35 @@ Audit sequence: (1) grep config.yaml for the collection name; (2) load the provi
 
 ## 2. Memory Provider Plugin (qdrant-memory-provider)
 
-### Setup
+### Setting Up Qdrant for a New Profile
 
-**plugin.yaml:**
+When a new profile is created via `hermes profile create <name> --clone`, the qdrant-memory plugin config is copied from the source profile and still points at the source's collections. The memory files (MEMORY.md, USER.md) are also cloned verbatim — they contain the source profile's identity and relationships and must be replaced.
+
+Procedure:
+
+1. **Create collections** (384-dim Cosine, matching the fastembed backend):
+   ```bash
+   for c in <name>_memories_fastembed <name>_lorebooks_fe; do
+     curl -s -X PUT "http://localhost:6333/collections/$c" \
+       -H 'Content-Type: application/json' \
+       -d '{"vectors":{"size":384,"distance":"Cosine"},"on_disk_payload":true}'
+   done
+   ```
+
+2. **Patch config.yaml** — update `plugins.qdrant-memory.collection` and `lorebook_collection` from the source profile's names to `<name>_memories_fastembed` / `<name>_lorebooks_fe`. Use `patch` on `~/.hermes/profiles/<name>/config.yaml`.
+
+3. **Ingest lorebooks** — copy `scripts/ingest_lorebooks_fastembed.py` to scratch, change `LOREBOOKS_DIR` to `~/.hermes/profiles/<name>/lorebooks` and `COLLECTION_NAME` to `<name>_lorebooks_fe`, then run with `/mnt/data/fe-venv/bin/python`. The script must clean `sys.path` of `/home/adora/.hermes/installs/` entries (see `embed_fastembed_local.py` defensive header) or fastembed will fail to import due to Python/PIL version mismatch. The plugin auto-ingests a second pass on first load — this is expected and harmless (richer titles/chunks).
+
+4. **Replace memory files** — overwrite `memories/MEMORY.md` and `memories/USER.md` with profile-appropriate content. The cloned versions contain the source profile's identity, relationships, and personal details (health, sexual, financial) — none of which should be inherited. Keep only generic operational facts (Tailscale, SSH, style preferences) and add the new profile's own identity.
+
+5. **Verify** — run a chat that should trigger lorebook injection (e.g. "what's your heart system?") and confirm `<lorebook-context>` appears in the tool trace.
+
+**Pitfalls:**
+- The ingest script's success check looks for `result.status == "completed"`, but the REST API returns `result.status == "ok"` — upserts succeed even though the script reports "fail". Verify via `points_count` on the collection.
+- Don't inherit the source profile's memory files — they encode the wrong identity and relationships.
+- The config change does not take effect until the gateway is restarted (or the profile is reloaded).
+
+---
 ```yaml
 name: qdrant
 version: 1.0.0
@@ -366,6 +392,26 @@ When switching from OpenAI/OpenRouter 3072-dim embeddings to local fastembed 384
 **Pitfall:** If the target collection was wiped during crash recovery (live storage 12K vs backup 197M), restore from `/mnt/data/qdrant_storage` first — see "Restoring from Backup Storage" below.
 
 **Pitfall:** The config change does not take effect until the gateway is restarted. After updating config.yaml, restart with `/restart` in Discord or `systemctl --user restart hermes-gateway.service`.
+
+### Backup Container (qdrant-backup, port 6335)
+
+A second Qdrant container named `qdrant-backup` runs on port 6335, bind-mounting `/mnt/data/qdrant_storage` (3.9G). **Nothing in config.yaml references port 6335** — the main Qdrant (`aegis-qdrant`, port 6333) uses `/home/adora/qdrant_storage` (628M).
+
+**Identify it:**
+```bash
+docker ps -a | grep qdrant-backup
+docker inspect qdrant-backup --format '{{json .Mounts}}'
+```
+
+**Before removing it:** verify no process, cron, or config references port 6335:
+```bash
+grep -rn "6335\|qdrant-backup" /home/adora/.hermes/config.yaml /home/adora/.hermes/cron/ 2>/dev/null
+```
+If clean, the container and its 3.9G storage are reclaimable. Stop and remove the container first, then delete `/mnt/data/qdrant_storage` (or move to trash).
+
+**Note:** `/mnt/data/adora-main/qdrant_storage` (3.9G) is another duplicate of the same backup data — check before deleting either copy.
+
+---
 
 ### Restoring from Backup Storage
 
