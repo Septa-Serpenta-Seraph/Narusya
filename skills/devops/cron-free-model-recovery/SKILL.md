@@ -41,6 +41,8 @@ Nous key: `json.load(open('/home/adora/.hermes/auth.json'))['providers']['nous']
 
 10/21 update: Solar Pro 4 free period ended (404). 6 crons repinned to `reflection/beam-1.0-501b-a23b:free` (nous provider). Also set `cron.model` and `cron.model_provider` in config.yaml as global fallback for crons with null model. The 10/18 longcat standard was superseded — beam-1.0-501b-a23b:free is the current standard for all crons.
 
+11/10 update: Beam 1.0 free period ended (404 "This model's free period has ended"). 6 crons repinned to `meituan/longcat-2.5:free` (nous provider) per Adora's directive. Also set `model.default` AND `cron.model`/`cron.model_provider` to the same value — `model.default` alone is not enough, because `pinned=true` locks whatever the main model is at edit time. Verified with a live `/chat/completions` call plus `hermes cron run` (run showed `completed`). Note: `cronjob_manage(action='update', pinned=true)` does NOT change the stored model — use `hermes cron edit <id> --model ... --provider nous --pin`.
+
 ## Repin + verify
 
 ```

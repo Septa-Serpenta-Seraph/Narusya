@@ -1,5 +1,5 @@
 model:
-  default: reflection/beam-1.0-501b-a23b:free
+  default: meituan/longcat-2.5:free
   provider: nous
   base_url: 'https://inference-api.nousresearch.com/v1'
   api_mode: chat_completions
@@ -521,7 +521,7 @@ security:
   acked_advisories: []
   allow_lazy_installs: true
 cron:
-  model: reflection/beam-1.0-501b-a23b:free
+  model: meituan/longcat-2.5:free
   model_provider: nous
   provider: ''
   chronos:
@@ -743,7 +743,7 @@ platforms:
     enabled: true
     home_channel:
       platform: discord
-      chat_id: '1267489522732630068'
-      name: 'National Security Bureau — USRE / #garden'
-      user_id: '722566466603319368'
-      scope_id: '1266408865617154070'
+      chat_id: '1569966629515952211'
+      name: 'Nar / Adora / Zar / #home'
+      user_id: '221767496145960960'
+      scope_id: '1569966628660060230'

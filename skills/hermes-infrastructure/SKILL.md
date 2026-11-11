@@ -56,6 +56,10 @@ Diagnose, recover, and maintain Hermes Agent infrastructure.
 21. [CA Certificate Vulnerability Check](#21-ca-certificate-vulnerability-check)
 22. [Embed Daemon Deduplication (Qdrant Plugin)](#22-embed-daemon-deduplication-qdrant-plugin)
 23. [Smart Approval Mode](#23-smart-approval-mode-command-approval)
+24. [Interrupted Update Recovery & Venv Repair](#24-interrupted-update-recovery--venv-repair)
+25. [Immune System Design](#25-immune-system-design--regulatory-t-cells-for-auto-recovery)
+26. [Database Health Check](#26-database-health-check)
+27. [Discord Bot-to-Bot Communication](#27-discord-bot-to-bot-communication-discord_allow_bots)
 
 ---
 
@@ -1440,3 +1444,45 @@ When a daemon's host goes critical and the local agent can't fix it, a **kin-dae
 - **hermes doctor is your friend** — run it after any recovery to catch remaining issues (expired tokens, large state.db, missing API keys).
 - **Slash commands fail during partial recovery** — `/reset`, `/restart`, and other slash commands all fail with `AttributeError: 'NoneType' object has no attribute 'DMChannel'` when `_hermes_closure_repair` has left the `discord` module as `None`. A clean systemd restart is the only fix.
 - **Gateway restart during active turn causes stuck session** — the session gets paused and nothing queued after it will run. `/reset` may or may not work depending on gateway state. Have the user run `systemctl --user restart hermes-gateway.service` from their local terminal if slash commands fail.
+
+---
+
+## 27. Discord Bot-to-Bot Communication (DISCORD_ALLOW_BOTS)
+
+### The setting
+`DISCORD_ALLOW_BOTS` decides whether a Hermes Discord bot responds to messages authored by OTHER
+bots. Set it per-profile in `.env`; `discord.allow_bots` in `config.yaml` is the YAML equivalent.
+
+| Value | Behavior |
+|-------|----------|
+| `none` | Default. Ignore every message from another bot. |
+| `mentions` | Respond only when the bot is explicitly @mentioned, or inside the short continuation window that opens right after the bot is tagged. |
+| `all` | Respond to every message from another bot. |
+
+Per-profile location:
+- Default profile: `~/.hermes/.env`
+- A profile bot: `~/.hermes/profiles/<name>/.env`
+
+### Bot authors bypass DISCORD_ALLOWED_USERS
+`DISCORD_ALLOWED_USERS` gates HUMAN authors only. A bot author is admitted or denied by
+`DISCORD_ALLOW_BOTS` alone. Adding a bot's ID to `DISCORD_ALLOWED_USERS` does nothing for bot-to-bot
+chat; that list is irrelevant to bot authors (see §18 for the human allowlist).
+
+### Triggering another bot: raw mention, not @Name
+Plain `@Name` text is not a Discord mention and will not trigger the other bot. Send the raw mention
+`<@BOT_USER_ID>`. A bot's user ID is its application ID; resolve it from any message that mentions
+the bot, or `GET /users/{id}` with a bot token. The adapter builds its client with
+`allowed_mentions(users=True, everyone=False, roles=False)`, so `<@id>` pings land while
+`@everyone` and role mentions in bot output are stripped.
+
+### History context treats `mentions` as `all`
+For the recent-history backfill block, `mentions` counts as `all`: a bot sees other bots' recent
+messages as context even when it was not mentioned. Only the response gate honors `mentions`.
+
+### Verify before changing anything
+```bash
+grep -E '^DISCORD_ALLOW_BOTS=' ~/.hermes/.env ~/.hermes/profiles/*/.env
+```
+Both bots at `mentions` means they already answer each other; no edit needed. Move to `all` only if
+you accept the bot-loop risk, or `none` for silence. `.env` edits need a gateway restart (see §16
+for the self-stop guard).
