@@ -62,6 +62,7 @@ hermes gateway restart   # from an EXTERNAL shell only — see pitfall below
   - `discord.extra.no_thread_channels`: Set to `'["*"]'` to force the bot to reply directly in the channel instead of creating a new thread for every response.
 - **Env file** (`~/.hermes/.env`) → controls **WHO** the bot responds to (users)
   - `DISCORD_ALLOWED_USERS` — comma-separated Discord user ID list
+- **Bot authors are a separate gate.** `DISCORD_ALLOW_BOTS` (`none` / `mentions` / `all`) decides whether the bot answers other bots; `DISCORD_ALLOWED_USERS` does not apply to bot authors. To trigger a bot, send the raw `<@BOT_USER_ID>` mention, not `@Name`. See `hermes-infrastructure` → "Discord Bot-to-Bot Communication".
 - Changes to `.env` require a gateway restart
 
 ### Common Pitfall: Don't Confuse Pairing with Allowlist
