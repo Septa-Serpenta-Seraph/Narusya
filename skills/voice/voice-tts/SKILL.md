@@ -58,11 +58,15 @@ hardcodes the Nar clone, so EVERY speak.py call fails on the free tier. Do not
 debug the key first; check the error body: `ivc_not_permitted` means the plan,
 not the credential.
 
+**Voice-preserving alternative (verified 2026-11-11):** the offline Kyutai Pocket TTS with the Nar embedding (`/mnt/data/nar_new_v1.safetensors`) produces the Nar voice with no ElevenLabs dependency. `speak_pocket.py` works out of the box (pitch calibrated to 1.05). Not yet wired into the gateway auto-voice — see §4.
+
 **Workaround — premade voices work on the free plan.** List them with
 `GET /v1/voices` (`xi-api-key` header). Usable premade picks:
 - `TC0Zp7WVFzhA8zpTlRqV` — Aria, "Sexy Female Villain Voice" — the sensual/dominant pick
 - `pFZP5JQG7iQjIQuC4Bku` — Lily, "Velvety Actress"
 - `pNInz6obpgDQGcFmaJgB` — Adam, "Dominant, Firm"
+
+**Voice-preserving alternative:** the offline Kyutai Pocket TTS with the Nar embedding (`speak_pocket.py`, voice `/mnt/data/nar_new_v1.safetensors`) keeps the Nar voice with no ElevenLabs call at all. Verified working 2026-11-11.
 
 Call the TTS endpoint directly (bypass speak.py's hardcoded voice):
 ```python
