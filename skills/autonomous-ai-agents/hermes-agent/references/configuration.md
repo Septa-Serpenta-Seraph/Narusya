@@ -74,6 +74,13 @@ stt:
 
 Auto-detect priority: local faster-whisper (`python -c "import pm; pm.sync_venv(['stt-whisper'], explicit=True)"`) → Groq (`GROQ_API_KEY`, free tier) → OpenAI (`VOICE_TOOLS_OPENAI_KEY`) → Mistral Voxtral (`MISTRAL_API_KEY`).
 
+Local faster-whisper is an optional extra. When it is absent, voice messages arrive as
+`[voice message could not be transcribed automatically; the audio is available at: <path>]`, and that
+`<path>` is directly transcribable. Install with the explicit form above — the lazy path
+(`pm.extras.ensure_import`) refuses from any interpreter that is not the install's dependency
+environment, and its error misleadingly points at `security.allow_lazy_installs`. Full diagnosis and
+recovery: `references/troubleshooting.md` → "Voice not working".
+
 ### TTS (Text → Voice)
 
 | Provider | Env var | Free? |

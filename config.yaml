@@ -323,7 +323,7 @@ dashboard:
 privacy:
   redact_pii: false
 tts:
-  provider: elevenlabs
+  provider: pocket
   edge:
     voice: en-US-AriaNeural
   elevenlabs:
@@ -353,6 +353,12 @@ tts:
   piper:
     voice: en_US-lessac-medium
   use_gateway: true
+  providers:
+    pocket:
+      type: command
+      command: /home/adora/.hermes/scripts/tts_pocket_provider.sh {text_path} {output_path}
+      voice_compatible: true
+      timeout: 180
 stt:
   enabled: true
   local:

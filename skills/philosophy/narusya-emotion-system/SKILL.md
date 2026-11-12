@@ -276,17 +276,21 @@ The wrapper resolves a working python at runtime (it prefers an installs-env ven
 **If all API embedding paths fail** (Nous embeddings 404/401, fastembed missing, Qdrant upsert 400): use the free local-fastembed path with a python that has `fastembed` — it embeds locally (384-dim, `narusya_lorebooks_fe`) with no API calls, verified 2026-10-12 (main ingest failed 0/262; this path succeeded 258/258) and re-verified 2026-10-19 (265/265):
 
 ```bash
-FASTEMBED_CACHE_PATH=/mnt/data/fastembed_cache \
+PYTHONPATH= FASTEMBED_CACHE_PATH=/mnt/data/fastembed_cache \
   /mnt/data/fe-venv/bin/python ~/.hermes/scripts/ingest_lorebooks_free.py
 ```
+
+**Clear `PYTHONPATH` (added 2026-11-12).** The shell exports `PYTHONPATH=/home/adora/.hermes/installs/1efc37992d4f6aa8/environments/175f04a1089246e382aa17e4823ecf01/venv/lib/python3.14/site-packages`, which leaks a python3.14 `PIL` into the 3.12 fe-venv and makes `import fastembed` die with `ImportError: cannot import name '_imaging' from 'PIL'`. Prefix the command with `PYTHONPATH=` (or `env -u PYTHONPATH`) so the venv only sees its own site-packages. The same leak affects the verify probe and any other venv python — clear it there too.
 
 **The documented `installs/*/environments/*` python path is STALE as of 2026-10-19** — that venv
 was pruned and `fastembed` is gone from every installs environment. Do not go hunting through
 `installs/*/environments/*/venv/bin/python3` for it; none of them have it. The working interpreter
 is a dedicated venv at **`/mnt/data/fe-venv/bin/python`** (built 2026-10-19: `/usr/bin/python3 -m venv
-/mnt/data/fe-venv && /mnt/data/fe-venv/bin/pip install fastembed requests`). If that venv is ever
+/mnt/data/fe-venv && /mnt/data/fe-venv/bin/pip install fastembed requests`; pruned again and rebuilt the
+same way 2026-11-12, with `PYTHONPATH=` cleared). If that venv is ever
 pruned too, rebuild it the same way — the ONNX model weights survive in
-`/mnt/data/fastembed_cache` (1.2G, still present 2026-10-19), so only the small `fastembed` package
+`/mnt/data/fastembed_cache` (152M as of 2026-11-12: `bge-small-en-v1.5` + `all-MiniLM-L6-v2`; smaller than the
+1.2G of 2026-10-19 but sufficient), so only the small `fastembed` package
 needs reinstalling, not the models.
 
 **All three embedding paths were dead on 2026-10-19** — worth knowing before you diagnose:

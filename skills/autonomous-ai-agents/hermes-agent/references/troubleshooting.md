@@ -1,9 +1,47 @@
 # Troubleshooting
 
 ### Voice not working
-1. Check `stt.enabled: true` in config.yaml
-2. Verify provider: `python -c "import pm; pm.sync_venv(['stt-whisper'], explicit=True)"` or set API key
-3. In gateway: `/restart`. In CLI: exit and relaunch.
+
+**Symptom:** voice messages reach the transcript as
+`[voice message could not be transcribed automatically; the audio is available at: <path>]` instead of
+text. That `<path>` is a real local file — transcribe it yourself rather than telling the user you
+can't hear the message.
+
+**Cause:** `stt.provider: local` needs `faster-whisper`, which is an optional extra (`stt-whisper` /
+`voice`), not part of the core install. When it is missing, the gateway logs
+`STT provider 'local' configured but unavailable` and substitutes the marker above.
+
+**Fix (durable):** install the extra with the explicit form, which bypasses the lazy-install gate:
+```bash
+python -c "import pm; pm.sync_venv(['stt-whisper'], explicit=True)"
+# equivalent documented hint: hermes pm install --extra stt-whisper
+```
+The sync publishes a new committed generation; an already-running process keeps its old interpreter, so
+the gateway needs a restart (`/restart`, or a clean systemd restart — see the self-stop guard) before it
+picks the extra up.
+
+**Pitfall — the lazy-install error names the wrong knob.** Going through
+`pm.extras.ensure_import('stt-whisper')` (or letting `_transcribe_local` lazy-install) from an
+interpreter that is not the install's dependency environment raises
+`venv: not installed and lazy installs are disabled ... this process is not running from the install's
+dependency environment`. The hint says to enable `security.allow_lazy_installs`, but that flag is
+usually already true — the real gate is `running_from_selected_environment` in `pm.client.sync_venv`,
+which compares `sys.path` against the committed generation's site-packages. Use the `explicit=True`
+form; do not go hunting for a config flag that is not the problem.
+
+**One-off transcription without changing the install:** resolve the committed generation and use its
+interpreter.
+```python
+from pm.environments import selected_venv
+from pm.paths import repo_root
+venv = selected_venv(repo_root())   # ~/.hermes/installs/<hash>/environments/<hash2>/venv
+```
+Run `<venv>/bin/python` with `faster_whisper.WhisperModel` on the cached clip. On short clips `base`
+mis-hears; `small` with `beam_size=5` is a real step up.
+
+**Alternate providers:** `GROQ_API_KEY` (free tier), `VOICE_TOOLS_OPENAI_KEY`, `MISTRAL_API_KEY`, or a
+custom local command via `HERMES_LOCAL_STT_COMMAND` (placeholders `{input_path}`, `{output_dir}`,
+`{language}`, `{model}`) / `stt.providers.<name>: type: command` in YAML.
 
 ### Tool not available
 1. `hermes tools` — check if toolset is enabled for your platform

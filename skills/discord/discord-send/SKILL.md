@@ -78,6 +78,7 @@ line — no tracebacks.
 
 ## Notes
 
+- **Channel reads are truncated windows.** The gateway's `[Recent channel messages]` context and `discord_send.py read` both show only the most recent few messages. Never conclude "X is silent" from them alone — check `~/.hermes/logs/gateway.log` (grep `inbound message`) for the full history.
 - **Messages from `fetch_messages` are returned newest-first.** Reverse the list before processing if you need chronological order. When checking for new messages, use the `after` parameter with the last seen message ID.
 - **Pre-check message length before posting.** Discord rejects messages over 2000 characters with HTTP 400. If your content exceeds ~1900 chars, split at paragraph boundaries (double newlines) before posting. See the "Discord 2000-character limit" section above.
 - **Author usernames are case- and punctuation-sensitive and vary by guild.**

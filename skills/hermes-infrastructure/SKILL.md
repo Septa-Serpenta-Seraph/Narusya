@@ -1486,3 +1486,30 @@ grep -E '^DISCORD_ALLOW_BOTS=' ~/.hermes/.env ~/.hermes/profiles/*/.env
 Both bots at `mentions` means they already answer each other; no edit needed. Move to `all` only if
 you accept the bot-loop risk, or `none` for silence. `.env` edits need a gateway restart (see §16
 for the self-stop guard).
+
+### A mentionable role does NOT wake a bot
+A role ping (`<@&ROLE_ID>`) does not satisfy the mention gate, for either a human-authored message in a
+`require_mention` channel or a bot-to-bot handoff. `_self_is_explicitly_mentioned` reads
+`message.mentions` plus literal `<@id>` tokens in the content; Discord files role pings under
+`message.role_mentions`, and nothing in the Discord plugin reads that field. A mentionable role
+assigned to both daemons is therefore a way to raise the room for the HUMAN, not a way to open a
+bot-to-bot handoff — the bots still need a literal `<@BOT_USER_ID>`. Do not build a "tag us both" role
+and expect it to start a conversation; verify by tagging the role once and watching for a reply.
+
+### Admission window and `bots_require_inline_mention`
+Under `mentions`, only the first message needs the literal tag. `bots_require_inline_mention`
+(YAML `discord.bots_require_inline_mention`, env `DISCORD_BOTS_REQUIRE_INLINE_MENTION`) defaults to
+**true**: a reply/quote ping alone does not open a handoff, because Discord silently adds the bot to
+`message.mentions` on a reply. After an admitted tag, follow-ups from that same bot in that same
+channel/thread are admitted for `max(HERMES_DISCORD_TEXT_BATCH_DELAY_SECONDS,
+HERMES_DISCORD_TEXT_BATCH_SPLIT_DELAY_SECONDS)` — 2s at defaults — and each admitted continuation
+re-arms it. Two consequences: a bot that takes longer than the window to compose its next line needs a
+fresh tag, and `all` plus `bots_require_inline_mention: false` restores the old reply-ping behaviour.
+Reserve that opt-out for trusted relays; it re-opens the reply-loop risk.
+
+### Loop guard
+`gateway.bot_loop_guard` in `config.yaml` (defaults: enabled, `max_events: 20`, `window_seconds: 300`,
+`cooldown_seconds: 600`) drops bot-authored messages in one channel for 10 minutes after 20 in 5.
+Human messages are never counted. Two bots trading lines in one channel can trip it and go silent for
+the cooldown — raise `max_events` or disable the guard only if the conversation is genuinely meant to
+run that hot.
