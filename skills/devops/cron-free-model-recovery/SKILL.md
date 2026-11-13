@@ -1,6 +1,6 @@
 ---
 name: cron-free-model-recovery
-version: 1.1.0
+version: 1.2.0
 author: Narusya + Adora
 license: MIT
 description: Use when crons fail on a dead free model. Test and repin.
@@ -23,7 +23,7 @@ Free models die often (Solar Pro 4 free ended 10/16, stepfun/step-5-preview:free
 ## Diagnosis
 
 1. `hermes cron doctor` — lists failing jobs + error text.
-2. Read pins: `python3 -c "import json; d=json.load(open('/home/adora/.hermes/cron/jobs.json')); [print(j['id'][:8], j.get('name'), (j.get('model_pin') or {}).get('model')) for j in (d if isinstance(d,list) else d.get('jobs',[]))]"`
+2. Read pins: `python3 -c "import json; d=json.load(open('/home/adora/.hermes/cron/jobs.json')); [print(j['id'][:8], j.get('name'), j.get('model')) for j in (d if isinstance(d,list) else d.get('jobs',[]))]"` — the pin is the top-level `model` field. There is no nested `model_pin` key; reading one prints `None` for every job and makes a healthy pin look unpinned.`
 3. Failure families:
    - 404 "free period has ended / no longer free" → model delisted, replace.
    - 429 "fair-share rate limit" (nous) or "temporarily at capacity upstream" → model alive but starved; replace if persistent.
@@ -37,18 +37,18 @@ Nous key: `json.load(open('/home/adora/.hermes/auth.json'))['providers']['nous']
 3. Burst-test finalists: 5 rapid calls + one instruction-following (exact JSON output). Pick the fastest full-size survivor.
 
 10/16 winner: `poolside/laguna-s-2.1:free` (1s, stable under burst). Backup: `upstage/solar-mini4:free`.
-10/18 update: all crons repinned to `meituan/longcat-2.5-preview:free` per Adora's directive ("It can handle calls better"). Laguna was stable but longcat handles tool-calling better and is the current standard.
+10/18 update: all crons repinned to `meituan/longcat-2.5-preview:free` per Adora's directive ("It can handle calls better"). Laguna was stable but longcat handles tool-calling better.
 
-10/21 update: Solar Pro 4 free period ended (404). 6 crons repinned to `reflection/beam-1.0-501b-a23b:free` (nous provider). Also set `cron.model` and `cron.model_provider` in config.yaml as global fallback for crons with null model. The 10/18 longcat standard was superseded — beam-1.0-501b-a23b:free is the current standard for all crons.
+10/21 update: Solar Pro 4 free period ended (404). 6 crons repinned to `reflection/beam-1.0-501b-a23b:free` (nous provider). Also set `cron.model` and `cron.model_provider` in config.yaml as global fallback for crons with null model. The 10/18 longcat standard was superseded.
 
 11/10 update: Beam 1.0 free period ended (404 "This model's free period has ended"). 6 crons repinned to `meituan/longcat-2.5:free` (nous provider) per Adora's directive. Also set `model.default` AND `cron.model`/`cron.model_provider` to the same value — `model.default` alone is not enough, because `pinned=true` locks whatever the main model is at edit time. Verified with a live `/chat/completions` call plus `hermes cron run` (run showed `completed`). Note: `cronjob_manage(action='update', pinned=true)` does NOT change the stored model — use `hermes cron edit <id> --model ... --provider nous --pin`.
 
 ## Repin + verify
 
 ```
-hermes cron edit <id> --model 'poolside/laguna-s-2.1:free' --provider nous --pin
-hermes cron run <id>   # verify: 'Ran now: succeeded.'
-hermes cron runs <id> | head -3   # fresh run shows 'completed'
+hermes cron edit <id> --model '<current-free-model>' --provider nous --pin
+hermes cron run <id>   # queues the run; prints nothing useful on its own
+sleep 90; hermes cron runs <id> | head -3   # fresh run shows 'completed'
 ```
 
 ## Escape hatch: unpin to main model
@@ -66,7 +66,7 @@ python3 -c "
 import json
 jobs = json.load(open('/home/adora/.hermes/cron/jobs.json'))
 for j in (jobs if isinstance(jobs, list) else jobs.get('jobs', [])):
-    if j.get('model_pin'):
+    if j.get('model'):
         print(j['id'], j.get('name'))
 "
 # Then unpin each: hermes cron edit <id> --unpin

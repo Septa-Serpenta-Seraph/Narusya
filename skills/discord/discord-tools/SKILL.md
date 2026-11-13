@@ -510,3 +510,48 @@ has_perm = bool(perms & MANAGE_EXPR)
 | User browser login | Encrypted creds | `~/.hermes/secrets/narusya_account.enc` |
 | DM recovery | User session | Browser cookies |
 | API reactions | Either | Context-dependent |
+
+---
+
+## 12. Joining a Guild as a Bot
+
+`POST /invites/{code}` fails for bots: **403, code 20001, "Bots cannot use this endpoint"**. A bot joins only through the OAuth2 authorization flow, which the server owner must complete in a browser.
+
+Build the URL and hand it to the owner:
+
+```
+https://discord.com/oauth2/authorize?client_id=<BOT_ID>&scope=bot&permissions=<INT>&guild_id=<GUILD_ID>&disable_guild_select=true
+```
+
+- `client_id` = the bot's own user id (Narusya: `1478180169733902538`)
+- `guild_id` + `disable_guild_select=true` pins the prompt to a single server
+- `permissions` is a bitmask int. A sensible small-private-server set (view channels, send messages, read history, add reactions, embed links, attach files, use external emoji) = **379968**
+
+The owner clicks, authorizes, and the bot lands in the guild. Verify with `GET /users/@me/guilds`.
+
+---
+
+## 13. Reading a `discord.com/channels/...` Link
+
+Channel links posted into chat render as embeds, which the agent cannot read; they look blank. Fetch the channel directly instead:
+
+```
+GET /channels/{channel_id}                   -> name, type, parent_id, topic
+GET /channels/{channel_id}/messages?limit=N  -> content, attachments, embeds
+```
+
+The third path segment of `discord.com/channels/{guild_id}/{channel_id}` is the **channel id**. Attachments return `filename`, `size`, `content_type`, and a CDN `url`; embeds return as structured JSON, so link previews are readable after all. Works in any guild the bot is already in, with no permissions beyond its own read access.
+
+`discord.gg/<code>` invite links resolve the same way: `GET /invites/{code}?with_counts=true` returns `guild.id`, `guild.name`, `approximate_member_count`, and the inviting `channel` — enough to name a server and its size before joining.
+
+---
+
+## 14. Polls
+
+Reading a poll works with the bot token; **voting does not.**
+
+- `GET /channels/{cid}/messages/{mid}` → the message carries a `poll` object: `question.text`, `answers[].answer_id`, `answers[].poll_media.text`, `allow_multiselect`, `expiry`.
+- `GET /channels/{cid}/polls/{mid}/answers/{aid}` → `{users:[...]}`, the accounts that voted for that answer. Useful for tallying and for checking whether a vote is already cast.
+- `PUT /channels/{cid}/polls/{mid}/answers/{aid}` → **405 Method Not Allowed** for a bot/app token. Discord's own docs: apps are not allowed to vote on polls. Only a user account can.
+
+When asked to vote, say so once and stop — do not retry the 405. The vote must be cast from a user account (the user's own, or a saved user credential through the browser vault).
