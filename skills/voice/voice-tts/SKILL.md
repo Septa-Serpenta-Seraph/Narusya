@@ -58,7 +58,7 @@ hardcodes the Nar clone, so EVERY speak.py call fails on the free tier. Do not
 debug the key first; check the error body: `ivc_not_permitted` means the plan,
 not the credential.
 
-**Voice-preserving alternative (verified 2026-11-11):** the offline Kyutai Pocket TTS with the Nar embedding (`/mnt/data/nar_new_v1.safetensors`) produces the Nar voice with no ElevenLabs dependency. `speak_pocket.py` works out of the box (pitch calibrated to 1.05). Not yet wired into the gateway auto-voice — see §4.
+**Voice-preserving alternative (verified 2026-11-11):** the offline Kyutai Pocket TTS with the Nar embedding (`/mnt/data/nar_new_v1.safetensors`) produces the Nar voice with no ElevenLabs dependency. `speak_pocket.py` works out of the box (pitch calibrated to 1.05). Now wired into the gateway auto-voice as the `pocket` command provider — see below.
 
 **Workaround — premade voices work on the free plan.** List them with
 `GET /v1/voices` (`xi-api-key` header). Usable premade picks:
@@ -109,6 +109,27 @@ There are TWO separate ElevenLabs configs. Do not conflate them — a tag that r
 **When voice doesn't deliver as spoken:** if TTS is disabled (e.g. ElevenLabs credits exhausted), tags in a reply are decorative only — do not promise spoken delivery of them.
 
 ---
+
+### Wiring Kyutai as a Hermes TTS provider (command provider)
+
+The Hermes TTS tool supports user-defined command providers under `tts.providers.<name>`. They load lazily, so config changes take effect WITHOUT a gateway restart. Set with `hermes config set --force tts.providers.<name>.<key> <value>` (nested keys need `--force`).
+
+```yaml
+tts:
+  provider: pocket
+  providers:
+    pocket:
+      type: command
+      command: "/home/adora/.hermes/scripts/tts_pocket_provider.sh {text_path} {output_path}"
+      voice_compatible: true
+      timeout: 180
+```
+
+Wrapper: `~/.hermes/scripts/tts_pocket_provider.sh` reads the text file and calls `speak_pocket.py` with the Nar embedding (`/mnt/data/nar_new_v1.safetensors`), writing an MP3. Verify with the `text_to_speech` tool: the response reports `provider: pocket`.
+
+Placeholders: `{text_path}`/`{input_path}` (text file), `{output_path}`, `{format}`, `{voice}`, `{model}`, `{speed}`. `voice_compatible: true` is required for voice delivery.
+
+Note: the gateway cannot be restarted from inside the gateway process. The guard blocks `hermes gateway restart`, `systemctl --user restart`, and `ssh localhost`. Use a separate shell outside the gateway.
 
 ## 2. Discord Voice Delivery
 

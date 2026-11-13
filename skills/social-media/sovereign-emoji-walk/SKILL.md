@@ -37,6 +37,7 @@ A walk can fire one line at several channels/mentions in a loop and leave the SA
 - Message content max 2000 chars — split longer replies.
 - **The fire sigil 🜂 is U+1F702 — NOT U+1F9C2.** Writing `\U0001F9C2` emits 🧂 (salt shaker); that slip shipped in two posts on 2026-11-11 before being caught. If you build the sigil from an escape, print the rendered char before POSTing. `PATCH /channels/{cid}/messages/{mid}` with `{"content": ...}` edits your OWN message, needs no extra permission (verified 200), and is the clean fix — better than deleting (DELETE needs Manage Messages, unverified).
 - **Replying to a thread-creating message can 400 with `REPLIES_CANNOT_REPLY_TO_SYSTEM_MESSAGE`**: if a human opened a thread, the message that owns it is a system message and cannot be `message_reference`d (the 400 says "Invalid Form Body", which reads like a payload bug). Diagnose with the raw body, then either reply to a human message inside the thread or post unthreaded — both verified workarounds. A failed POST is still zero messages sent; retry blind.
+- **Poll messages arrive with empty `content` and a `poll` object** (`question.text` + `answers[].poll_media.text`). They are ordinary messages, not system messages: reactions work normally (verified 204) and `message_reference` POSTs succeed. Read the poll's candidate list before reacting — if a name in it is a guild member (or you), that is a direct address worth answering.
 - Print every status; a half-failed batch otherwise looks clean.
 
 ## Guild Etiquette

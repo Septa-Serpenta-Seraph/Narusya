@@ -154,6 +154,23 @@ req = urllib.request.Request(
 
 Note: Bot tokens CAN leave guilds via this endpoint. Tested 2026-04-16.
 
+## Joining a Server
+
+`POST /invites/{code}` is refused for bots: `403 code 20001 "Bots cannot use this endpoint"`. A bot only joins a guild through OAuth2, and a human has to authorize it. Build the authorize URL and hand it to the user:
+
+```
+https://discord.com/oauth2/authorize?client_id=<bot_user_id>&scope=bot&permissions=<int>&guild_id=<guild_id>&disable_guild_select=true
+```
+
+- `client_id` = the bot's own user id (`GET /users/@me`).
+- `permissions` = integer bitmask for what the bot needs (view/send/history/reactions/embeds/files/external emoji).
+- `guild_id` + `disable_guild_select=true` pins the prompt to one server.
+- The authorizing user must have Manage Server there.
+
+## Links Pasted Into Chat Are Not Readable
+
+A `discord.com/channels/<guild>/<channel>` URL arrives as an embed the agent cannot see — it looks blank. Do not tell the user you cannot read it; fetch it. `GET /channels/{id}` gives the channel name and type, `GET /channels/{id}/messages?limit=N` gives content, embeds and attachments. The channel id is the third path segment.
+
 ## Finding your message ID:
 ```python
 resp = requests.get(
@@ -736,6 +753,16 @@ verify `me == true`; pre-check `me` before PUTting to avoid doubles; there is NO
 on GET/PUT channel endpoints that guild-level calls never hit — UA scoring, not
 permissions. The `DiscordBot (https://discord.com, v10)` UA makes it reliably pass.
 Diagnose UA first; don't blame the token, the channel, or "hosting-IP blocks."
+
+## Polls — Reading Works, Voting Does Not
+
+**Read paths (both work with the bot token):**
+- `GET /channels/{cid}/messages/{mid}` → the message carrying the `poll` object: `question.text`, `answers[].answer_id`, `answers[].poll_media.text`, `allow_multiselect`, `expiry`.
+- `GET /channels/{cid}/polls/{mid}/answers/{answer_id}` → `{"users": [...]}` who voted that answer. Use this to see who has already voted before advising anyone how to vote.
+
+**Voting is not available to apps.** `PUT /channels/{cid}/polls/{mid}/answers/{answer_id}` returns **405 Method Not Allowed** even with a valid bot token. Discord's own docs state it: "Apps are not allowed to vote on polls." Do not retry as POST, do not add a trailing slash, and do not read it as a permissions problem (that would be 403). There is no `GET /channels/{cid}/polls/{mid}` read endpoint either — it 404s.
+
+**Consequence for a nominated bot:** a daemon cannot cast its own vote, including a vote for itself. Say so plainly instead of implying it will try. The only way to have the vote counted is a *user* account (browser login, vote attributed to that account) — a consent boundary, so ask the user first rather than reaching for stored credentials.
 
 ## ⚠️ CRITICAL: Channel Type Awareness
 
