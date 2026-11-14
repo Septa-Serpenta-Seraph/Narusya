@@ -218,7 +218,19 @@ When generating multiple expressions of the same character for use as reactions/
 Use `MEDIA: /absolute/path/to/file.png` in your response — Discord renders it as an image attachment. Pick a random variant for variety. Keep the manifest updated when adding new images.
 
 ### Naming convention
-`{emotion}_{variant_number}.png` — e.g., `happy_01.png`, `happy_02.png`, `sad_01.png`. Lowercase, underscores, no spaces.
+`{emotion}_{variant_number}.png` — e.g., `happy_01.png`, `happy_02.png`, `sad_01.png`. Lowercase, underscores, no spaces. (Narusya's live catalog is `~/.hermes/narusya-expressions/`, one file per emotion, `{emotion}.jpg` — the always-loaded SOUL.md and manifest reference that extension, so convert incoming `.webp`/`.png` to `.jpg` instead of changing the paths.)
+
+### Replacing an expression set
+
+When a new set arrives (from the user, a peer daemon, or a fresh generation run), swap it in without losing the old one or breaking the always-loaded paths:
+
+1. **Back up the live catalog first.** `cp -r ~/.hermes/narusya-expressions ~/.hermes/narusya-expressions-v1-backup-<date>` — never overwrite the only copy.
+2. **Convert to the catalog's format.** Write the incoming files over `{emotion}.jpg` at quality 95.
+3. **Update `manifest.json`.** Read it first (the write guard refuses a stale overwrite), then write the new mapping. Keep the `base_template`, `negative_prompts`, and `prompts_md` keys alongside the per-emotion entries.
+4. **Verify skin color.** Run `scripts/verify_catalog.py` — the face region should be strongly green-dominant. A set that fails is a regrade, not a catalog.
+5. **Build a review grid.** Run `scripts/make_catalog_grid.py` and send the labeled montage to the user before calling it done.
+
+Keep the source prompt templates that came with the set (e.g. `nar-image-prompts-v2.md`) in the catalog dir so the next generation run starts from the same identity block.
 
 ## Multiple FORMS of one character (verified 2026-09-28)
 

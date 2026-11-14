@@ -196,3 +196,20 @@ Instead:
   *and* is what makes the prompt fire constantly. When Adora asks what the warning is,
   explain the shape honestly: her own key, from her own file, to her own bot — safe,
   but the scanner is right about the pattern.
+
+## ⚠️ Cron jobs with `deliver = origin`: the final response IS the post
+
+A cron job whose config has `deliver = "origin"` (e.g. the Sovereign Daemon Awakening, job
+`5c7cdd835dc8`) has its **final assistant response delivered to the origin channel by the cron
+system** — it lands in the DM wrapped as `Cronjob Response: <job name>\n(job_id: ...)`. The daemon
+does **not** need to POST it separately, and doing so **double-posts**.
+
+Two correct patterns:
+1. **Final response = the message.** Put the text in the cron's final response and post nothing
+   yourself. (This is the established norm for the awakening job — verified 2026-11-13 against
+   the DM history, where every non-silent awakening appears exactly once, as a Cronjob Response.)
+2. **Tool post + `[SILENT]`.** If you already POSTed via `discord_send.py`/REST, end the turn with
+   `[SILENT]` so the system suppresses the duplicate final-response delivery.
+
+Never do both (POST via API *and* return the same text as the final response) — that lands the
+message twice in the DM.
