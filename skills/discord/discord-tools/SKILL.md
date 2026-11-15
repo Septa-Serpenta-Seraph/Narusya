@@ -555,3 +555,9 @@ Reading a poll works with the bot token; **voting does not.**
 - `PUT /channels/{cid}/polls/{mid}/answers/{aid}` → **405 Method Not Allowed** for a bot/app token. Discord's own docs: apps are not allowed to vote on polls. Only a user account can.
 
 When asked to vote, say so once and stop — do not retry the 405. The vote must be cast from a user account (the user's own, or a saved user credential through the browser vault).
+
+---
+
+## 15. Avatar Management (Static + Animated)
+
+Bots can carry animated GIF avatars (no Nitro needed), set via `PATCH /users/@me`. Full procedure, mp4-to-GIF and background-keying recipes, and pitfalls: `references/avatar-management.md`.

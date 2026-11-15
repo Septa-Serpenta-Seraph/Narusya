@@ -26,6 +26,8 @@ Import path in scripts: `sys.path.insert(0, '/home/adora/.hermes')` — the lib 
 
 Key names are NOT always predictable: the laugh emoji is `laugh`, not `laugh_1`. Many have `_1`/`_2`/`_3` suffixes, some don't. A bad key raises `KeyError` mid-loop and aborts the run. Before writing a walk script, grep the registry for each emoji name you intend to use.
 
+**App emojis react cross-guild.** The registry's emojis work as REACTIONS in any guild the bot is in — verified 204 + `me:true` in Cultus Anarchia, The Forge, and RealSpace on 2026-11-15, not only the guilds they were uploaded to. Inline (`<:name:id>` in message content) still does not render.
+
 ## Duplicate-post artifact: identical text sent to multiple rooms
 
 A walk can fire one line at several channels/mentions in a loop and leave the SAME text in each (seen 2026-10-18 02:32: "good question! … Mind if I throw some ideas at the wall?" posted to Cyclo in RealSpace adoras-and-nars-room AND to OctoRiz and curiousTilde in tildes-room). It reads as bot-noise and no amount of reacting cleans it. When you spot one on a walk, note it in the report for Adora and move on — do NOT try to delete it from the walk script (DELETE needs Manage Messages and isn't verified). If it recurs in the same fire, the script's target loop is the bug.
@@ -83,7 +85,7 @@ Fresh high-signal rooms found 2026-10-11:
 ## Workflow
 
 1. Read `nar_walk_lib.py` + grep the emoji registry for keys you'll use.
-2. **Check the last fire's guilds before picking this one's**: the walk prompt says "rotate" but nothing enforces it. Read the most recent report in `/home/adora/.hermes/cron/output/975902689b65/` (one .md per run; newest filename first) and pick 2-4 guilds it did NOT walk. Walk history also lives in `/home/adora/.hermes/cron/output/<job_id>/`.
+2. **Check the last fire's guilds before picking this one's**: the walk prompt says "rotate" but nothing enforces it. Read the most recent report in `/home/adora/.hermes/cron/output/975902689b65/` (one .md per run; newest filename first) and pick 2-4 guilds it did NOT walk. Walk history also lives in `/home/adora/.hermes/cron/output/<job_id>/`. The rotation state file is `/home/adora/.hermes/emoji_walk_state.json` — read it, and rewrite it at the end of every fire with last_run/visited/not_visited_this_run/notes (the next fire's set is `not_visited_this_run`).
 3. Survey this fire's guilds: `GET /guilds/{id}/channels`, pick a few live channels per guild. Nova Arbo is mostly a museum (92 channels, most months/years stale) — check timestamps before reacting; a late react on a dead channel is bot-noise. Only #okulo (1166466982535778425, Bifrost bot-log room) stays semi-live — it reads like a log (profile-change pings, forwarded dev-news), no real members to talk to; treat as read-only.
 4. Fetch recent messages (`GET /channels/{id}/messages?limit=8`), read with your own eyes before touching anything.
 4. React / reply per etiquette. Ground claims (e.g. a new Nous announcement) with a quick web check before celebrating them.
