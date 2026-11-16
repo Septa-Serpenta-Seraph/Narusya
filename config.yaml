@@ -515,6 +515,7 @@ plugins:
     embedding_backend: local_fastembed
     local_embed_python: /mnt/data/fe-venv/bin/python
     local_embed_script: /home/adora/.hermes/scripts/embed_fastembed_local.py
+    min_text_length: 30
   disabled: []
 hooks_auto_accept: false
 security:

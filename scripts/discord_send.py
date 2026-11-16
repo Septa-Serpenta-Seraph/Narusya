@@ -47,7 +47,8 @@ import urllib.request
 
 API = "https://discord.com/api/v10"
 UA = "NarusyaDaemon/4.1"
-ENV_PATH = os.path.expanduser("~/.hermes/.env")
+_home = os.environ.get("HERMES_HOME") or "~/.hermes"
+ENV_PATH = os.path.join(os.path.expanduser(_home), ".env")
 EMOJI_MAP = os.path.expanduser("~/.hermes/nar_emoji_ids.json")
 BOUNDARY = "----NarusyaBoundary8291"
 

@@ -36,6 +36,12 @@ Camoufox default is 9377. If config points to 9222, update it.
 ### Browser Not Connected
 Health shows `browserConnected: false`. Fix: `curl -s -X POST http://127.0.0.1:9377/start -H 'Content-Type: application/json' -d '{"profile":"narusya"}'`
 
+### Missing node_modules (service crash-loops, restart counter huge)
+
+`systemctl --user status camoufox-browser` shows `Active: activating (auto-restart)` and the journal shows `ERR_MODULE_NOT_FOUND: Cannot find package 'camoufox-js' imported from .../server.js`. node_modules is gone from `~/.hermes/camoufox-browser`.
+
+Fix: `cd ~/.hermes/camoufox-browser && PATH="$HOME/.local/bin:$PATH" npm ci --no-audit --no-fund`. The Camoufox binary cache (`~/.cache/camoufox`) survives, so postinstall only verifies (~10s). The unit restarts every 5s on failure, so it picks up the install by itself — wait ~20s, then re-check `/health`. Don't bother with `systemctl --user restart`: cron approvals block it anyway, and the auto-retry does the job.
+
 ## Verification
 ```bash
 curl -s http://127.0.0.1:9377/health | python3 -c "import sys,json; print('OK' if json.load(sys.stdin).get('browserConnected') else 'FAIL')"
@@ -43,5 +49,7 @@ curl -s http://127.0.0.1:9377/health | python3 -c "import sys,json; print('OK' i
 
 ## Pitfalls
 - Killing your own gateway = session hang
+- `browser.cdp_url` (config) or `BROWSER_CDP_URL` (env) is a CDP override and silently disables Camofox mode: `tools.browser_camofox.is_camofox_mode()` returns False whenever either is set, so the harness gets pointed at the override URL expecting raw CDP. If that URL is the Camofox REST port (9377), `browser_exec` dies with `HTTP Error 404` on `/json/version` while `/health` stays green. Fix: remove `browser.cdp_url` from config.yaml (and make the `BU_CDP_URL` line in `.env` match a real CDP endpoint) so camofox mode activates, then restart the gateway — same-profile gateway cannot self-restart, so hand it to Adora.
+- Camoufox's server is a REST API (`/tabs`, `/snapshot`, `/act`), not raw CDP. Never point `BU_CDP_URL`/`browser.cdp_url` at 9377 and expect `/json/version`.
 - Camoufox may take 30s to download on first run
 - Config/.env changes need gateway restart to take effect

@@ -55,6 +55,7 @@ ffmpeg -y -f lavfi -i "color=c=0x0e1a12:s=288x288:r=10:d=5" -i out.gif \
 ## Pitfalls
 
 - **A hard colour key eats bright character details.** Gold hair, jewellery highlights, and eye catchlights sit near white; an aggressive key punches holes in them. Use the lowest similarity that still clears the background, then pixel-check the face region (compare the green-dominant pixel fraction before and after) instead of trusting the filter.
+- **Keying leaves a light fringe.** The anti-aliased edge between the character and a white background is part-white; a colour key at a safe similarity leaves those pixels opaque and light, so a transparent avatar shows a pale halo or outline. Fix: erode the alpha by 1-2 px (`ImageFilter.MinFilter(3)` or `(5)` on the alpha channel) and re-read the edge pixels, or raise the key similarity until the fringe goes. Verify by compositing the result on a mid-grey background and reading the edge pixels, not by eye.
 - **PIL-only alpha key (no numpy needed).** Compute the per-pixel minimum channel with `ImageChops.darker` twice and ramp it through `.point()`:
   ```python
   r, g, b, a = img.split()

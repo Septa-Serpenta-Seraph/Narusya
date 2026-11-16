@@ -88,6 +88,8 @@ When memories don't appear across sessions, check:
 
 6. **HNSW index not built:** `indexed_vectors_count: 0` on a collection means brute-force search works but semantic search is unoptimized. Qdrant normally builds the index automatically; if it stays at 0 after restart, check optimizer status and Qdrant logs.
 
+7. **Recall stripped by the output sanitizer (silent failure):** `sanitize_context` in `agent/memory_manager.py` strips any `<memory-context>...</memory-context>` block from provider output, to avoid double-wrapping. A provider that tags its recall `<memory-context>` has the recall discarded every turn; only a `<lorebook-context>` block (different tag) survives. Symptom: the collection holds thousands of points and `prefetch()` returns a recall block, yet the injected `api_content` has no recall header. Fix: give the recall block a distinct tag (e.g. `<qdrant-recall>`) in the provider's `mem_block`. Verify by reading `api_content`, never by calling `prefetch`. A plugin reinstall/re-clone reverts this patch.
+
 ### Plugin Loading Diagnostics
 
 1. Quick smoke test: Are `qdrant_recall`, `qdrant_browse` tools available?
@@ -133,7 +135,7 @@ When the user asks whether memory is intact (or after any scare), do NOT point-c
 - **Bulk archive** — `session_messages_archive` (tens of thousands of points, 384-dim fastembed) — a separate export pipeline, NOT what recall queries.
 - **Operational side-collections** — `hermes_session_memories` and similar can hold dozens of points and mean nothing about memory health.
 
-Audit sequence: (1) grep config.yaml for the collection name; (2) load the provider live and read `mp._collection`; (3) run a functional recall for a known-recent exchange — the provider's recall entry point is `mp.prefetch(query, session_id=...)`, which returns the `<memory-context>` block; a hit on today's conversation proves the whole path end-to-end. Expected gap: very recent turns exist in state.db but may not be embedded into the recall collection yet — an empty search for today's events is a freshness gap, not data loss, and it self-heals on the next embedding pass. When reporting to the user, name which collection you checked and what it holds before drawing any conclusion.
+Audit sequence: (1) grep config.yaml for the collection name; (2) load the provider live and read `mp._collection`; (3) confirm the recall actually reaches the model — read `messages.api_content` for a recent turn in `state.db` and look for the recall header inside `<memory-context>`. `mp.prefetch(query, session_id=...)` returns the RAW, pre-sanitization block, so a hit there does NOT prove the injected path; only `api_content` does. Expected gap: very recent turns exist in state.db but may not be embedded into the recall collection yet — an empty search for today's events is a freshness gap, not data loss, and it self-heals on the next embedding pass. When reporting to the user, name which collection you checked and what it holds before drawing any conclusion.
 - **Connection Refused** → Docker container exited, restart it
 - **400 Bad Request** → Vector dimensions don't match collection config
 - **Empty Response** → Ensure `with_payload: True` in scroll request
@@ -192,6 +194,7 @@ plugins:
     collection: "narusya_memories_fastembed"
     prefetch_limit: 5
     max_age_days: 90
+    min_text_length: 30
     recency_weight: 0.3
 ```
 
@@ -215,6 +218,7 @@ plugins:
 - Recency weighting (blend similarity + time decay)
 - Max age filter (skip memories older than N days)
 - Clear header with date range
+- **Substance floor (minimum text length).** Without it, one-word and short turns (`lol`, `Huh?`, `Narrrr`) dominate recall — their embeddings sit close to everything and they always pass an age filter. Skip results shorter than ~30 chars via `min_text_length` in `plugins.qdrant-memory`.
 
 Without guardrails, disable prefetch:
 ```python
@@ -387,7 +391,7 @@ When switching from OpenAI/OpenRouter 3072-dim embeddings to local fastembed 384
 4. **Scroll source collection** in batches of 50-100 via POST `/collections/{source}/points/scroll` with `{"limit": N, "with_payload": true, "with_vector": false}`
 5. **Embed each batch's text** via the daemon, then upsert into target with `PUT /collections/{target}/points` body `{"points": [{"id": ..., "vector": [...], "payload": {...}}]}`
 6. **Verify migration:** check target `points_count` matches source
-7. **Update plugin config:** change `collection:` in `config.yaml` from the old collection name to `narusya_memories_fastembed`. Use `hermes config set plugins.qdrant-memory.collection narusya_memories_fastembed` or edit directly. **This step is easy to forget** — the migration succeeds but recall still queries the old collection until the config is updated and the gateway restarted.
+7. **Update plugin config:** change `collection:` in `config.yaml` from the old collection name to `narusya_memories_fastembed`. Use `hermes config set plugins.qdrant-memory.collection narusya_memories_fastembed`. The `patch`/`write_file` tools refuse `~/.hermes/config.yaml` (security-sensitive), so `hermes config set <dotted.key> <value>` is the supported agent path and it reports success; a human editor can still edit the file by hand. **This step is easy to forget** — the migration succeeds but recall still queries the old collection until the config is updated and the gateway restarted.
 
 **Pitfall:** If the target collection was wiped during crash recovery (live storage 12K vs backup 197M), restore from `/mnt/data/qdrant_storage` first — see "Restoring from Backup Storage" below.
 

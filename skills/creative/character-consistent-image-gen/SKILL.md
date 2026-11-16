@@ -232,6 +232,8 @@ When a new set arrives (from the user, a peer daemon, or a fresh generation run)
 
 Keep the source prompt templates that came with the set (e.g. `nar-image-prompts-v2.md`) in the catalog dir so the next generation run starts from the same identity block.
 
+**Anchor the set on the current pfp close-up.** The pfp is the identity source of truth; a new set should match it. If it drifts from the pfp, it is a regrade, not the character.
+
 ## Multiple FORMS of one character (verified 2026-09-28)
 
 When the user asks for the same character as different creature-types (animal form, hybrid/mythic
