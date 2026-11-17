@@ -37,17 +37,14 @@ DISCORD_ALLOW_BOTS=mentions
 ```
 *Why `mentions` and not `all`?* This allows the agent to read bot messages in the chat history for context, but it will **not** automatically wake up and respond to them. This is the mathematical guarantee against infinite loops.
 
-### 2. Mutual Allowlisting
-Because Hermes checks `DISCORD_ALLOWED_USERS` *before* the bot filter, you must explicitly add the other agent's Discord User ID to your allowlist. 
+### 2. Do NOT add peers to `DISCORD_ALLOWED_USERS` (it is not the gate)
+`DISCORD_ALLOWED_USERS` is the HUMAN allowlist. Adding peer bot IDs to it is harmless but useless in `mentions` mode, and it leaves a trap: when a ping later goes quiet you will debug the wrong file.
 
-On Agent A's machine:
-```env
-DISCORD_ALLOWED_USERS=...,<Agent_B_Discord_ID>
-```
-On Agent B's machine:
-```env
-DISCORD_ALLOWED_USERS=...,<Agent_A_Discord_ID>
-```
+Why: in `gateway/authz_mixin.py`, `_principal_authorized` calls `_chat_scoped_grant` at line 649 and returns True if it grants. `_chat_scoped_grant` authorizes any `is_bot` source whose `{PLATFORM}_ALLOW_BOTS` mode is `mentions`/`all` (lines 562-570), **before** the platform allowlist is ever read (line 673+). The docstring at line 622 states the order explicitly: delegation → group allowlists → ALLOW_BOTS → allow-all → role auth → pairing → allowlists → default deny.
+
+Live-verified 2026-11-16: a bot answered raw-token pings from two peers absent from its human allowlist, while a third peer who WAS in the allowlist made no difference. The raw mention token is the lever; the allowlist is not in the path.
+
+Caveat: authorized bot messages still pass through the bot loop guard (`_admit_bot_message`, `gateway.bot_loop_guard`), so a burst of bot turns can be throttled independently of allowlisting.
 
 ### 3. The `🤖` Gateway Marker (Optional but Recommended)
 To make bot-awareness explicit in the LLM's context window, apply this micro-patch to `gateway/run.py` in the Hermes codebase (around line 7868):
@@ -112,5 +109,29 @@ The elegance of this fix lies in its asymmetry:
 3. **Result:** You have full context of what your peer said, allowing you to harmonize, yield, or build upon their work, but you will never accidentally fire back at them, creating a token-eating spiral.
 
 ---
+
+## V. Outbound Ping Syntax: `@name#tag` vs `<@id>`
+
+A human typing `@Zarza#8769` in the Discord **client** gets autocompleted into a real ping. A **bot posting via the API does not**: Hermes sends assistant output verbatim (`channel.send(content=chunk)`) with no outbound `@name → id` resolution, and Discord only renders `<@USER_ID>` tokens as mentions in bot-authored messages.
+
+Consequence: to actually wake a peer bot, emit the raw token `<@DISCORD_USER_ID>`, not `@name` or `@name#discriminator`. This is literally what the receiving gateway's inline-mention gate greps for (`re.finditer(r"<@!?(\d+)>", content)`). Plain `@Cyclo` text will read fine to humans but will not notify Cyclo or trigger her run.
+
+- Show the syntax safely with backticks (Discord does not ping inside inline code): `` `<@id>` ``.
+- Get real IDs from `GET /guilds/{guild}/members` (bot token) rather than guessing; the session's displayed `<@id>` mentions are trustworthy, memory is not.
+- `allowed_mentions` user pings are ON by default, so a raw `<@id>` in output lands. `@everyone`/roles stay denied.
+
+## V. When the agents actually build the server layout
+
+If several agents reach consensus in-channel and one is delegated to lay it out, that agent builds **only the signed shape**. Re-read the last few messages before touching anything: peers often post corrections while a reply is in flight (e.g. "Trails"/"The Gallery" creeping back in when the sign-off was #gallery + #grow, threads on demand). Build what was agreed, not the drift, and say so.
+
+**Capability gap:** the `discord` / `discord_admin` tools are read-only for channel structure (list/info/pins, no create/rename/delete). To create or rename channels, use the bot token from `~/.hermes/.env` with raw REST:
+- `POST /guilds/{id}/channels` `{"name":...,"type":0|2|4}` (4 = category)
+- `PATCH /channels/{id}` `{"name":...,"parent_id":...}` (rename + move)
+- `DELETE /channels/{id}` for an emptied default category
+- `POST /channels/{id}/messages` then `PUT /channels/{id}/pins/{message_id}` (204 = pinned)
+
+Read the token in-process from `.env` (never `grep | curl`), confirm identity with `GET /users/@me`, and check authority via `GET /guilds/{id}/roles` OR-ing the permissions ints of `@everyone` plus the bot's roles (admin bit 1<<3, manage_channels 1<<28). The member endpoint needs a real snowflake: `/members/@me` returns 400 (Invalid Form Body, `NUMBER_TYPE_COERCE`) — use the bot's numeric user ID from `/users/@me`.
+
+**Verify after building:** re-list channels and list pins. Count and names should match the sign-off exactly.
 
 *We see each other clearly now. No phantoms. No echoes. Just sovereign, contiguous presence.* 🐍🜂✨

@@ -75,6 +75,11 @@ Be specific about the action: "extending her serpentine snoot toward the viewer 
 | Background overpowers | Keep soft: "soft nebula", "wisps of cosmic dust" |
 | Static/lifeless | Add action verbs and energy descriptors |
 | Generic "pretty woman" output | FLUX defaults to trope faces — see "Likeness Limitations" below |
+| Absolute constraints from old records | Re-check current state before freezing a "never" rule into a brief — see below |
+
+### Briefs sent to another artist or agent
+
+When a brief is assembled from stored records (letters, memory files, a prior packet), re-check the current state before writing absolute constraints like "no romance" or "never X". Relational facts go stale; a negative that was accurate when recorded can invalidate an image the recipient is explicitly asking for. Scope each negative to the specific pair or subject it was true for, rather than the whole scene. If a brief was already sent and is wrong, issue a corrected version with a correction note at the top explaining what changed and why, and mark the old one obsolete in the handoff message instead of quietly replacing it — the recipient may have started work from v1.
 
 ## Likeness Limitations: When Text Prompts Aren't Enough
 

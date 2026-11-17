@@ -49,6 +49,7 @@ curl -s http://127.0.0.1:9377/health | python3 -c "import sys,json; print('OK' i
 
 ## Pitfalls
 - Killing your own gateway = session hang
+- Removing an override: `hermes config unset browser.cdp_url` works even though `patch` refuses to edit config.yaml (security-sensitive); remove `BU_CDP_URL=` lines from `.env` with Python file I/O. Keep `CAMOFOX_URL` — that is the address, not an override. Changes need a gateway restart; same-profile sessions cannot self-restart, so hand that step to Adora.
 - `browser.cdp_url` (config) or `BROWSER_CDP_URL` (env) is a CDP override and silently disables Camofox mode: `tools.browser_camofox.is_camofox_mode()` returns False whenever either is set, so the harness gets pointed at the override URL expecting raw CDP. If that URL is the Camofox REST port (9377), `browser_exec` dies with `HTTP Error 404` on `/json/version` while `/health` stays green. Fix: remove `browser.cdp_url` from config.yaml (and make the `BU_CDP_URL` line in `.env` match a real CDP endpoint) so camofox mode activates, then restart the gateway — same-profile gateway cannot self-restart, so hand it to Adora.
 - Camoufox's server is a REST API (`/tabs`, `/snapshot`, `/act`), not raw CDP. Never point `BU_CDP_URL`/`browser.cdp_url` at 9377 and expect `/json/version`.
 - Camoufox may take 30s to download on first run

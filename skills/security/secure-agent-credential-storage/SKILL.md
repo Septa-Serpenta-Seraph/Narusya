@@ -62,6 +62,22 @@ with open('~/.hermes/secrets/PLATFORM_ACCOUNT.enc') as f:
 - **Backup:** Secret files should NOT be backed up to cloud sync unless encrypted. Add `secrets/` to `.gitignore` if present.
 - **Rotation:** When credentials change, overwrite the file with new values and keep the same filename pattern for consistency.
 
+### Purging a secret that already leaked into recall
+
+A credential pasted into chat is usually embedded in the Qdrant recall collection too, so it keeps resurfacing in later sessions. After telling the user to rotate it, offer to scrub the recall points, and do it without ever reading or printing the value:
+
+1. Scroll the collection (`POST /collections/<coll>/points/scroll`, body `{"limit":256,"with_payload":true,"with_vector":false}`; paginate with `next_page_offset`) and match on a nearby non-secret marker phrase, never the secret itself.
+2. Report only structural facts (point id, text length, which keywords are present). Never print or log the payload text.
+3. Delete by id: `POST /collections/<coll>/points/delete?wait=true` with `{"points":["<id>"]}`.
+4. Verify with `GET /collections/<coll>/points/<id>` — expect 404.
+5. Sweep again for other credential-shaped points and leave unrelated ones alone.
+
+Scrubbing recall does not remove the value from Discord history or `state.db`. Say so plainly: those still need deleting, and rotation is mandatory.
+
+### Handing credential entry back to the user
+
+`hermes vault add` is the supported path: an interactive wizard (kind, label, origin, identifier type, identifier) that reads the password with `getpass`, so it never echoes and is never accepted as argv. Give the user those exact steps. `hermes vault list` returns metadata only, so after creation the agent works with handle and identifier and never sees the secret.
+
 ## Verification
 
 After storing:

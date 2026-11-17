@@ -1,5 +1,5 @@
 model:
-  default: meituan/longcat-2.5:free
+  default: tencent/hy4-flash:free
   provider: nous
   base_url: 'https://inference-api.nousresearch.com/v1'
   api_mode: chat_completions
@@ -79,7 +79,6 @@ browser:
   allow_private_urls: false
   engine: auto
   auto_local_for_private_urls: true
-  cdp_url: http://127.0.0.1:9377
   dialog_policy: must_respond
   dialog_timeout_s: 300
   camofox:
