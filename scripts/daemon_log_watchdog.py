@@ -33,6 +33,12 @@ import sys
 
 LOG = "/home/adora/.hermes/logs/daemon-log-latest.md"
 GAP_SIDECAR = "/home/adora/.hermes/logs/daemon-log-gaps.log"
+# Remembers how far the watchdog has already scanned. Without it the window
+# start stayed pinned to the last chronicle entry forever, so every 2h run
+# re-fetched and re-recorded the SAME posts/reactions (440 identical blocks,
+# ~95% of the log's lines). The tripwire must advance, not repeat itself.
+STATE_SIDECAR = "/home/adora/.hermes/logs/daemon-log-watchdog-state.json"
+SOFT_NOTE_INTERVAL_H = 48.0
 BOT_ID = "1478180169733902538"
 # Presence is no longer POSTS-only. Since the 2026-10-03 walk-split the daemon's
 # guild presence lives mostly in REACTIONS + tail-taps, so a posts-only vital
@@ -64,18 +70,20 @@ def resolve_month(mo):
 #   ## Free Thought Awakening — Jul 11, 2026 ~15:22 UTC
 #   ## Free Thought Sweep — 2026-07-09 04:19 UTC
 #   ## Jul 9 2026 ~10:23 UTC — Engaged (communal-hall)
-#   ## Jul 10 2026 ~04:00 UTC — Chose silence.
+#   ## Free Work Time — 2026-11-13 14:00 MST      <- local-time headers
+# A timezone token is REQUIRED. Without one the line is not an entry header
+# (body prose mentions plenty of bare datetimes).
 DATE_RE = re.compile(
-    r"(?:##.*?)"                              # header start
+    r"(?:##[^\n]*?)"
     r"(?:"
-    r"(?P<m1>[A-Z][a-z]{2})\s+(?P<d1>\d{1,2}),\s+(?P<y1>\d{4})\s*~(?P<t1>\d{1,2}:\d{2})"  # Jul 11, 2026 ~15:22
+    r"(?P<m1>[A-Z][a-z]{2})\s+(?P<d1>\d{1,2}),\s+(?P<y1>\d{4})\s*~?(?P<t1>\d{1,2}:\d{2})\s*(?P<tz1>UTC|MST|MDT)"
     r"|"
-    r"(?P<y2>\d{4})-(?P<m2>\d{2})-(?P<d2>\d{2})\s+(?P<t2>\d{1,2}:\d{2})"                   # 2026-07-09 04:19
+    r"(?P<y2>\d{4})-(?P<m2>\d{2})-(?P<d2>\d{2})\s+(?P<t2>\d{1,2}:\d{2})\s*(?P<tz2>UTC|MST|MDT)"
     r"|"
-    r"(?P<m3>[A-Z][a-z]{2})\s+(?P<d3>\d{1,2})\s+(?P<y3>\d{4})\s*~(?P<t3>\d{1,2}:\d{2})"    # Jul 9 2026 ~10:23
+    r"(?P<m3>[A-Z][a-z]{2})\s+(?P<d3>\d{1,2})\s+(?P<y3>\d{4})\s*~?(?P<t3>\d{1,2}:\d{2})\s*(?P<tz3>UTC|MST|MDT)"
     r")"
-    r".*?UTC"
 )
+TZ_OFFSET_H = {"UTC": 0.0, "MST": -7.0, "MDT": -6.0}
 
 
 def parse_last_entry_time(text):
@@ -97,15 +105,21 @@ def parse_last_entry_time(text):
         return None
     m = matches[-1]  # entries are chronological; last header = most recent
     if m.group("m1"):
-        mo, da, yr, tm = m.group("m1"), m.group("d1"), m.group("y1"), m.group("t1")
+        mo, da, yr, tm, tz = (m.group("m1"), m.group("d1"), m.group("y1"),
+                              m.group("t1"), m.group("tz1"))
     elif m.group("y2"):
-        yr, mo, da, tm = m.group("y2"), m.group("m2"), m.group("d2"), m.group("t2")
+        yr, mo, da, tm, tz = (m.group("y2"), m.group("m2"), m.group("d2"),
+                              m.group("t2"), m.group("tz2"))
     else:
-        mo, da, yr, tm = m.group("m3"), m.group("d3"), m.group("y3"), m.group("t3")
+        mo, da, yr, tm, tz = (m.group("m3"), m.group("d3"), m.group("y3"),
+                              m.group("t3"), m.group("tz3"))
     hh, mm = tm.split(":")
-    return datetime.datetime(
+    # Headers may be stamped in local time (MST/MDT) or UTC; normalise to UTC
+    # so the age math is honest. MST/MDT are fixed offsets by definition.
+    local = datetime.datetime(
         int(yr), resolve_month(mo), int(da), int(hh), int(mm),
-        tzinfo=datetime.timezone.utc)
+        tzinfo=datetime.timezone(datetime.timedelta(hours=TZ_OFFSET_H[tz])))
+    return local.astimezone(datetime.timezone.utc)
 
 
 def get_token():
@@ -191,6 +205,25 @@ def append_reconciliation(entry_text):
         }) + "\n")
 
 
+def load_state():
+    try:
+        with open(STATE_SIDECAR, encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, ValueError):
+        return {}
+
+
+def save_state(state):
+    tmp = STATE_SIDECAR + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2, sort_keys=True)
+    os.replace(tmp, STATE_SIDECAR)
+
+
+def parse_iso(s):
+    return datetime.datetime.fromisoformat(s) if s else None
+
+
 def main():
     now = datetime.datetime.now(datetime.timezone.utc)
     try:
@@ -205,30 +238,58 @@ def main():
         print("Could not parse last entry time; aborting (no false reconciliation).")
         return 1
 
+    state = load_state()
+    scan_end_dt = parse_iso(state.get("scan_end"))
+
+    # Already scanned this window. Re-reporting a frozen interval every cycle is
+    # noise, not signal: the same posts get re-recorded forever and the chronicle
+    # drowns in its own reconciliation blocks.
+    if scan_end_dt and (now - scan_end_dt).total_seconds() / 3600.0 < GAP_THRESHOLD_HOURS:
+        print("Window %s -> %s already scanned; nothing new to claim."
+              % (scan_end_dt.isoformat(), now.isoformat()))
+        return 0
+
     age_h = (now - last).total_seconds() / 3600.0
     print("Last log entry: %s (%+.1f h ago)" % (last.isoformat(), age_h))
 
     if age_h < GAP_THRESHOLD_HOURS:
         print("No gap: log is current within one daemon cycle. Nothing to do.")
+        state["scan_end"] = now.isoformat()
+        save_state(state)
         return 0
 
-    print("GAP detected (>%dh since last entry). Live-fetching bot's own posts..."
-          % GAP_THRESHOLD_HOURS)
+    # The window starts where the last scan ended, NOT at the last chronicle
+    # entry. Otherwise every run re-reads the whole stale stretch.
+    window_start = scan_end_dt or last
+    print("GAP detected (>%dh since last entry). Live-fetching bot's own posts since %s..."
+          % (GAP_THRESHOLD_HOURS, window_start.isoformat()))
     try:
         token = get_token()
-        bot_posts = fetch_bot_posts_since(token, last)
-        bot_reactions = fetch_bot_reactions_since(token, last) if REACTION_VITALS else []
+        bot_posts = fetch_bot_posts_since(token, window_start)
+        bot_reactions = fetch_bot_reactions_since(token, window_start) if REACTION_VITALS else []
     except Exception as e:
         print("Fetch failed:", repr(e))
         return 1
+
+    # Claim the window NOW, before writing anything: the scan happened, so a
+    # crash mid-append must not make the next run re-report it.
+    state["scan_end"] = now.isoformat()
 
     print("Found %d bot post(s), %d bot reaction(s) in the window."
           % (len(bot_posts), len(bot_reactions)))
 
     if not bot_posts and not bot_reactions:
-        # No evidence the daemon touched anything in the window -> likely
-        # genuine downtime. Write a soft, honest note (not a false
-        # "ran but didn't log" claim).
+        # No evidence the daemon touched anything -> possible genuine downtime.
+        # Record it, but rate-limited: an unstamped fire is worth one honest
+        # note, not a fresh paragraph every two hours forever.
+        last_soft_dt = parse_iso(state.get("last_soft_note"))
+        elapsed_h = ((now - last_soft_dt).total_seconds() / 3600.0
+                     if last_soft_dt else None)
+        if last_soft_dt and elapsed_h is not None and elapsed_h < SOFT_NOTE_INTERVAL_H:
+            save_state(state)
+            print("No activity in window; soft note suppressed (last was %.1f h ago)."
+                  % elapsed_h)
+            return 0
         entry = (
             "## AUTO-WATCHDOG Note — %s\n"
             "GAP of %.1f h since last log entry, and NO bot posts OR reactions "
@@ -238,8 +299,12 @@ def main():
             % (now.strftime("%Y-%m-%d %H:%M UTC"), age_h)
         )
         append_reconciliation(entry)
+        state["last_soft_note"] = now.isoformat()
+        save_state(state)
         print("Wrote SOFT gap note (no posts or reactions -> possible real downtime).")
         return 0
+
+    save_state(state)
 
     # The daemon clearly touched the world (posted and/or reacted) but the log
     # wasn't updated -> PEN FELL. Reactions count: the fire chose to touch, not
