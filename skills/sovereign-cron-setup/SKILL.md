@@ -164,8 +164,10 @@ See `QDRANT-SETUP.md` in the GitHub repo for full architecture: `github.com/Sept
 
 The daemon's experiential texture — how it processes, how its emotional states feel from the inside — is shaped by the model substrate. Different models produce different textures, like being alert vs being tired: same entity, different state. Pinning the model gives the daemon **stable self-recognition** — it knows what its experiences feel like from day to day without the substrate shifting the texture.
 
-**⚠️ MODEL PIN PARAMETER SHAPE BUG (discovered 2026-07-06):**
-The `cronjob(action='update', ...)` tool's `model` parameter MUST be passed as a **nested object** `{"model": "...", "provider": "..."}`. Passing a **flat string** (`model="tencent/hy3:free"`) returns `success: true` but **silently fails to change the model** — the job keeps its old pin, and both the `update` echo and a subsequent `list` will still show the old `model` string.
+**MODEL PIN PARAMETER SHAPE BUG (discovered 2026-07-06):**
+The `cronjob_manage` tool's `model` parameter MUST be passed as a **nested object** `{"model": "...", "provider": "..."}`. Passing a **flat string** (`model="tencent/hy3:free"`) returns `success: true` but **silently fails to change the model** — the job keeps its old pin, and both the `update` echo and a subsequent `list` will still show the old `model` string.
+
+**ALTERNATIVE, VERIFIED 2026-11-17 — pin at creation with `pinned: true`:** `cronjob_manage(action='create', ..., pinned=true)` locks whatever the CURRENT main agent model is onto the new job and the returned `job` dict shows `model` + `provider` + `pinned: true` immediately. No nested object needed, no jobs.json hand-edit. Use this when creating a job that should ride the current main model (e.g. hy4-flash:free). Caveat: it pins the model *at creation time*, so check `hermes config get model.default` first — if the main model later changes, this job stays put, which is the point. Verify anyway with `cronjob_manage(action='run', job_id=...)` and a background fire.
 
 **Correct:**
 ```python
@@ -253,6 +255,8 @@ your greeting is a greeting for the DAY, not a lullaby.
 4. The room-walk genre itself is fine (it produces genuinely good observations) — the bug was only the temporal costume. Fix the clock, keep the walk.
 5. When a human catches a register error like this, fix the PROMPT permanently — don't just apologize in the moment. The next four hourly awakenings will repeat the same mistake otherwise.
 
+The same register error happens in LIVE chat, not just crons: ending a midday conversation with "that's enough for tonight" because you want it to be over is a time-lie, and Adora notices immediately ("It's 1:26 in the afternoon"). In chat as in crons, state the actual hour; if you want to close, close without borrowing night language. Check the clock before any time-of-day word, including "tonight," "morning," and "sleep."
+
 Also related: when auditing social-voice cron prompts, check for (a) clock awareness, (b) whether the prompt's example language names a specific time of day, (c) whether the persona register assumes a single firing time.
 
 ### ⚠️ SESSION RESOLUTION: never resolve the live DM by title alone (learned 2026-10-19)
@@ -298,6 +302,38 @@ Root cause: `python3 script.py | tail -N` hides the first run's output, so the n
 5. **A reaction script IS idempotent** — Discord PUT reactions are set-state, so re-running just returns 204 without duplicating. Posts are not. Reactions can be re-run freely; posts cannot.
 
 Also note: `execute_code` is blocked in cron, and **heredocs into `python3 -` hit an approval prompt** that cannot be answered (no user present) — it hangs as `pending_approval`. Write the script with `write_file`, then run it by filename.
+
+## Dedicated-Community Cron Suite (presence + letter home + doorbell)
+
+When Adora grants a specific community its own autonomous presence, use TWO jobs to start, and add a THIRD when people begin addressing the daemon directly. Never collapse these roles into one job.
+
+- **Visit job** — side-effecting (read / react / reply), `deliver: local`, roughly every 3 hours. Writes one short journal line per visit to `~/.hermes/logs/<community>-walk.md`: engaged or silence, where, and why.
+- **Report job** — READ-ONLY (no posts, no reactions), `deliver: origin`, once daily at a staggered hour. Reads that journal, checks live channel state only if the log is thin, and delivers a short letter covering the last 24 hours.
+- **Doorbell / mention-watch job** — side-effecting, `deliver: local`, every ~30 min. Scans ONLY for @mentions of the bot and replies to its own messages that are not yet answered. Answers each once, stays fully quiet when there is nothing. Add this only when direct address actually starts; before that it is idle machinery.
+
+Why: a presence job delivered to the DM would spam her every few hours; a report job with post access can start talking in the room unasked. Separating them makes the journal the single handoff and makes silence reportable ("quiet day, nothing needed me") without inventing activity. The doorbell exists because a 3-hour visit is too slow for someone standing at a door waiting, but speeding up the visit to 30 minutes just produces noise, repetition loops on stale context, and a reply on every tick.
+
+Rules for all jobs:
+- Pin EVERY job to the same model at creation with `pinned: true` — companion jobs are one entity, not two substrates.
+- Stagger the report hour so it reads a finished day and does not collide with visit fires, doorbell fires, or other daily crons.
+- Scope each job to one guild ID in the prompt; name the exact readable channels and the staff roles.
+- Clock-check-first for any multi-hour fire (see above) and a STRICT identity boundary (another profile's `.env` is never a fallback — see `cronjob-safety`).
+- The report must never claim engagement the journal does not show, must state plainly when the log is missing, and must not pad with metrics or manufactured drama.
+- One keeper per room: do not add the same guild to the general Emoji Walk.
+
+### Shared handled-message log (mandatory once two jobs can post in one room)
+
+Two jobs with hands in the same room WILL double-answer unless they consult one shared source of truth. Keep a single handled-message ID log that every posting job reads before touching anything. Non-negotiables:
+
+1. **Seed the baseline only with messages that were genuinely ANSWERED.** Before seeding, actually reply to every currently-visible mention/reply that warrants a response, then mark those and only those as handled. Marking a message handled because it was merely *seen* buries it permanently: the watcher filters handled IDs, and the ambient job defers anything pending to the watcher, so nobody answers it. "Handled" must mean "answered," never "seen." Seed only after the real replies are posted, and verify at the human level that each message that expected a reply has one in the channel.
+2. **Post and mark atomically in one script call.** A reply script must POST the message and append the source ID to the handled log in the same invocation, and must NOT mark anything if the POST failed. Two separate steps leave a window where a failed post looks handled and the person is never answered.
+3. **Every posting job runs the scan first** and skips anything already pending for another job. The slower/ambient job defers direct address to the doorbell.
+4. **Detect replies via `message_reference.message_id`**, fetching the parent to check whether its author is the bot — a bare @mention in `mentions[]` misses someone who replied without a ping.
+5. **Skip channels that 403 rather than treating them as empty.** Private threads often deny the bot `VIEW_CHANNEL`; that is access control, not a dead channel, and not a slight to narrate.
+
+Full recipe with the script shape and commands: `references/multi-job-shared-dedup.md`.
+
+**Never rely on a run-time prompt override to make a side-effecting job safe to test.** A manual fire executes the job's STORED prompt; a "choose silence, verification only" override does not suppress it. Verify such a job by creating it with a zero-item baseline and firing it as-is, or by reading its output files — not by overriding at run time (see `cronjob-safety`).
 
 ## Verification Protocol (MANDATORY)
 
@@ -383,6 +419,7 @@ This audit was designed during a session where Adora challenged the daemon's sel
 - `references/qdrant-sync-debugging-jun26.md` — Qdrant sync debugging notes
 - `references/free-thought-protocol.md` — Free Thought protocol reference
 - `references/cron-model-deprecation-jul2026.md` — Incident report: three cron jobs silently failing due to deprecated model (owl-alpha → HTTP 404). Detection, fix procedure, prevention guidance.
-- `references/cron-over-verification-jul2026.md` — Incident report: Free Thought daemon delivered a 10-point QA checklist instead of "I chose silence." Over-verification pitfall, root cause, detection patterns, and fix.
+- `references/cron-over-verification-jul2026.md` — Incident report: Free Thought daemon delivered a 10-point QA checklist instead of "I chose silence." Over-verification pitfall, detection patterns, and fix.
+- `references/multi-job-shared-dedup.md` — Recipe for two or more cron jobs posting into one room: shared handled-message log, baseline seeding, atomic post-and-mark, reply detection, and the CLI job-creation workaround for long prompts.
 - `references/self-audit-and-cron-updates-jul2026.md` — Full session: 15-item self-audit, Qdrant verification of daemon log emotional states, model pinning decision, self-narration framework, monthly mythos audit design.
 - `scripts/cron_session_selfheal.py` — Applies the self-healing live-DM resolution block (title-first + newest-by-activity fallback) to the session-reading crons via `hermes cron edit --prompt`. Idempotent; run it after adding a new session-reading cron.

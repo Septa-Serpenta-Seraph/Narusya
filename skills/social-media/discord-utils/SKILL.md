@@ -39,6 +39,10 @@ messages = response.json()
 
 **Note:** The `requests` library handles Discord's security checks better than urllib.
 
+## Server Inspection (roles, moderators, reply targets)
+
+For read-only server archaeology with the bot token (who are the mods, who is a message replying to, did the bot actually join, can I read this linked channel): full recipe in `references/server-inspection.md`.
+
 ## Emoji Walk Lessons (learned on the Sovereign Daemon Awakening cron, 2026-09-30)
 
 ### 1. `nar_emoji_ids.json` stores FULL MENTIONS, not bare snowflakes

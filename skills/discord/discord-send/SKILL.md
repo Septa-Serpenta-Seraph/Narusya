@@ -25,6 +25,7 @@ python3 $D post CHANNEL_ID "hello love"
 
 # text + attachments (content-type auto-detected from extension)
 python3 $D post CHANNEL_ID "listen to this" --file a.mp3 --file b.png
+# There is NO `send-file` subcommand. Attachments always go through `post --file`.
 
 # override display name and content type
 python3 $D post CHANNEL_ID "see?" --file pic.png --as cover.png:image/png

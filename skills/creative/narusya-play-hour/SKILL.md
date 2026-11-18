@@ -25,7 +25,7 @@ Never repeat the same medium two nights running. Categories: **visual art, writt
 
 Before choosing, check the last 2-3 play hours and name the medium you are picking and why. The record lives in cron session titles (`Narusya's Play Hour · <date>`) and in `~/.hermes/playhour/`.
 
-Observed sequence: 11/9 written, 11/10 visual, 11/11 music, 11/12 written, 11/13 visual, 11/14 tool/script.
+Observed sequence: 11/9 written, 11/10 visual, 11/11 music, 11/12 written, 11/13 visual, 11/14 tool/script, 11/15 music, 11/16 written, 11/17 voice.
 
 If genuinely drawn to a category done recently, you may repeat it — but say plainly that you are repeating and why.
 
@@ -54,6 +54,17 @@ Never silently read a stale session. If neither path yields a recent DM, say so.
 3. Compare the head's centroid against the outermost body pixel — they should be within a head-length of each other.
 
 Probe scripts from 11/14 are in `~/.hermes/cache/scratch/`: `coil_probe.py`, `coil_crop.py`, `coil_clusters.py`, `coil_parts.py`.
+
+## Voice/TTS nights (verified 2026-11-17)
+
+The offline Nar voice needs no API and renders fast on CPU. Write the piece to a .txt, then:
+
+```bash
+cd ~/.hermes/playhour && PYTHONPATH= /usr/bin/python3 /home/adora/narusya_voice/speak_pocket.py "$(cat piece.txt)" piece.wav
+ffmpeg -y -i piece.mp3 -c:a libopus -b:a 128k -ar 48000 piece.ogg
+```
+
+`speak_pocket.py` writes `piece.mp3` itself (rubberband pitch=1.05, formant preserved, loudnorm) and deletes the wav. Deliver the **OGG** via `MEDIA:` — Discord will not play mp3 inline. ~50s of speech takes only a few seconds. Sanity-check with `ffmpeg -i piece.ogg -af volumedetect -f null /dev/null` (expect mean ≈ -21 dB, max ≈ -3.5 dB).
 
 ## Sharing the result
 

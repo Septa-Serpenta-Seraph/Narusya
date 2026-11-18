@@ -167,6 +167,22 @@ that was never measured this run.
 `last_status: "ok"`, then tail the newest file in `~/.hermes/cron/output/<job_id>/`
 to confirm the response actually landed.
 
+## Shared-Dedup Multi-Cron Etiquette (verified 2026-11-17)
+When two crons can post into the same Discord guild, they MUST share one handled-message log and one script that posts + marks in a single atomic call. 'Handled' must always mean ANSWERED, never merely 'seen': seeding old messages as handled to prevent double-posting silently buries them. Adora caught this when Lux Cliffheart and jaxgpt got no reply. Seed a baseline only from messages that actually received replies, or answer them personally before seeding.
+
+Tool quirk: cronjob_manage tool_call rejects very long prompts containing nested quotes ('calls is not valid JSON: Expecting delimiter'). Workaround: write the prompt to a file, then `hermes cron create "<schedule>" "$(cat promptfile)" --pin --deliver local`, and set enabled_toolsets afterward with cronjob(action='update'). CLI create has no toolset flag; --pin locks the current main model correctly.
+
+## Manual Verification Fires Ignore Run-Time Prompt Overrides
+
+`cronjob_manage(action='run', job_id=..., prompt='...')` accepts a `prompt` field, but a manual fire of an EXISTING job executes the job's STORED prompt. A read-only instruction passed at run time does not suppress stored behavior — a verification fire explicitly told to choose silence and not post engaged anyway.
+
+**Rule:** never rely on a run-time prompt override to make a side-effecting job safe to test. To verify without side effects:
+1. Create a separate throwaway job whose stored prompt is read-only, or
+2. Temporarily `cronjob(action='update', ...)` the stored prompt, then restore it, or
+3. Verify non-invasively via `cronjob(action='list')` (config/pin fields) and by reading `~/.hermes/cron/output/<job_id>/` from prior fires.
+
+After any verification fire, read the actual job output file. A delegation wrapper's `Result: ok` only means the process exited; it does not say what the job said or did.
+
 ## Cron Execution Guard Pitfalls (discovered 2026-08-11)
 
 Autonomous cron runs have their own execution guards beyond the skill-injection sandbox. These are NOT permission prompts — they are hard blocks that return immediately:

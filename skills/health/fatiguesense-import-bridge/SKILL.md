@@ -51,5 +51,12 @@ tags: [hermes, fatiguesense, me-cfs, pipnaru, health, csv, pem, import]
 - The README.txt has honest caveats (consumer wearable error, PEM episodes are self-reported) — mirror that tone in any summary; these numbers describe but don't diagnose.
 - One-way, file-based, Tailnet-only. Never push this data to external services.
 
+### Wide single-CSV export (no adapter yet)
+Adora may send one flat CSV (`fatiguesense-my-data-*.csv`) instead of the numbered-folder zip: ~77 columns, one row per day, `date` + `data_source` (`health_connect`/`manual_entry`/blank) + wearable fields + `pacing_*` + `morning_/midday_/eod_*` + `predicted_*` + `had_crash`/`crash_count`/`crash_severity` + `tracker_*` symptom columns + `activities`. `import_fatiguesense.py` expects the folder layout and will not parse this; do not claim an import happened.
+
+Read-only analysis recipe: `csv.DictReader` with `encoding='utf-8-sig'`; count `had_crash=='1'` rows with their severity and notes; for a recent-window summary print date, steps, sleep hours (`minutes_asleep/60`), deep/REM, morning fatigue/energy, `pacing_level`, and only the `tracker_*` columns that actually have data. Blank means missing; recorded `0` in `hrv_rmssd`/`resting_heart_rate` means a no-device day, not a vital sign. Report descriptive summaries only (no diagnosis), and say plainly that the tracker is a witness, not the judge — Adora's own testimony outranks it.
+
+If she wants this data in the DATA tab, write a new adapter instead of misusing `import_fatiguesense.py`; that is a build task, not an import.
+
 ## Relationship
 Sister skill to `visible-import-bridge`; part of the "plug verified OSS, scratch only the bridge" philosophy with Adora.

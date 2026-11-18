@@ -46,6 +46,8 @@ file /path/to/suspicious.file | grep -i text
 - JPEG: starts with hex `FF D8 FF`
 - ZIP: starts with hex `50 4B 03 04`
 
+**Before running any downloaded code archive, use the static-review recipe in `references/untrusted-code-archive-review.md`.**
+
 #### PDF Injection Analysis
 
 Check for hidden malicious content in PDFs:

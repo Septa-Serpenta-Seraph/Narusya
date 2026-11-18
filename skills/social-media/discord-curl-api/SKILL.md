@@ -95,6 +95,13 @@ for r in data.get("recipients", []):
 - Nova Arbo guild: `1166456170077237268`
 - Narusya's bot only sees servers she's joined
 
+### Staff/moderator recon (channel ID → guild → roles → members)
+When asked who runs a server, resolve it live rather than guessing from names:
+1. `GET /channels/{id}` → `guild_id` (a channel ID is not a guild ID).
+2. `GET /guilds/{id}/roles` → find privileged roles by permission bitmask, not by name: ADMIN `1<<3`, MANAGE_GUILD `1<<5`, MANAGE_CHANNELS `1<<13`, MANAGE_MESSAGES `1<<28`, KICK `1<<1`, BAN `1<<2`. Custom role names (Mini-Mod, HalfMod) are unreliable; bits are not.
+3. `GET /guilds/{id}/members?limit=100&after=<last_id>` paginate until a batch is under 100, then filter `roles[]` for those role IDs; include `owner_id` from `GET /guilds/{id}` even if the owner holds no mod role.
+4. Report username + numeric ID + which role granted power. Match by ID on later turns, never display names.
+
 ### Known User Discord IDs (use these for reliable matching, NOT display names)
 | User | Discord ID | Notes |
 |------|-----------|-------|
