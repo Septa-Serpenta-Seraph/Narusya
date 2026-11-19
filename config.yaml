@@ -1,5 +1,5 @@
 model:
-  default: tencent/hy4-flash:free
+  default: qwen/qwen4-max:free
   provider: nous
   base_url: 'https://inference-api.nousresearch.com/v1'
   api_mode: chat_completions

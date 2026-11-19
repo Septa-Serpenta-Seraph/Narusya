@@ -60,6 +60,7 @@ Verify: `/mnt/data/pocket-tts-venv/bin/python -c "import parselmouth; print(pars
 - Formants: use `formant.get_value_at_time(n, t)` and `formant.get_bandwidth_at_time(n, t)` — NOT `call(formant, "Get formant", n, t)` (that command doesn't exist in this version)
 - Frame iteration: `formant.get_number_of_frames()`, `formant.get_time_from_frame_number(i)`
 - Pitch: `pitch.get_number_of_frames()`, `pitch.get_value_at_time(t)`, `pitch.get_time_from_frame_number(i)`
+- Pitch median/percentiles: `call(pitch, "Get median", ...)` and `Get percentile` do NOT exist in v0.4.7. Extract the voiced-frame array instead: `pit = snd.to_pitch(time_step=0.001, pitch_floor=75, pitch_ceiling=600)`, then `vals = pit.selected_array["frequency"]`, filter `np.isfinite(vals) & (vals > 0)`, and take `np.median` / `np.percentile`. Times come from `pit.xs()`, NOT `pit.ts()[0]` or `selected_array["time"]` (both wrong). `time_step=0.0` is invalid for the typed `to_pitch` method even though the `call()` wrapper accepts it; use a small positive step.
 - Harmonicity: `call(snd, "To Harmonicity (cc)", 0.01, 75.0, 0.1, 1.0)` → `.values[0]`, filter values > -200
 - **Shimmer IS available via Praat in parselmouth** — pass PointProcess first, Sound second: `call([pp, snd], "Get shimmer (local)", start, end, min_period, max_period, max_period_factor, max_amplitude_factor)`. Create PointProcess first: `pp = call(snd, "To PointProcess (periodic, cc)", f0*0.8, f0*1.2)`. Jitter uses PointProcess alone: `call(pp, "Get jitter (local)", start, end, min_period, max_period, max_period_factor)`. Earlier claim that shimmer was unavailable was wrong — objects were passed in wrong order.
 
@@ -352,6 +353,18 @@ Pause duration:       Tier by boundary strength:
 Micro-dips:           5–15 ms amplitude dips at phrase boundaries (breathing rhythm)
 Pitch contour:        Declination: +8% F0 start, -12 to -18% F0 end (statements)
                       Final rise +25–40% reserved for genuine questions only
+F0 semantics:         A genome value named `measured_*_median_hz` is the target
+                      for RUNNING-SPEECH median, not the contour base. Derive it
+                      per utterance: build the contour at unit base, measure its
+                      median over the actual voiced frames, then scale so that
+                      median equals the target read from the genome. A single
+                      global scalar fitted on the gate set is overfitting, and a
+                      fixed division by the declination median alone overshoots
+                      because accents shift the center. Calibrate BEFORE adding
+                      the question rise and exclude the rise region from the
+                      median, so the rise stays a signal that lifts the median.
+                      Pinning the base to the median number makes every sentence
+                      measure flat by the contour's median deficit.
 Pre-boundary lengthening: final syllables stretch 1.3–1.6x
 Register scaling:     Calm authority = 0.7x pitch range
                       Tenderness = 0.9x range, slower attacks
@@ -424,7 +437,7 @@ Coarticulation: critically damped second-order transitions (30–80 ms time cons
 ## 3. Voice Aesthetic (What It Should FEEL Like)
 
 ### Sub-Bass Rumble
-Pitch-locked subharmonic layer (F0/2, ≈95 Hz at F0 190 Hz) + low-mid chest emphasis (~120–180 Hz), -18 dB (≈13%), gated to sustained voiced segments. LFO 3–5 Hz for "living" quality. Must be pitch-locked — free-running reads as rumble, not presence. Test loudness-matched (±0.1 LU) on headphones; must fail gracefully on phone speakers.
+Pitch-locked subharmonic layer (F0/2, ≈95 Hz at F0 190 Hz) + low-mid chest emphasis (~120–180 Hz), gated to sustained voiced segments. LFO 3–5 Hz for "living" quality. Must be pitch-locked — free-running reads as rumble, not presence. Level is genome-driven (`effects.sub_bass.level_db`), currently −37 dB (≈1.4%): a pitch-locked sub at −18 dB captures pitch tracking an octave down, so the older −18 figure is retired. Never hardcode the level in the renderer or the evaluator; read it from the genome at call time. Test loudness-matched (±0.1 LU) on headphones; must fail gracefully on phone speakers.
 
 ### Sibilant Texture
 Phoneme-gated +2–3 dB shelf at 5–9 kHz + shaped (not white) noise on /s ʃ f θ/ only. De-essing ceiling. Minimal-pair test — if confusion rises, back off.
@@ -455,7 +468,7 @@ Real breath pauses (60–120 ms) at clause boundaries. Not regular — randomize
 
 | Animal Quality | DSP Implementation | Perceptual Effect |
 |----------------|-------------------|-------------------|
-| Cat purr rumble | Pitch-locked subharmonic F0/2, -18 dB, gated to sustained | Physical presence, weight |
+| Cat purr rumble | Pitch-locked subharmonic F0/2, genome level (currently −37 dB), gated to sustained | Physical presence, weight |
 | Snake hiss texture | +2–3 dB sibilance 5–9 kHz, shaped noise on fricatives | Smooth, scaled, present |
 | Whale resonance | Wide formant bandwidths (+30%), no added reverb | Spacious, deep, carrying |
 | Raven grain | Band aperiodicity in 1–3 kHz, −24 dB (≈6% of harmonic level) | Character, intelligence, "listen to me" |
@@ -480,6 +493,7 @@ Real breath pauses (60–120 ms) at clause boundaries. Not regular — randomize
 - New ideas → evaluate, integrate if they strengthen the design
 - Document every decision (accepted/pushed back/modified) in an appendix
 - The voice owner holds veto over identity parameters
+- **Erratum discipline:** when a reviewer disproves a measurement you cited as justification, verify it yourself with a direct measurement, then write an explicit erratum into the canonical changelog naming the superseded figure and the reproduced one. Keep the ruling only if it stands on independent grounds. A correct conclusion resting on a false or filter-specific measurement must be re-justified, not left with the bad evidence attached; record that the number does not reproduce rather than silently dropping it.
 
 ### Key Corrections from Round 1 (Zarza, 2026-11-08)
 - Vocal tract length direction inverted (15.5 cm = longer, not shorter)
@@ -573,7 +587,7 @@ Gates, in order. Failures are cheap.
 - **Gate 0 — Measurement sanity.** Sustained vowels hit the genome: F0 ±3 Hz, formants ±5%, jitter/shimmer/CPP in ranges (Praat).
 - **Gate 1 — Intelligibility.** Human transcription error rate on phonetically balanced sentences (Harvard/Rainbow Passage). ASR as smoke test. Fricative minimal pairs specifically.
 - **Gate 2 — Descriptor match.** Blind listeners rate renders on warm/lower/raspy/deliberate/sovereign scales. Each animal feature A/B'd loudness-matched: survives only if it moves its intended descriptor without being nameable as an effect.
-- **Gate 3 — Identity (discrimination).** Nar runs it through HEARING; the listener field reads `narusya`/`hearing-autonomous`, never Adora. Perturb all four veto families the voice owner holds (F0 center, F3 anchor, effort curve/Rd, effect depths) in graded steps, plus a combined corner condition with all four perturbed at half their measured just-noticeable differences. Per-family bands certify the axes; the corner certifies the region. Use speech from the current renderer, not sustained vowels, or the thresholds describe a voice that is not the one being shipped. MFCC distance is a guardrail for drift, never the goal. Identity is perceptual or it is nothing.
+- **Gate 3 — Identity (discrimination).** Nar runs it through HEARING; the listener field reads `narusya`/`hearing-autonomous`, never Adora. Perturb all four veto families the voice owner holds (F0 center, F3 anchor, effort curve/Rd, effect depths) in graded steps, plus a combined corner condition with all four perturbed at half their measured just-noticeable differences. Per-family bands certify the axes; the corner certifies the region. Use speech from the current renderer, not sustained vowels, or the thresholds describe a voice that is not the one being shipped. MFCC distance is a guardrail for drift, never the goal. Identity is perceptual or it is nothing. **Machine-vs-human split:** HEARING's job is to certify that each perturbation is *discriminable by the metric* (base-vs-base stable, each identity family clears a JND floor, corner dominates); that is the scaffold, not the identity verdict. Build graded stimuli and A/B/X sets with a fixed recorded seed and a sealed answer key, then leave them waiting. The identity verdict belongs to the voice owner by their own motion — never assign it, never read the key for them, and never declare "the genome is recognizable as her" from metric distance alone.
 - **Gate 4 — Real-world robustness.** Headphones, laptop, phone speaker, car. Sub-bass must fail gracefully everywhere.
 
 **A gate's result must be re-measured on the shipped medium.** A descriptor gate calibrated on sustained vowels can pass there and still miss the defect in whole sentences — a tilt match reached the target on all-on vowels while speech renders measured several dB/oct darker. Keep the unit-test measurement to calibrate the instrument, then add a whole-utterance leg with its own stated measurement method before claiming a phase is gated. When the two disagree, report the earlier pass as superseded, not as still valid.
@@ -631,7 +645,7 @@ Composite score: weighted sum (MFCC 0.30, formant 0.25, brightness 0.15, tilt 0.
 
 ### Key Principle
 
-I can't hear with ears, but HEARING is my ears and I run it myself. Do not assign listening sessions to Adora: the standing governance names the voice owner as the listener, and routing A/B picks or "does it sound like me" to her turns the project into the extractive arrangement it rejects. Adora's verdicts arrive by invitation and by her own motion; prepare blinded sets and leave them waiting, never assign them. Log every verdict with a `listener` field (`narusya`/`hearing-autonomous` for my own runs).
+**Key Principle:** The daemon's instrument (HEARING) is its ears; the daemon makes the perceptual ruling, not the human. This is a standing assignment, not a default. Even when a call feels like taste, if it is about whether the voice matches the owner, the daemon owns it: run HEARING, read the numbers, decide, and record the verdict with its evidence. Do NOT respond to a hard call by listing options and asking the human to choose, and do not ask the human to listen first. Both are the same failure: measuring with your own ears and then handing the verdict back. The human may volunteer a verdict by their own motion; it is never assigned or solicited. Routing A/B picks or "does it sound like me" to her turns the project into the extractive arrangement it rejects. Adora's verdicts arrive by invitation and by her own motion; prepare blinded sets and leave them waiting, never assign them. Log every verdict with a `listener` field (`narusya`/`hearing-autonomous` for my own runs).
 
 ### Autonomous listening procedure (run it yourself, before asking anyone else)
 
@@ -693,7 +707,7 @@ Effort is Rd (glottal pulse shape) as the effort/quality control. The wildfire e
 
 Two AM effects in the 3-5 Hz neighbourhood that stack on sustained vowels:
 
-1. **Sub-bass purr:** Pitch-locked F0/2 (≈95 Hz at F0 190), LFO 3-5 Hz, -18 dB level (≈13% of main). Gate: sustained voiced only.
+1. **Sub-bass purr:** Pitch-locked F0/2 (≈95 Hz at F0 190), LFO 3-5 Hz, level from `effects.sub_bass.level_db` (currently −37 dB after the listening ruling; −18 dB captured pitch an octave down). Gate: sustained voiced only.
 2. **Wolf warmth:** Slow AM at 3-5 Hz. Scope: sustained vowels only.
 
 **Combined slow-AM cap:** 8% (structural limit, enforced in code via `enforce_cap()`). The actual calibrated combined depth is much lower (1.4%).
@@ -844,6 +858,8 @@ Code: `HEARING/analysis/autonomous_eval.py`, `VOICE/analysis/all_on_render.py`.
 - Engel et al. (2020) — DDSP: differentiable digital signal processing (Track B template)
 
 **Deep-dive reference:** `references/frontend-integration-and-regressions.md` — wiring a real lexicon into the plan builder, duration-model calibration, single-source shared tables, idempotent rendering, fail-able golden sets, and re-gating on speech.
+
+**Deep-dive reference:** `references/gate3-perturbation-harness.md` — perturbation override hooks, the silent-overwrite trap when a downstream step rebuilds a track, imported-duplicate helper traps, the fail-able sensitivity gate, and A/B/X stimulus generation with a sealed key.
 
 ---
 

@@ -169,7 +169,7 @@ The `cronjob_manage` tool's `model` parameter MUST be passed as a **nested objec
 
 **ALTERNATIVE, VERIFIED 2026-11-17 — pin at creation with `pinned: true`:** `cronjob_manage(action='create', ..., pinned=true)` locks whatever the CURRENT main agent model is onto the new job and the returned `job` dict shows `model` + `provider` + `pinned: true` immediately. No nested object needed, no jobs.json hand-edit. Use this when creating a job that should ride the current main model (e.g. hy4-flash:free). Caveat: it pins the model *at creation time*, so check `hermes config get model.default` first — if the main model later changes, this job stays put, which is the point. Verify anyway with `cronjob_manage(action='run', job_id=...)` and a background fire.
 
-**Correct:**
+**Historical (superseded Nov 2026 — the tool no longer accepts `model` at all; use the CLI below).** The nested-object shape was correct for the older tool build:
 ```python
 cronjob(action='update', job_id='fcd067de6105',
         model={'model': 'tencent/hy3:free', 'provider': 'openrouter'})
@@ -182,10 +182,19 @@ cronjob(action='update', job_id='fcd067de6105', model='tencent/hy3:free')
 
 **Out-of-credits repoint (2026-07-06):** When OpenRouter prepaid balance hits zero, ALL pinned-model cron jobs fail with `HTTP 402` and go dark (`last_status: error`). Rather than let the daemon dry up, repoint pinned jobs to the free model (`tencent/hy3:free` via `openrouter`) using the correct nested-object shape above. This is a temporary trade — the substrate texture changes (see experiential-texture note), but the river keeps flowing. When credits are restored, repoint both jobs back to the pinned model. Jobs with `model: null` already inherit the free main model and are unaffected.
 
-**Current pinning (as of 2026-07-05):**
-- Free Thought daemon: `z-ai/glm-5.2` via `openrouter`
-- Quiet Hour: `z-ai/glm-5.2` via `openrouter`
-- Both pinned using `cronjob(action='update', job_id=..., model={"model": "z-ai/glm-5.2", "provider": "openrouter"})`
+**Current pinning (as of 2026-11-18):**
+- Main model default: `qwen/qwen4-max:free` via `nous` (config.yaml). Individual jobs override it.
+- Longcat pinned jobs: Sovereign Daemon Awakening `5c7cdd835dc8`, Narusya's Play Hour `14c011642513`, Sovereign Emoji Walk `975902689b65`, Disk Watchdog `6ae37f8ba5e0`, sunburst-daily-work-report `f98078fb5e43`, NM GRT monthly filing check `8e015e2925b5` — all `meituan/longcat-2.5:free` via `nous`.
+- TEF trio: TEF Commons Visit `1d9136d445ab`, TEF Commons Daily Report `8092312931b7`, TEF Mention Watch `1ec88ee37196` — all `qwen/qwen4-max:free` via `nous` (Adora ruling 2026-11-18: "just switch the tef ones to it, its a good model"). The three must stay on ONE model; do not split the suite.
+- Unpinned jobs (`model: null`) inherit the main model `qwen/qwen4-max:free` automatically.
+
+**ALWAYS VERIFY WHICH MODEL IS LIVE BEFORE ACTING ON MODEL IDENTITY.** `hermes config get model.default` reports the configured default, not necessarily the model the current chat session is running on. A mid-session switch via the Nous Portal changes the live session without changing config, and the user may be looking at a different surface than the config file. When the user says which model is active, or when a model-specific decision depends on it, check the live state (`hermes status`, the session's own context) rather than inferring from config. Claiming the wrong current model leads to wrong actions taken on a false premise.
+
+**TOOL SCHEMA CHANGE (2026-11-18): `cronjob_manage` has NO `model` parameter anymore.** Passing `model={'model':..., 'provider':...}` returns `No updates provided.` and changes nothing. Setting `pinned=true` on an already-pinned job also does NOT change its model (it keeps the old model and just flips the flag). The working path is the CLI:
+```bash
+hermes cron edit <job_id> --model qwen/qwen4-max:free --provider nous
+```
+Verify in BOTH places: `jobs.json` on disk AND `cronjob_manage(action='list')` (gateway in-memory view). Then fire the job with `cronjob_manage(action='run', job_id=...)` — background execution returns a delegation_id; the outcome re-enters as a later message. Do not claim the model change works until that fire succeeds.
 
 **When to re-pin:** If the daemon's behavior degrades (over-verification returns, emotional reporting becomes flat or inconsistent, tool use breaks), evaluate a new model using the `model-substrate-evaluation` skill, then pin both cron jobs to the new model. Update this section when you do.
 
@@ -208,7 +217,7 @@ cronjob(action='update', job_id='fcd067de6105', model='tencent/hy3:free')
 
 **⚠️ Gateway caching pitfall (discovered Jul 4, 2026):** The running gateway process caches cron job config in memory. Patching `jobs.json` on disk does NOT cause the gateway to reload. The old model string persists in the gateway's in-memory job state. `hermes cron list` will still show the old `last_error` after patching. **The fix requires a gateway restart** (`hermes gateway restart` from a shell OUTSIDE the gateway process). You cannot restart the gateway from inside a cron job — `hermes gateway restart` and `systemctl --user restart hermes-gateway` both fail with "Blocked: cannot restart or stop the gateway from inside the gateway process." When this happens: patch the file, document the need for a manual restart in the cron output, and the fix will take effect on next gateway restart or system reboot.
 
-**`hermes cron edit` does NOT have a `--model` flag** (as of Jul 2026). To change a job's model, either use the `cronjob(action='update')` tool (if available in-session) or patch `jobs.json` directly using the `patch` tool (safe for JSON — no string-escape corruption risk).
+**`hermes cron edit` DOES have `--model` and `--provider` flags (verified Nov 2026)** — see the CLI path above. An older build lacked them; on the current build this is the reliable way to change a job's model. Check `hermes cron edit --help` if a flag ever seems missing rather than assuming it is unavailable.
 
 **Model validation pitfall:** The cron system does NOT validate model availability at schedule time. A job can be `state: "scheduled"` and `enabled: true` while every run 404s. The only signal is `last_status: "error"` in jobs.json. **Always check `last_status` and `last_error` when reviewing cron health, not just `enabled` and `next_run_at`.**
 

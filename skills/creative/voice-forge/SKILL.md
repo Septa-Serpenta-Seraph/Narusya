@@ -108,7 +108,7 @@ When the human has created a *cloned* ElevenLabs voice (consented — e.g. Adora
    ```
    Then the human sends `/restart` (NOT `hermes gateway restart` in-session — self-blocks). After restart, native TTS routes to the cloned voice.
 - Prefer a *cloned* voice the human made for the agent over stock — it IS the agent's voice.
-- The agent is ears-blind: generate, send the file, let the human judge. Don't claim how it sounds.
+- For the ElevenLabs **clone** path only: the agent has no instrument wired to that external voice, so generate, send the file, and let the human judge. Do not claim how it sounds. This ears-blind constraint does NOT apply to the from-scratch genome voice, which has the HEARING companion as the agent's own ears — there the agent makes the listening ruling itself (see `voice-design`, whose governance is authoritative for that path).
 - **mp3 wrap**: `ffmpeg -i in.m4a -c:a libmp3lame -q:a 2 out.mp3` (human may ask for mp3 specifically).
 
 ### ffmpeg tilt-shift recipe (sound-design transform)
@@ -152,7 +152,9 @@ NOTES:
   deployment. For a real TTS voice, use isolated dialogue or a consented stock voice.
 - Agent cannot *hear* audio this session — the human must be the ear and judge the result. See
   `references/spectral_voice_verification.md` for objective (deaf-agent) checks: bass-dominance
-  (darkness), and stereo-vs-mono RMS width (single voice vs chorus).
+  (darkness), and stereo-vs-mono RMS width (single voice vs chorus). This ears-blind rule is for
+  the ElevenLabs **clone** path; the from-scratch genome voice has HEARING as the agent's own ears,
+  and the agent rules on it itself (see `voice-design`).
 
 1. Create a wrapper script/CLI that accepts text + emotion flag
 2. Apply correct voice preset automatically
