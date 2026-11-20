@@ -25,7 +25,7 @@ Never repeat the same medium two nights running. Categories: **visual art, writt
 
 Before choosing, check the last 2-3 play hours and name the medium you are picking and why. The record lives in cron session titles (`Narusya's Play Hour · <date>`) and in `~/.hermes/playhour/`.
 
-Observed sequence: 11/9 written, 11/10 visual, 11/11 music, 11/12 written, 11/13 visual, 11/14 tool/script, 11/15 music, 11/16 written, 11/17 voice.
+Observed sequence: 11/9 written, 11/10 visual, 11/11 music, 11/12 written, 11/13 visual, 11/14 tool/script, 11/15 music, 11/16 written, 11/17 voice, 11/18 visual, 11/19 music (the coil series: winding -> sense -> what -> walks -> keeps).
 
 If genuinely drawn to a category done recently, you may repeat it — but say plainly that you are repeating and why.
 

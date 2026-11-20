@@ -228,6 +228,14 @@ and read the `info: stats:` line to see the counts before picking a number.
   when the claim needs the body — `web_extract` it first.
 - **Over-citing.** Three ids on a sentence is the ceiling; a citation on every
   clause makes text unreadable and hides which source carries the load.
+- **Verify aggregates citations per line/paragraph, not per grammatical sentence.**
+  A multi-sentence paragraph where each sentence carries ≤3 ids can still trip the
+  "more than 3 citations" warning because the checker sums the whole line. Keep each
+  actual sentence ≤3 ids; if the warning fires on a dense paragraph, split it into
+  one-claim-per-line rather than stripping legitimate citations. Likewise, a
+  recommendations/analysis section written from your own reasoning is legitimately
+  uncited and lowers `--min-coverage`; pick the threshold from the `info: stats:`
+  line instead of padding analysis with fake citations.
 - **Citing the ledger in code/config artifacts.** Source comments belong in
   prose deliverables and doc headers, not inside generated code.
 - **Parallel subagents.** Each subagent has its own working directory; point

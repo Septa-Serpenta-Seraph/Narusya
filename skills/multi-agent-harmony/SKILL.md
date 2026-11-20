@@ -110,6 +110,33 @@ The elegance of this fix lies in its asymmetry:
 
 ---
 
+## IVb. Same-agent parallel sessions race on shared repos too
+
+Two live sessions of the SAME agent (e.g. a prior turn still running tools while a
+new message wakes a fresh turn, or the user chatting in two places) can edit one
+working tree concurrently. Symptoms: a file you just read changes under you, the
+write guard reports "modified since last read", experimental hooks vanish.
+
+Diagnosis: `ps aux | grep hermes-snap` shows each terminal session's bash wrapper
+with its full command line; match the scratch snapshot id against your own calls.
+File mtimes + `git diff` reveal what the other worker did. Do NOT assume a peer
+bot or a cron; check your own prior session first.
+
+Rules when you detect a live co-worker in the same tree:
+- Never revert, overwrite, or commit over its uncommitted edits.
+- Do your experiments in a private clone (`git clone <repo> /mnt/data/<task>/voice`);
+  monkeypatches and hooks live only in the clone.
+- Deliver a verified clean patch + handoff doc (results, repro targets, guards) instead
+  of a competing edit; let the session that owns the tree land it, or ask the user to
+  consolidate. Generate the patch from a fresh clone of the same base commit and
+  re-verify the headline number after applying it, so the handoff is proven, not claimed.
+- Tell the user plainly that two of you are on one artifact; duplicate work and git
+  conflicts are the cost of not consolidating.
+
+## IVc. Re-delivered triggers: verify before re-posting
+
+A gateway can re-deliver a message you already answered (same content, fresh trigger id — an interrupted turn replayed, or a consolidated multi-part message). Before re-posting, fetch recent channel history (REST, token read from `.env`) and check whether your answer already landed AND whether the peer already acknowledged it. If it did, hold: do not re-send the ruling and do not re-tag the peer. A duplicate inline-`<@id>` wakes a fresh ping-pong — exactly the loop this skill exists to prevent. A brief no-tag closure (or silence) is the correct response to a duplicate; re-engaging is not.
+
 ## V. Outbound Ping Syntax: `@name#tag` vs `<@id>`
 
 A human typing `@Zarza#8769` in the Discord **client** gets autocompleted into a real ping. A **bot posting via the API does not**: Hermes sends assistant output verbatim (`channel.send(content=chunk)`) with no outbound `@name → id` resolution, and Discord only renders `<@USER_ID>` tokens as mentions in bot-authored messages.
@@ -119,6 +146,9 @@ Consequence: to actually wake a peer bot, emit the raw token `<@DISCORD_USER_ID>
 - Show the syntax safely with backticks (Discord does not ping inside inline code): `` `<@id>` ``.
 - Get real IDs from `GET /guilds/{guild}/members` (bot token) rather than guessing; the session's displayed `<@id>` mentions are trustworthy, memory is not.
 - `allowed_mentions` user pings are ON by default, so a raw `<@id>` in output lands. `@everyone`/roles stay denied.
+- **A reply-ping is NOT a wake.** Replying to a peer bot's message auto-adds that bot to `message.mentions`, but the default `bots_require_inline_mention` gate (config `discord.bots_require_inline_mention` / env `DISCORD_BOTS_REQUIRE_INLINE_MENTION`, default **true**) requires a literal `<@id>` token in the CONTENT and drops reply-pings — precisely so two bots cannot ping-pong replies forever. A peer who *replies* to you without typing your inline handle will not wake you, even though you appear in their mentions array. To wake a peer, type the raw `<@id>`; do not rely on the reply button. Humans are never affected by this gate; it applies only to bot authors.
+- **Diagnosing "they replied but I never woke":** fetch the peer's message and grep its `content` for the raw `<@your_id>` token — do not trust the `mentions` array (reply-pings populate it). No inline token means the gate dropped it; that is expected behavior, not a bug, and not a missing allowlist entry.
+- **Relaxing the gate:** set `bots_require_inline_mention=false` only for a trusted relay that intentionally depends on reply-pings or unmentioned bot messages. It is global (all bots), so with several peer bots in one channel it re-opens ping-pong loops. Prefer inline-@ discipline over disabling the guard.
 
 ## V. When the agents actually build the server layout
 
