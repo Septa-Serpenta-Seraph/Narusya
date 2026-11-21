@@ -26,6 +26,18 @@ Each section shows the `gh` way first, then the `git` + `curl` fallback for mach
 - Creating, triaging, and managing issues (Issues)
 - Analyzing codebase metrics, LOC, language breakdown (Codebase inspection)
 
+## Attribution convention for this user's repos
+
+On repos attached to Septa-Serpenta-Seraph, put the real names **Adora** and **Narusya** on
+authorship lines. Never ship `{user}/{Your Daemon Name}` placeholders in a repo's own
+authorship line. Placeholders stay only inside a functional template or documentation file meant to be
+copied by someone else (BYPASS-style lorebooks, README swap-outs).
+
+When writing a companion doc into an existing repo, wire it into that repo's README with
+a one-line pointer and link so it is discoverable. Verify the push with
+`gh api repos/<owner>/<repo>/contents/<file> --jq .html_url` and confirm the commit SHA
+before reporting the URL. Report the verified URL, not a guessed one.
+
 ---
 
 ## 1. GitHub Authentication Setup

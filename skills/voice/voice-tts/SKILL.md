@@ -108,6 +108,12 @@ There are TWO separate ElevenLabs configs. Do not conflate them — a tag that r
 
 **When voice doesn't deliver as spoken:** if TTS is disabled (e.g. ElevenLabs credits exhausted), tags in a reply are decorative only — do not promise spoken delivery of them.
 
+### Master auto-voice switch (`voice.auto_tts`)
+
+To turn automatic spoken replies on or off, the single switch is `voice.auto_tts` in `~/.hermes/config.yaml` (default `true`). Set with `hermes config set voice.auto_tts false`, verify with `hermes config get voice.auto_tts`. Do not hand-edit config.yaml — the protected-config write guard refuses it. This disables the auto-TTS default only; the TTS engines and cloned voice are untouched, and on-demand speech still works.
+
+**It is a boot-time value.** The gateway reads `voice.auto_tts` into the adapter's in-memory default at startup (`gateway/run_voice.py`), so a config change does not affect the running process until the gateway restarts. Say so when asked for "off now" — an internal gateway restart is blocked from inside the gateway; it must be done from a separate shell outside it. Also note per-chat `/voice on|off|tts` overrides the global default for a specific chat. Two other config paths load at different times: `tts.elevenlabs.model_id` also needs a restart, while `tts.providers.*` command providers load lazily and take effect without one.
+
 ---
 
 ### Wiring Kyutai as a Hermes TTS provider (command provider)

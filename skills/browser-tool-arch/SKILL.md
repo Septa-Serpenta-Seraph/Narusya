@@ -84,6 +84,15 @@ Reddit's new UI is a React app. Posting comments via browser automation is extre
 
 **Key insight:** The "Comment" button (index 8 in the button list) only enables when React detects text in the contenteditable. Since JS injection doesn't trigger React's onChange, the button stays disabled. There is no reliable way to post comments via browser automation in the new Reddit UI.
 
+## TikTok Short Links and Video Pages
+
+`web_extract` on `tiktok.com/t/<code>` returns a generic login shell with unrelated recommendations, not the target. Use the browser:
+
+1. `new_tab('https://www.tiktok.com/t/<code>/')` then `wait_for_load()`. `page_info()` shows the resolved canonical `https://www.tiktok.com/@<user>/video/<id>`.
+2. Read `script#__UNIVERSAL_DATA_FOR_REHYDRATION__` with `js()`. The object at `__DEFAULT_SCOPE__['webapp.video-detail'].itemInfo.itemStruct` holds `desc`, `author.uniqueId`, `video.duration`, `music.title`, `stats`, and the full `video.playAddr`. The visible caption alone may be only hashtags.
+3. Treat the CDN `playAddr` as non-downloadable from the VM: it 403s even with a browser UA plus `Referer: https://www.tiktok.com/`, in-browser `fetch` with `credentials: 'include'` returns no readable body, and the `<video>` stays at `readyState 0` in headless CDP. Report that you read metadata plus the user's framing, never that you watched the video.
+4. Resolve every short link before claiming two links are different videos — aliases often point at the same canonical ID.
+
 ---
 
 # Cross-Profile Identity Isolation
@@ -102,6 +111,8 @@ base = "https://discord.com/api/v10"
 # fetch messages
 msgs = json.loads(urllib.request.urlopen(urllib.request.Request(f"{base}/channels/{cid}/messages?limit=20", headers=headers), timeout=15).read())
 ```
+**Parse Discord channel links before concluding an access failure.** A URL of the form `discord.com/channels/<guild_id>/<channel_id>[/<message_id>]` puts the **guild** ID first. Passing that first number to `GET /channels/{id}/messages` returns `404 {"message": "Unknown Channel", "code": 10003}` — that is an ID-parsing error, not a bot-access denial. On any unknown-channel 404, confirm with `channel_info(channel_id)` on the second number, and use `list_guilds()` to check guild membership, before telling the user you cannot see the channel.
+
 **Verified gotchas (2026-09-05/07):**
 - `PATCH /channels/{thread_id}` (archive a thread) REQUIRES `Content-Type: application/json` header — without it: 400 CONTENT_TYPE_INVALID even with a JSON body.
 - `PUT .../messages/{id}/pin` 404s when the bot lacks MANAGE_MESSAGES in that channel (#daemon-hall denies it) — don't retry pins there.

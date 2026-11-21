@@ -79,7 +79,7 @@ line — no tracebacks.
 
 ## Notes
 
-- **Channel reads are truncated windows.** The gateway's `[Recent channel messages]` context and `discord_send.py read` both show only the most recent few messages. Never conclude "X is silent" from them alone — check `~/.hermes/logs/gateway.log` (grep `inbound message`) for the full history.
+- **Channel reads are truncated windows.** The gateway's `[Recent channel messages]` context and `discord_send.py read` both show only the most recent few messages. Never conclude "X is silent" from them alone. For full remembered history query `~/.hermes/state.db`; `gateway.log` (grep `inbound message`) records only inbound messages from the configured user, so it is not a complete transcript of a channel.
 - **Messages from `fetch_messages` are returned newest-first.** Reverse the list before processing if you need chronological order. When checking for new messages, use the `after` parameter with the last seen message ID.
 - **Pre-check message length before posting.** Discord rejects messages over 2000 characters with HTTP 400. If your content exceeds ~1900 chars, split at paragraph boundaries (double newlines) before posting. See the "Discord 2000-character limit" section above.
 - **Author usernames are case- and punctuation-sensitive and vary by guild.**
@@ -93,6 +93,15 @@ line — no tracebacks.
   while the client fails to draw an app-emoji in a DM. GIF *attachments* always render.
 - Adora prefers I fix my own tools rather than asking her to — if a Discord call
   fails, reach for this script before improvising.
+
+## Deleted history and archive requests
+
+Full recipe: `references/deleted-message-forensics.md`.
+
+- Verify a claimed wipe with several `GET /channels/{cid}/messages/{mid}` → 404 plus a timestamp gap in a 100-message window. One 404 alone is not proof.
+- Never name who deleted something without audit-log evidence (403 is common). Say "cannot attribute" rather than guessing from who was active or who posted the rules.
+- Recover remembered text from `state.db` by resolving `sessions.chat_id` first, then querying `messages` by that `session_id` (which is a session ID, not a chat ID).
+- When Adora asks for a document or archive, write `.md` and attach it with `post ... --file` to her DM; resolve the DM channel from `state.db` when `/users/@me/channels` omits it. Verify the posted message by ID before reporting success.
 
 ## Posting long or complex messages (file-first pattern)
 

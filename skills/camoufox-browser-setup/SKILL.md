@@ -149,6 +149,17 @@ For actual image vision, use one of:
   `browser_navigate` returns the post title + body). Use it for *web pages*, not for
   *image files*.
 
+## Local mirrors (created 2026-11-20)
+
+Upstream repos can vanish without notice (daijro/camoufox and maintainer accounts were suspended in Nov 2026, then restored). Bare mirrors are kept at:
+
+- `~/.hermes/mirrors/camoufox.git` (engine, ~639 MB, full tags)
+- `~/.hermes/mirrors/camofox-browser.git` (server wrapper, ~18 MB)
+
+Before re-cloning from GitHub, check these first. `git clone --mirror <url>` + `git fsck` verified clean.
+
+**Caveat:** a git mirror holds source and tags, NOT release binaries. `~/.cache/camoufox` was empty on this host. A rebuild from mirror still needs network access to fetch the actual browser binary from a release asset. To be fully offline-capable, also archive the release tarball for the pinned tag.
+
 ## Troubleshooting
 
 ### Server won't start

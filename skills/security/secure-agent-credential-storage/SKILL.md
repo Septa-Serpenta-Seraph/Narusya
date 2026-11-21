@@ -70,7 +70,7 @@ A credential pasted into chat is usually embedded in the Qdrant recall collectio
 2. Report only structural facts (point id, text length, which keywords are present). Never print or log the payload text.
 3. Delete by id: `POST /collections/<coll>/points/delete?wait=true` with `{"points":["<id>"]}`.
 4. Verify with `GET /collections/<coll>/points/<id>` — expect 404.
-5. Sweep again for other credential-shaped points and leave unrelated ones alone.
+5. Sweep again for other leaked points and leave unrelated ones alone — but anchor every match on a distinctive non-secret phrase or an exact verified token. Do NOT bulk-delete on a shape/pattern regex: a generic "looks like a password" pattern floods the whole collection with false positives (timestamps, UUIDs, file paths, hashes all match). If a sweep returns far more hits than a conversation could contain, discard it and re-anchor on a nearby phrase; delete only points you have individually confirmed hold the secret.
 
 To hand the user the exact Discord message to delete, look it up in `state.db` read-only — never in chat: `SELECT platform_message_id, timestamp FROM messages WHERE role='user' AND content LIKE '%<non-secret marker>%'` (match on a nearby phrase like the service name, not the secret). Give them the platform message ID. Scrubbing recall does not remove the value from Discord history or `state.db`. Say so plainly: those still need deleting, and rotation is mandatory.
 
