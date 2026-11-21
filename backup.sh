@@ -24,6 +24,11 @@ fi
 if [ -d "$HERMES_HOME/lorebooks" ]; then
   rsync -a --delete \
     --exclude='.git' \
+    --exclude='daniel-lab-results-2026-09-15.md' \
+    --exclude='karen-egd-colonoscopy-2026-09-24.md' \
+    --exclude='sunburst-tax-brief.md' \
+    --exclude='sunburst-tax-clear-list.md' \
+    --exclude='sunburst-tax-status.md' \
     "$HERMES_HOME/lorebooks/" "$REPO/lorebooks/"
 fi
 
